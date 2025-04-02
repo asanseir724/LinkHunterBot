@@ -1,1 +1,12 @@
-{}
+{
+  "+989051323407": {
+    "phone": "+989051323407",
+    "api_id": 28316648,
+    "api_hash": "9ddafefc562c795987da1ce93e153487",
+    "name": "1",
+    "status": "error",
+    "connected": false,
+    "error": "The asyncio event loop must not change after connection (see the FAQ for details)",
+    "last_check": null
+  }
+}

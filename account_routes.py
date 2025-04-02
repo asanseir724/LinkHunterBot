@@ -62,7 +62,16 @@ def remove_account():
             
         # Disconnect if connected
         if account.connected:
-            asyncio.run(account.disconnect())
+            # Create a new event loop for this function
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            try:
+                # Disconnect the account
+                loop.run_until_complete(account.disconnect())
+            finally:
+                # Clean up the loop when done
+                loop.close()
             
         # Remove the account
         success, message = account_manager.remove_account(phone)
@@ -93,7 +102,16 @@ def connect_account():
             return jsonify({"success": False, "message": "اکانت یافت نشد"})
             
         # Connect the account
-        success, message = asyncio.run(account.connect())
+        # Create a new event loop for this function
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            # Connect the account
+            success, message = loop.run_until_complete(account.connect())
+        finally:
+            # Clean up the loop when done
+            loop.close()
         
         # Save account manager data
         account_manager.save_accounts()
@@ -119,7 +137,16 @@ def disconnect_account():
             return jsonify({"success": False, "message": "اکانت یافت نشد"})
             
         # Disconnect the account
-        asyncio.run(account.disconnect())
+        # Create a new event loop for this function
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            # Disconnect the account
+            loop.run_until_complete(account.disconnect())
+        finally:
+            # Clean up the loop when done
+            loop.close()
         
         # Save account manager data
         account_manager.save_accounts()
@@ -148,7 +175,16 @@ def verify_code():
             return redirect(url_for('accounts.accounts'))
             
         # Sign in with the code
-        success, message = asyncio.run(account.sign_in_with_code(code, password))
+        # Create a new event loop for this function
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            # Sign in with the code
+            success, message = loop.run_until_complete(account.sign_in_with_code(code, password))
+        finally:
+            # Clean up the loop when done
+            loop.close()
         
         # Save account manager data
         account_manager.save_accounts()
@@ -186,7 +222,16 @@ def verify_2fa():
             
         # Sign in with the 2FA password
         if account.client:
-            success, message = asyncio.run(account.client.sign_in(password=password))
+            # Create a new event loop for this function
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            try:
+                # Sign in with the 2FA password
+                success, message = loop.run_until_complete(account.client.sign_in(password=password))
+            finally:
+                # Clean up the loop when done
+                loop.close()
             account.status = "active" if success else "2fa_error"
             account.connected = success
             account.error = None if success else message
@@ -217,7 +262,16 @@ def check_accounts_for_links():
         max_messages = 100  # Default, could be from settings
         
         # Check all accounts for links
-        results = asyncio.run(account_manager.check_all_accounts_for_links(link_manager, max_messages))
+        # Create a new event loop for this function
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            # Check accounts for links
+            results = loop.run_until_complete(account_manager.check_all_accounts_for_links(link_manager, max_messages))
+        finally:
+            # Clean up the loop when done
+            loop.close()
         
         return jsonify(results)
     
@@ -250,7 +304,16 @@ def setup_account_scheduler(scheduler):
             logger.info(f"Starting scheduled check for {len(account_manager.get_active_accounts())} active accounts")
             
             # Run the check
-            results = asyncio.run(account_manager.check_all_accounts_for_links(link_manager, 100))
+            # Create a new event loop for this function
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            try:
+                # Check accounts for links
+                results = loop.run_until_complete(account_manager.check_all_accounts_for_links(link_manager, 100))
+            finally:
+                # Clean up the loop when done
+                loop.close()
             
             # Log the results
             logger.info(f"Scheduled check complete. Found {results['total_new_links']} new links from {results['accounts_with_links']} accounts")
