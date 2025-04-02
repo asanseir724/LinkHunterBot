@@ -234,11 +234,18 @@ def links():
     new_links = link_manager.get_new_links()
     categories = link_manager.get_categories()
     
+    # Create a mapping of links to their categories for display
+    link_categories = {}
+    for cat, cat_links in link_manager.get_links_by_category().items():
+        for link in cat_links:
+            link_categories[link] = cat
+    
     return render_template('links.html', 
                           links=all_links, 
                           new_links=new_links,
                           categories=categories,
-                          current_category=category_display)
+                          current_category=category_display,
+                          link_categories=link_categories)
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():

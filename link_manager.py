@@ -17,7 +17,49 @@ class LinkManager:
         self.new_links = [] # List of new links (current session)
         self.channel_categories = {}  # Dictionary mapping channel names to categories
         self.links_by_category = {}   # Dictionary mapping categories to links
+        
+        # Default categories
         self.default_categories = ["عمومی", "سرگرمی", "فیلم", "موسیقی", "علمی", "خبری", "ورزشی", "آموزشی"]
+        
+        # Category keywords mapping - for automatic categorization based on message text
+        self.category_keywords = {
+            "سرگرمی": [
+                "تفریح", "سرگرمی", "فان", "جوک", "طنز", "بازی", "خنده", "موزیک", "شوخی", "گیم", "سرگرم",
+                "fun", "game", "play", "joke", "meme", "vip", "فیلم", "چت", "دوستیابی", "خاص",
+                "دورهمی", "chat", "باحال", "جذاب", "میتینگ", "رفیق", "مود", "شاد", "حال", "خوش", "کلیپ", "گپ"
+            ],
+            "فیلم": [
+                "فیلم", "سریال", "سینما", "اکشن", "کمدی", "درام", "هالیوود", "بالیوود", "انیمیشن", "کارتون",
+                "movie", "film", "cinema", "serial", "سینمایی", "ترسناک", "هیجانی", "دانلود فیلم", "مستند", 
+                "کلیپ", "رایگان", "تماشا", "مووی", "video", "دانلود", "پخش", "استوری"
+            ],
+            "موسیقی": [
+                "موسیقی", "آهنگ", "موزیک", "خواننده", "ترانه", "پاپ", "رپ", "سنتی", "راک", "music",
+                "song", "rap", "pop", "artist", "کنسرت", "میکس", "دانلود", "جدید", "گوش", "mp3",
+                "آلبوم", "ملودی", "زنگ", "پلی لیست", "صوتی", "خواننده", "انگلیسی", "ایرانی", "خارجی"
+            ],
+            "علمی": [
+                "علم", "دانش", "فناوری", "تکنولوژی", "آموزش", "یادگیری", "پژوهش", "تحقیق", "مقاله", "کتاب",
+                "science", "tech", "learn", "research", "study", "book", "paper", "physics", "chemistry",
+                "تاریخ", "زیست", "شیمی", "فیزیک", "ریاضی", "نجوم", "پزشکی", "مهندسی", "دانشگاه", "دانشجو", "معلم"
+            ],
+            "خبری": [
+                "خبر", "اخبار", "تازه", "رویداد", "حادثه", "سیاست", "اقتصاد", "اجتماعی", "جامعه", "جهان",
+                "news", "report", "event", "politics", "economy", "social", "روزنامه", "خبرگزاری", "گزارش",
+                "فوری", "تحلیل", "خبرنگار", "تیتر", "بحران", "بررسی", "جدیدترین", "اطلاعیه", "شبکه"
+            ],
+            "ورزشی": [
+                "ورزش", "فوتبال", "والیبال", "بسکتبال", "تنیس", "ورزشکار", "قهرمان", "المپیک", "جام جهانی",
+                "sport", "football", "soccer", "basketball", "volleyball", "tennis", "champion", "Olympic",
+                "مسابقه", "فیفا", "استقلال", "پرسپولیس", "باشگاه", "بازی", "لیگ", "جام", "گل", "تیم", "باشگاه"
+            ],
+            "آموزشی": [
+                "آموزش", "یادگیری", "درس", "مدرسه", "معلم", "استاد", "دانشگاه", "دانشجو", "دانش آموز", "تحصیل",
+                "education", "learn", "study", "school", "teacher", "professor", "university", "student",
+                "کلاس", "کنکور", "زبان", "تدریس", "کتاب", "جزوه", "نمونه سوال", "آزمون", "مشاوره", "رشته تحصیلی"
+            ]
+        }
+        
         self.check_interval = 5  # Default check interval in minutes (changed to 5)
         self.last_check = None
         self.telegram_token = None  # Store the Telegram Bot Token
@@ -162,13 +204,14 @@ class LinkManager:
         """Get list of monitored channels"""
         return self.channels
     
-    def add_link(self, link, channel=None):
+    def add_link(self, link, channel=None, message_text=None):
         """
         Add a unique link to storage
         
         Args:
             link (str): The link to add
             channel (str, optional): The channel source of the link
+            message_text (str, optional): The message text containing the link for keyword analysis
             
         Returns:
             bool: True if the link was new, False if it already existed
@@ -187,23 +230,74 @@ class LinkManager:
             if link not in self.new_links:
                 self.new_links.append(link)
             
-            # If we have channel info, categorize the link
+            # Determine the category based on message content and channel
+            category = "عمومی"
+            
+            # First try to get category from channel
             if channel and channel in self.channel_categories:
                 category = self.channel_categories.get(channel, "عمومی")
-                
-                # Initialize category list if needed
-                if category not in self.links_by_category:
-                    self.links_by_category[category] = []
-                
-                # Add to category if not already there
-                if link not in self.links_by_category[category]:
-                    self.links_by_category[category].append(link)
-                    logger.debug(f"Added link to category '{category}': {link}")
+            
+            # Then try to detect category from message text keywords if available
+            if message_text:
+                detected_category = self._detect_category_from_keywords(message_text)
+                if detected_category:
+                    category = detected_category
+                    logger.debug(f"Detected category '{category}' from message text")
+            
+            # Initialize category list if needed
+            if category not in self.links_by_category:
+                self.links_by_category[category] = []
+            
+            # Add to category if not already there
+            if link not in self.links_by_category[category]:
+                self.links_by_category[category].append(link)
+                logger.debug(f"Added link to category '{category}': {link}")
             
             self.save_data()
-            logger.info(f"Added new link: {link}")
+            logger.info(f"Added new link: {link} in category '{category}'")
         
         return is_new
+        
+    def _detect_category_from_keywords(self, text):
+        """
+        Detect the most appropriate category based on keywords in the text
+        
+        Args:
+            text (str): The text to analyze for category keywords
+            
+        Returns:
+            str: The detected category or None if no strong match
+        """
+        if not text:
+            return None
+            
+        # Convert text to lowercase for case-insensitive matching
+        text = text.lower()
+        
+        # Count keyword matches for each category
+        category_scores = {category: 0 for category in self.category_keywords.keys()}
+        
+        # Check for keywords in each category
+        for category, keywords in self.category_keywords.items():
+            for keyword in keywords:
+                # Case insensitive search
+                if keyword.lower() in text:
+                    category_scores[category] += 1
+        
+        # Find category with the most keyword matches
+        max_score = 0
+        best_category = None
+        
+        for category, score in category_scores.items():
+            if score > max_score:
+                max_score = score
+                best_category = category
+        
+        # Only return a category if we have a good match (at least 2 keywords)
+        if max_score >= 2:
+            return best_category
+            
+        return None
     
     def get_all_links(self):
         """Get all stored unique links (history)"""
