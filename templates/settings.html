@@ -50,6 +50,59 @@
                         </form>
                     </div>
                 </div>
+                
+                <!-- SMS Notification Settings -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4>تنظیمات اطلاع‌رسانی پیامکی</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>تنظیمات دریافت پیامک برای لینک‌های جدید</p>
+                        
+                        <form action="{{ url_for('settings') }}" method="post">
+                            <div class="mb-3">
+                                <label for="phone_number" class="form-label">شماره تلفن</label>
+                                <input type="tel" class="form-control" id="phone_number" name="phone_number" 
+                                       value="{{ phone_number if phone_number else '' }}" 
+                                       placeholder="+989123456789">
+                                <div class="form-text">
+                                    شماره تلفن خود را با فرمت بین‌المللی وارد کنید (مثال: +989123456789)
+                                </div>
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                <input type="checkbox" class="form-check-input" id="sms_notifications" name="sms_notifications" 
+                                       {% if sms_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="sms_notifications">
+                                    فعال‌سازی اطلاع‌رسانی پیامکی
+                                </label>
+                                <div class="form-text">
+                                    با فعال کردن این گزینه، هنگام یافتن لینک‌های جدید به شما پیامک ارسال می‌شود
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="min_links_for_notification" class="form-label">حداقل تعداد لینک برای اطلاع‌رسانی</label>
+                                <input type="number" class="form-control" id="min_links_for_notification" name="min_links_for_notification" 
+                                       min="1" value="{{ min_links_for_notification if min_links_for_notification else 5 }}">
+                                <div class="form-text">
+                                    حداقل تعداد لینک‌های جدید که باید یافت شود تا پیامک ارسال گردد
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-sms"></i> ذخیره تنظیمات پیامک
+                            </button>
+                            
+                            {% if not twilio_configured %}
+                            <div class="alert alert-warning mt-3">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                سرویس پیامک پیکربندی نشده است. برای استفاده از این قابلیت، کلیدهای دسترسی Twilio را تنظیم کنید.
+                            </div>
+                            {% endif %}
+                        </form>
+                    </div>
+                </div>
             </div>
             
             <div class="col-md-6">

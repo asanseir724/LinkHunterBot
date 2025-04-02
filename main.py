@@ -6,6 +6,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from link_manager import LinkManager
 from datetime import datetime
 from logger import get_logger, get_all_logs, clear_logs
+from notification_utils import update_sms_settings, get_sms_settings, should_send_notification
+from send_message import send_notification
 
 # Get application logger
 logger = get_logger(__name__)
@@ -72,6 +74,23 @@ def periodic_check():
                         'total_channels': total_channels,
                         'channels_checked': min(total_channels, max_channels)
                     })
+                
+                # Check if we should send an SMS notification about new links
+                if result > 0 and should_send_notification(result):
+                    sms_settings = get_sms_settings()
+                    logger.info(f"Sending SMS notification about {result} new links to {sms_settings['phone_number']}")
+                    
+                    try:
+                        notif_result = send_notification(
+                            sms_settings['phone_number'], 
+                            result
+                        )
+                        
+                        logger.info(f"SMS notification sent: {notif_result}")
+                    except Exception as e:
+                        logger.error(f"Failed to send SMS notification: {str(e)}")
+                else:
+                    logger.debug(f"Not sending notification for {result} new links")
                 
             except Exception as e:
                 logger.error(f"Scheduler: Error in automatic check: {str(e)}")
@@ -291,6 +310,38 @@ def settings():
             link_manager.save_data()
             flash(f"Auto-discover new channels: {'enabled' if auto_discover else 'disabled'}", "success")
         
+        # Handle SMS notification settings
+        if 'sms_notifications' in request.form:
+            # Get form data
+            sms_enabled = request.form.get('sms_notifications') == 'on'
+            phone_number = request.form.get('phone_number')
+            min_links = request.form.get('min_links_for_notification', 5)
+            
+            try:
+                min_links = int(min_links)
+                if min_links < 1:
+                    min_links = 1
+            except ValueError:
+                min_links = 5
+                
+            # Update settings
+            if sms_enabled and not phone_number:
+                flash("Phone number is required for SMS notifications", "danger")
+            else:
+                # Check if Twilio is configured
+                if sms_enabled:
+                    twilio_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+                    twilio_token = os.environ.get("TWILIO_AUTH_TOKEN")
+                    twilio_phone = os.environ.get("TWILIO_PHONE_NUMBER")
+                    
+                    if not all([twilio_sid, twilio_token, twilio_phone]):
+                        flash("Twilio is not fully configured. Please set up TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER environment variables.", "warning")
+                
+                # Update settings
+                update_sms_settings(sms_enabled, phone_number, min_links)
+                link_manager.save_data()  # Save to persist in JSON file
+                flash("SMS notification settings updated", "success")
+        
         return redirect(url_for('settings'))
     
     # Get available categories
@@ -299,13 +350,20 @@ def settings():
     # Get all tokens for display
     all_tokens = link_manager.get_all_telegram_tokens()
     
+    # Get SMS notification settings
+    sms_settings = get_sms_settings()
+    
     return render_template('settings.html', 
                           interval=link_manager.get_check_interval(),
                           bot_status=bot_status,
                           categories=categories,
                           message_count=link_manager.check_message_count,
                           auto_discover=link_manager.auto_discover,
-                          all_tokens=all_tokens)
+                          all_tokens=all_tokens,
+                          sms_notifications=sms_settings['enabled'],
+                          phone_number=sms_settings['phone_number'],
+                          min_links_for_notification=sms_settings['min_links'],
+                          twilio_configured=sms_settings['twilio_configured'])
 
 @app.route('/set_token', methods=['POST'])
 def set_token():

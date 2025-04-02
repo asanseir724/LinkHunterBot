@@ -14,6 +14,14 @@ except ImportError:
 # Get module logger
 logger = get_logger(__name__)
 
+# SMS Notification settings
+SMS_NOTIFICATION_SETTINGS = {
+    "enabled": False,
+    "phone_number": None,
+    "min_links": 5,
+    "twilio_configured": False
+}
+
 class LinkManager:
     """Manages link extraction, storage, and monitoring of channels"""
     
@@ -88,6 +96,8 @@ class LinkManager:
     
     def load_data(self):
         """Load data from JSON file if it exists"""
+        global SMS_NOTIFICATION_SETTINGS
+        
         if os.path.exists(self.data_file):
             try:
                 with open(self.data_file, 'r', encoding='utf-8') as f:
@@ -106,6 +116,24 @@ class LinkManager:
                     self.auto_discover = data.get('auto_discover', True)
                     self.check_message_count = data.get('check_message_count', 10)
                     
+                    # Load SMS notification settings if available
+                    sms_notification_data = data.get('sms_notification', {})
+                    if sms_notification_data:
+                        SMS_NOTIFICATION_SETTINGS.update({
+                            'enabled': sms_notification_data.get('enabled', False),
+                            'phone_number': sms_notification_data.get('phone_number'),
+                            'min_links': sms_notification_data.get('min_links', 5)
+                        })
+                        
+                        # Check if Twilio credentials are configured
+                        twilio_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+                        twilio_token = os.environ.get("TWILIO_AUTH_TOKEN")
+                        twilio_phone = os.environ.get("TWILIO_PHONE_NUMBER")
+                        
+                        SMS_NOTIFICATION_SETTINGS['twilio_configured'] = all([
+                            twilio_sid, twilio_token, twilio_phone
+                        ])
+                    
                     # If we have a token, set it in the environment
                     if self.telegram_token:
                         os.environ["TELEGRAM_BOT_TOKEN"] = self.telegram_token
@@ -123,6 +151,9 @@ class LinkManager:
     def save_data(self):
         """Save data to JSON file"""
         try:
+            # Get global SMS notification settings
+            global SMS_NOTIFICATION_SETTINGS
+            
             data = {
                 'channels': self.channels,
                 'links': self.links,
@@ -136,7 +167,12 @@ class LinkManager:
                 'current_token_index': getattr(self, 'current_token_index', 0),
                 'channel_link_counts': self.channel_link_counts,
                 'auto_discover': self.auto_discover,
-                'check_message_count': self.check_message_count
+                'check_message_count': self.check_message_count,
+                'sms_notification': {
+                    'enabled': SMS_NOTIFICATION_SETTINGS.get('enabled', False),
+                    'phone_number': SMS_NOTIFICATION_SETTINGS.get('phone_number'),
+                    'min_links': SMS_NOTIFICATION_SETTINGS.get('min_links', 5)
+                }
             }
             with open(self.data_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
