@@ -73,6 +73,262 @@ python main.py
 The web interface will be available at `http://localhost:5000`.
 رابط وب در آدرس `http://localhost:5000` در دسترس خواهد بود.
 
+## One-Step Installation (نصب یک مرحله‌ای)
+
+For quick deployment on a server, you can use our one-step installation script:
+برای استقرار سریع روی سرور، می‌توانید از اسکریپت نصب یک مرحله‌ای ما استفاده کنید:
+
+```bash
+# Download the installation script
+wget https://raw.githubusercontent.com/asanseir724/LinkHunterBot/main/install.sh
+
+# Make it executable
+chmod +x install.sh
+
+# Run with sudo
+sudo ./install.sh
+```
+
+This script will:
+این اسکریپت:
+
+- Update your system and install prerequisites
+- Clone the repository
+- Set up a Python virtual environment
+- Install all required dependencies
+- Configure environment variables
+- Create necessary directories
+- Set up a systemd service for automatic startup
+- Start the application
+
+- سیستم شما را به‌روز کرده و پیش‌نیازها را نصب می‌کند
+- مخزن را کلون می‌کند
+- یک محیط مجازی پایتون راه‌اندازی می‌کند
+- تمام وابستگی‌های مورد نیاز را نصب می‌کند
+- متغیرهای محیطی را پیکربندی می‌کند
+- دایرکتوری‌های لازم را ایجاد می‌کند
+- یک سرویس systemd برای راه‌اندازی خودکار تنظیم می‌کند
+- برنامه را اجرا می‌کند
+
+After installation, the web interface will be accessible at `http://YOUR_SERVER_IP:5000`.
+پس از نصب، رابط وب در آدرس `http://IP_سرور_شما:5000` قابل دسترسی خواهد بود.
+
+## Server Deployment Guide (راهنمای استقرار روی سرور)
+
+### System Requirements (پیش‌نیازهای سیستم)
+
+Recommended server specifications:
+مشخصات پیشنهادی سرور:
+
+- OS: Ubuntu 20.04 or higher (سیستم عامل: اوبونتو ۲۰.۰۴ یا بالاتر)
+- RAM: 2GB minimum, 4GB recommended (حداقل ۲ گیگابایت، ۴ گیگابایت پیشنهاد می‌شود)
+- Disk Space: 10GB minimum (حداقل ۱۰ گیگابایت فضای دیسک)
+- CPU: 1 core minimum, 2 cores recommended (حداقل ۱ هسته، ۲ هسته پیشنهاد می‌شود)
+
+### Full Installation Process (فرآیند کامل نصب)
+
+If you prefer to install manually instead of using the one-step script, follow these steps:
+اگر ترجیح می‌دهید به جای استفاده از اسکریپت یک مرحله‌ای، به صورت دستی نصب کنید، این مراحل را دنبال کنید:
+
+#### 1. Update System and Install Prerequisites (به‌روزرسانی سیستم و نصب پیش‌نیازها)
+
+```bash
+# Update system
+sudo apt update
+sudo apt upgrade -y
+# Install essential prerequisites
+sudo apt install -y python3 python3-pip python3-venv git screen build-essential libssl-dev
+```
+
+#### 2. Install PostgreSQL (Optional) (نصب PostgreSQL - اختیاری)
+
+```bash
+# Install PostgreSQL
+sudo apt install -y postgresql postgresql-contrib
+# Create user and database
+sudo -u postgres psql -c "CREATE USER linkdoni WITH PASSWORD 'your_password';"
+sudo -u postgres psql -c "CREATE DATABASE linkdoni_db OWNER linkdoni;"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE linkdoni_db TO linkdoni;"
+```
+
+#### 3. Download and Prepare Project (دانلود و آماده‌سازی پروژه)
+
+```bash
+# Create directory for project
+mkdir -p /var/www/linkdoni
+cd /var/www/linkdoni
+# Clone repository
+git clone https://github.com/asanseir724/LinkHunterBot.git .
+# Create Python virtual environment
+python3 -m venv venv
+source venv/bin/activate
+# Install required libraries
+pip install -r dependencies.txt
+```
+
+#### 4. Create Required Directories (ایجاد پوشه‌های مورد نیاز)
+
+```bash
+# Create directories for logs and exports
+mkdir -p logs
+mkdir -p static/exports
+mkdir -p sessions
+chmod 777 logs static/exports sessions
+```
+
+#### 5. Configure Environment Variables (تنظیم متغیرهای محیطی)
+
+```bash
+# Create environment file
+cat > .env << EOL
+# Project environment variables
+SESSION_SECRET=a_long_random_string
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+
+# Twilio settings (optional for SMS notifications)
+TWILIO_ACCOUNT_SID=your_twilio_account_sid
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_PHONE_NUMBER=your_twilio_phone_number
+
+# Database settings (if using PostgreSQL)
+DATABASE_URL=postgresql://linkdoni:your_password@localhost/linkdoni_db
+EOL
+
+# Apply environment variables
+set -a
+source .env
+set +a
+```
+
+#### 6. Initial Application Test (تست اولیه برنامه)
+
+```bash
+# Test running the application
+python main.py
+# If successful, stop it with Ctrl+C
+```
+
+#### 7. Set up Gunicorn Service (راه‌اندازی سرویس Gunicorn)
+
+```bash
+# Create Gunicorn service file
+sudo tee /etc/systemd/system/linkdoni.service > /dev/null <<EOL
+[Unit]
+Description=Telegram Link Hunter Bot
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/linkdoni
+Environment="PATH=/var/www/linkdoni/venv/bin"
+EnvironmentFile=/var/www/linkdoni/.env
+ExecStart=/var/www/linkdoni/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 --access-logfile /var/www/linkdoni/logs/access.log --error-logfile /var/www/linkdoni/logs/error.log main:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+# Change ownership of directory
+sudo chown -R www-data:www-data /var/www/linkdoni
+
+# Enable and start service
+sudo systemctl daemon-reload
+sudo systemctl enable linkdoni
+sudo systemctl start linkdoni
+```
+
+#### 8. Install Nginx (Optional) (نصب Nginx - اختیاری)
+
+```bash
+# Install Nginx
+sudo apt install -y nginx
+
+# Configure Nginx
+sudo tee /etc/nginx/sites-available/linkdoni > /dev/null <<EOL
+server {
+    listen 80;
+    server_name your_server_domain_or_IP;
+    
+    location / {
+        include proxy_params;
+        proxy_pass http://127.0.0.1:5000;
+    }
+}
+EOL
+
+# Enable site
+sudo ln -s /etc/nginx/sites-available/linkdoni /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+
+# Install Let's Encrypt for SSL (optional)
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d your_domain
+```
+
+### Useful Commands (دستورات مفید)
+
+```bash
+# Check service status
+sudo systemctl status linkdoni
+
+# Restart service
+sudo systemctl restart linkdoni
+
+# View system logs
+sudo journalctl -u linkdoni.service -f
+
+# View application logs
+tail -f /var/www/linkdoni/logs/bot.log
+
+# Update application from repository
+cd /var/www/linkdoni
+git pull
+source venv/bin/activate
+pip install -r dependencies.txt
+sudo systemctl restart linkdoni
+
+# Run application in background with Screen (alternative method)
+cd /var/www/linkdoni
+screen -S linkdoni
+source venv/bin/activate
+source .env
+python main.py
+# To detach from screen: Ctrl+A then D
+# To reattach to screen: screen -r linkdoni
+```
+
+### Troubleshooting (عیب‌یابی)
+
+If the application doesn't run:
+اگر برنامه اجرا نمی‌شود:
+
+```bash
+# Check logs for errors
+tail -f /var/www/linkdoni/logs/bot.log
+sudo journalctl -u linkdoni.service -f
+
+# Check permissions
+sudo chown -R www-data:www-data /var/www/linkdoni
+sudo chmod -R 755 /var/www/linkdoni
+sudo chmod -R 777 /var/www/linkdoni/logs /var/www/linkdoni/static/exports /var/www/linkdoni/sessions
+```
+
+If you can't access the website:
+اگر به وب‌سایت دسترسی ندارید:
+
+```bash
+# Check Nginx status
+sudo systemctl status nginx
+
+# Check firewall
+sudo ufw status
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+```
+
 ## Configuration (پیکربندی)
 
 1. **Bot Token**: Obtain a bot token from [@BotFather](https://t.me/BotFather) and set it in the `.env` file or through the settings page
