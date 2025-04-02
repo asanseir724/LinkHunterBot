@@ -176,7 +176,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addAccountForm" method="post" action="{{ url_for('add_account') }}">
+                <form id="addAccountForm" method="post" action="{{ url_for('accounts.add_account') }}">
                     <div class="mb-3">
                         <label for="phone" class="form-label">شماره تلفن (با فرمت بین‌المللی)</label>
                         <input type="text" class="form-control" id="phone" name="phone" 
@@ -218,7 +218,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="enterCodeForm" method="post" action="{{ url_for('verify_code') }}">
+                <form id="enterCodeForm" method="post" action="{{ url_for('accounts.verify_code') }}">
                     <input type="hidden" id="code_phone" name="phone" value="">
                     <div class="mb-3">
                         <label for="verification_code" class="form-label">کد تأیید تلگرام</label>
@@ -251,7 +251,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="enter2FAForm" method="post" action="{{ url_for('verify_2fa') }}">
+                <form id="enter2FAForm" method="post" action="{{ url_for('accounts.verify_2fa') }}">
                     <input type="hidden" id="twofa_phone" name="phone" value="">
                     <div class="mb-3">
                         <label for="twofa_password" class="form-label">رمز دو مرحله‌ای</label>
@@ -280,7 +280,7 @@
             <div class="modal-body">
                 <p>آیا از حذف این اکانت اطمینان دارید؟</p>
                 <p>این عمل غیرقابل بازگشت است و تمام اطلاعات مربوط به این اکانت حذف خواهد شد.</p>
-                <form id="removeAccountForm" method="post" action="{{ url_for('remove_account') }}">
+                <form id="removeAccountForm" method="post" action="{{ url_for('accounts.remove_account') }}">
                     <input type="hidden" id="remove_phone" name="phone" value="">
                 </form>
             </div>
@@ -319,7 +319,7 @@
         document.querySelectorAll('.connect-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 const phone = this.dataset.phone;
-                fetch('{{ url_for("connect_account") }}', {
+                fetch('{{ url_for("accounts.connect_account") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -345,7 +345,7 @@
         document.querySelectorAll('.disconnect-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 const phone = this.dataset.phone;
-                fetch('{{ url_for("disconnect_account") }}', {
+                fetch('{{ url_for("accounts.disconnect_account") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -372,7 +372,7 @@
             this.disabled = true;
             this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> در حال بررسی...';
             
-            fetch('{{ url_for("check_accounts_for_links") }}', {
+            fetch('{{ url_for("accounts.check_accounts_for_links") }}', {
                 method: 'POST'
             })
             .then(response => response.json())

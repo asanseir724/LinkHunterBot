@@ -799,12 +799,12 @@
     ]
   },
   "check_interval": 5,
-  "last_check": "2025-04-02T19:12:17.541059",
+  "last_check": "2025-04-02T19:22:56.869263",
   "telegram_token": "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA",
   "channel_link_counts": {
     "list_telegram": 3,
     "linkdoni_sv": 3
   },
   "auto_discover": true,
-  "check_message_count": 50
+  "check_message_count": 10
 }
