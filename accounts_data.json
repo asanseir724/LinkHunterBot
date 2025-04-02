@@ -4,8 +4,8 @@
     "api_id": 28316648,
     "api_hash": "9ddafefc562c795987da1ce93e153487",
     "name": "+989051323407",
-    "status": "2fa_required",
-    "connected": false,
+    "status": "active",
+    "connected": true,
     "error": null,
     "last_check": null
   }

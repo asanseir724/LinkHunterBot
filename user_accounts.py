@@ -132,6 +132,7 @@ class UserAccount:
     async def check_groups_for_links(self, link_manager, max_messages=100):
         """Check all groups this account is a member of for new links"""
         if not self.client or not self.connected:
+            logger.warning(f"Account {self.phone} is not connected for checking links")
             return {
                 "success": False,
                 "error": "Account not connected",
@@ -143,8 +144,10 @@ class UserAccount:
         try:
             # Update last check time
             self.last_check = datetime.now()
+            logger.info(f"Starting group check for account {self.phone}")
             
             # Get all dialogs
+            logger.info(f"Fetching dialogs for account {self.phone}")
             result = await self.client(GetDialogsRequest(
                 offset_date=None,
                 offset_id=0,
@@ -160,6 +163,8 @@ class UserAccount:
                 if isinstance(entity, (Chat, Channel)) and not entity.broadcast:
                     chats.append(entity)
             
+            logger.info(f"Found {len(chats)} groups/chats to check for account {self.phone}")
+            
             # Initialize result statistics
             groups_checked = 0
             total_new_links = 0
@@ -168,11 +173,14 @@ class UserAccount:
             # Check each group
             for chat in chats:
                 group_name = getattr(chat, 'title', 'Unknown Group')
+                logger.info(f"Checking group: {group_name} for account {self.phone}")
                 new_links_in_group = 0
                 
                 try:
                     # Get messages from the group
+                    logger.info(f"Fetching {max_messages} messages from group {group_name}")
                     messages = await self.client.get_messages(chat, limit=max_messages)
+                    logger.info(f"Retrieved {len(messages)} messages from group {group_name}")
                     
                     # Look for telegram links in messages
                     for message in messages:
@@ -180,17 +188,24 @@ class UserAccount:
                             # Extract links using the link manager
                             found_links = link_manager.extract_links(message.message)
                             
+                            if found_links:
+                                logger.debug(f"Found {len(found_links)} links in message from {group_name}")
+                            
                             for link in found_links:
                                 # Add the link and track if it's new
                                 if link_manager.add_link(link, group_name, message.message):
+                                    logger.info(f"New link found in {group_name}: {link}")
                                     new_links_in_group += 1
                     
                     groups_checked += 1
                     
                     # Only include groups that provided new links
                     if new_links_in_group > 0:
+                        logger.info(f"Group {group_name} provided {new_links_in_group} new links")
                         groups_with_links[group_name] = new_links_in_group
                         total_new_links += new_links_in_group
+                    else:
+                        logger.info(f"No new links found in group {group_name}")
                 
                 except Exception as e:
                     logger.error(f"Error checking group {group_name}: {str(e)}")
@@ -371,7 +386,10 @@ class AccountManager:
         """Check all connected accounts for new links"""
         active_accounts = self.get_active_accounts()
         
+        logger.info(f"Starting scheduled check of user accounts - Found {len(active_accounts)} active accounts")
+        
         if not active_accounts:
+            logger.info("No active accounts found for checking groups")
             return {
                 "success": True,
                 "total_new_links": 0,
@@ -386,13 +404,17 @@ class AccountManager:
         
         # Check each active account
         for account in active_accounts:
+            logger.info(f"Checking groups for account: {account.phone}")
             try:
                 result = await account.check_groups_for_links(link_manager, max_messages)
                 account_results[account.phone] = result
                 
                 if result["success"] and result["new_links"] > 0:
+                    logger.info(f"Account {account.phone} found {result['new_links']} new links in {len(result['groups_with_links'])} groups")
                     total_new_links += result["new_links"]
                     accounts_with_links += 1
+                else:
+                    logger.info(f"Account {account.phone} found no new links in {result.get('groups_checked', 0)} groups")
             except Exception as e:
                 logger.error(f"Error checking account {account.phone}: {str(e)}")
                 account_results[account.phone] = {
