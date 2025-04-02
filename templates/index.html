@@ -8,7 +8,7 @@
                 <h3 class="mb-0">Link Collector Dashboard</h3>
                 <form action="{{ url_for('check_now') }}" method="post">
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-sync-alt"></i> Check Now
+                        <i class="fas fa-sync-alt"></i> چک کردن کانال‌ها
                     </button>
                 </form>
             </div>
@@ -16,6 +16,9 @@
                 <p class="lead">
                     Welcome to the Telegram Link Collector. This application automatically extracts and stores unique links from specified Telegram channels at regular intervals.
                 </p>
+                
+                <!-- Background status container to show extraction progress and results -->
+                <div id="background-status"></div>
             </div>
         </div>
     </div>

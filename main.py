@@ -166,6 +166,19 @@ def set_token():
     
     return redirect(url_for('settings'))
 
+# Initialize global variables for thread coordination and status tracking
+import threading
+lock = threading.Lock()
+
+# Store the last check result for API access
+last_check_result = {
+    'timestamp': None,
+    'status': 'not_run',
+    'new_links': 0,
+    'total_channels': 0,
+    'channels_checked': 0
+}
+
 @app.route('/check_now', methods=['POST'])
 def check_now():
     """Trigger an immediate link check"""
@@ -177,53 +190,98 @@ def check_now():
             flash("Bot is not running. Please set up the token first.", "warning")
             return redirect(url_for('settings'))
         
-        # Try to perform a check using the scheduler
+        # Create a background task by running the check operation immediately
+        # but return a response to the user right away
         try:
-            from bot import check_channels_for_links, setup_bot
+            # Start a background thread to run the check
+            import threading
             
-            # Initialize bot if needed
-            bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-            if not bot_token:
-                raise ValueError("Telegram bot token not set")
-            
-            # Create a bot instance
-            bot = setup_bot(link_manager)
-            if not bot:
-                raise ValueError("Failed to initialize bot")
-            
-            # Run the check directly (now synchronized)
-            logger.info("Starting manual link check")
-            # Get the total number of channels
-            total_channels = len(link_manager.get_channels())
-            
-            # Adjust max_channels based on total channels
-            # For manual checks, we can handle more channels than automated checks
-            max_channels = 20
-            if total_channels > 50:
-                max_channels = 30  # Handle more channels in one batch for manual check
-                logger.info(f"Large number of channels ({total_channels}), using batch size of {max_channels}")
-            
-            result = check_channels_for_links(bot, link_manager, max_channels)
-            
-            logger.info(f"Manual check complete. Found {result} new links.")
-            flash(f"Check complete! Found {result} new links.", "success")
+            def run_background_check():
+                """Run the link check in a background thread"""
+                global last_check_result
                 
+                try:
+                    from bot import check_channels_for_links, setup_bot
+                    
+                    # Initialize bot
+                    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+                    if not bot_token:
+                        logger.error("Telegram bot token not set")
+                        return
+                    
+                    # Create a bot instance
+                    bot = setup_bot(link_manager)
+                    if not bot:
+                        logger.error("Failed to initialize bot")
+                        return
+                    
+                    # Get the total number of channels
+                    total_channels = len(link_manager.get_channels())
+                    
+                    # Adjust max_channels based on total channels
+                    max_channels = 20
+                    if total_channels > 50:
+                        max_channels = 30  # Handle more channels in one batch for manual check
+                        logger.info(f"Large number of channels ({total_channels}), using batch size of {max_channels}")
+                    
+                    # Run the check in the background thread
+                    logger.info("Starting background link check")
+                    result = check_channels_for_links(bot, link_manager, max_channels)
+                    
+                    logger.info(f"Background check complete. Found {result} new links.")
+                    
+                    # Save the check result for later retrieval
+                    with lock:
+                        last_check_result.update({
+                            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            'new_links': result,
+                            'status': 'completed',
+                            'total_channels': total_channels,
+                            'channels_checked': min(total_channels, max_channels)
+                        })
+                    
+                except Exception as e:
+                    logger.error(f"Error in background check: {str(e)}")
+                    import traceback
+                    logger.error(f"Traceback: {traceback.format_exc()}")
+                    
+                    # Update the check result with error
+                    with lock:
+                        last_check_result.update({
+                            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            'status': 'error',
+                            'error': str(e)
+                        })
+                    
+                    # At least update timestamp
+                    link_manager.update_last_check_time()
+            
+            # Start the background thread
+            background_thread = threading.Thread(target=run_background_check)
+            background_thread.daemon = True  # Make sure thread doesn't block app exit
+            background_thread.start()
+            
+            # Let user know check has been started
+            flash("درحال استخراج لینک‌ها در پس‌زمینه. نتایج به زودی قابل مشاهده خواهند بود.", "info")
+            
         except Exception as e:
-            logger.error(f"Failed to run check: {str(e)}")
-            logger.error(f"Exception type: {type(e)}")
+            logger.error(f"Failed to start background check: {str(e)}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
-            link_manager.update_last_check_time()  # At least update timestamp
-            flash(f"Error during check: {str(e)}", "danger")
+            flash(f"Error starting check: {str(e)}", "danger")
     
     except Exception as e:
-        logger.error(f"Failed to run immediate check: {str(e)}")
-        logger.error(f"Exception type: {type(e)}")
+        logger.error(f"Failed to process check request: {str(e)}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
-        flash(f"Failed to run check: {str(e)}", "danger")
+        flash(f"Failed to start check: {str(e)}", "danger")
     
     return redirect(url_for('index'))
+
+@app.route('/api/check_status', methods=['GET'])
+def api_check_status():
+    """API endpoint to get the status of the latest check"""
+    return jsonify(last_check_result)
 
 @app.route('/clear_links', methods=['POST'])
 def clear_links():

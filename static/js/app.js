@@ -5,6 +5,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Setup link search functionality
     setupLinkSearch();
+    
+    // Check if we're on the index page with the status element
+    const statusElement = document.getElementById('background-status');
+    if (statusElement) {
+        // Check immediately and then every 3 seconds
+        checkBackgroundStatus();
+        statusCheckInterval = setInterval(checkBackgroundStatus, 3000);
+    }
 });
 
 /**
@@ -70,4 +78,48 @@ function setupLinkSearch() {
             }
         });
     });
+}
+
+// Variable to store the interval ID for status checking
+let statusCheckInterval;
+
+/**
+ * Check status of background link checking process
+ */
+function checkBackgroundStatus() {
+    const statusElement = document.getElementById('background-status');
+    if (!statusElement) return;
+    
+    // Only run this if we're on the home page
+    fetch('/api/check_status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'completed') {
+                // Update the status display with results
+                statusElement.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>عملیات موفق!</strong> ${data.new_links} لینک جدید در تاریخ ${data.timestamp} استخراج شد.
+                        از مجموع ${data.total_channels} کانال، ${data.channels_checked} کانال بررسی شد.
+                    </div>
+                `;
+                
+                // Stop polling once completed
+                clearInterval(statusCheckInterval);
+            } else if (data.status === 'error') {
+                // Show error
+                statusElement.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>خطا!</strong> در استخراج لینک‌ها خطا رخ داد: ${data.error}
+                    </div>
+                `;
+                
+                // Stop polling on error
+                clearInterval(statusCheckInterval);
+            } else if (data.status === 'not_run') {
+                // Do nothing for not run status
+            }
+        })
+        .catch(error => {
+            console.error('Error checking status:', error);
+        });
 }
