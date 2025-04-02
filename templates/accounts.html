@@ -1,0 +1,450 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="card mt-3 mb-4">
+        <div class="card-header">
+            <h3>مدیریت اکانت‌های تلگرام</h3>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                برای استفاده از اکانت‌های تلگرام جهت استخراج لینک از گروه‌ها و کانال‌هایی که عضو آنها هستید، ابتدا مشخصات API تلگرام را وارد کنید. 
+                <br>
+                <strong>برای دریافت API ID و API Hash به <a href="https://my.telegram.org/apps" target="_blank">my.telegram.org/apps</a> مراجعه کنید.</strong>
+            </div>
+            
+            <div class="mb-4">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">
+                    <i class="fas fa-plus me-1"></i> افزودن اکانت جدید
+                </button>
+                
+                {% if active_accounts > 0 %}
+                <button class="btn btn-success ms-2" id="checkAccountsBtn">
+                    <i class="fas fa-sync-alt me-1"></i> بررسی گروه‌ها برای لینک‌های جدید
+                </button>
+                {% endif %}
+                
+                <button class="btn btn-outline-secondary ms-2" id="refreshAccountsBtn">
+                    <i class="fas fa-refresh me-1"></i> بروزرسانی وضعیت
+                </button>
+            </div>
+            
+            {% if accounts %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>نام / شماره تلفن</th>
+                            <th>وضعیت</th>
+                            <th>آخرین بررسی</th>
+                            <th>عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for account in accounts %}
+                        <tr>
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <span class="fw-bold">{{ account.name }}</span>
+                                    <span class="text-muted small">{{ account.phone }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                {% if account.status == 'active' %}
+                                <span class="badge bg-success">فعال</span>
+                                {% elif account.status == 'inactive' %}
+                                <span class="badge bg-secondary">غیرفعال</span>
+                                {% elif account.status == 'code_required' %}
+                                <span class="badge bg-warning">نیاز به کد تایید</span>
+                                <button class="btn btn-sm btn-outline-primary ms-2 enter-code-btn" 
+                                        data-phone="{{ account.phone }}" data-bs-toggle="modal" data-bs-target="#enterCodeModal">
+                                    ورود کد
+                                </button>
+                                {% elif account.status == '2fa_required' %}
+                                <span class="badge bg-warning">نیاز به رمز دو مرحله‌ای</span>
+                                <button class="btn btn-sm btn-outline-primary ms-2 enter-2fa-btn" 
+                                        data-phone="{{ account.phone }}" data-bs-toggle="modal" data-bs-target="#enter2FAModal">
+                                    ورود رمز
+                                </button>
+                                {% elif account.status == 'error' %}
+                                <span class="badge bg-danger">خطا</span>
+                                <span class="small text-danger">{{ account.error }}</span>
+                                {% elif account.status == 'flood_wait' %}
+                                <span class="badge bg-warning">محدودیت موقت</span>
+                                <span class="small text-warning">{{ account.error }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if account.last_check %}
+                                {{ account.last_check.strftime('%Y-%m-%d %H:%M:%S') }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-primary connect-btn" data-phone="{{ account.phone }}"
+                                            {% if account.status == 'active' %}disabled{% endif %}>
+                                        <i class="fas fa-plug"></i> اتصال
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger disconnect-btn" data-phone="{{ account.phone }}"
+                                            {% if account.status != 'active' %}disabled{% endif %}>
+                                        <i class="fas fa-unlink"></i> قطع
+                                    </button>
+                                    <button class="btn btn-sm btn-danger remove-btn" data-phone="{{ account.phone }}" 
+                                            data-bs-toggle="modal" data-bs-target="#confirmDeleteModal">
+                                        <i class="fas fa-trash"></i> حذف
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-light text-center p-5">
+                <i class="fas fa-user-circle fa-3x mb-3 text-muted"></i>
+                <p>هیچ اکانت تلگرامی اضافه نشده است.</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">
+                    <i class="fas fa-plus me-1"></i> افزودن اکانت جدید
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Results Card (Initially Hidden) -->
+    <div class="card mb-4" id="resultsCard" style="display: none;">
+        <div class="card-header">
+            <h4>نتایج بررسی گروه‌ها</h4>
+        </div>
+        <div class="card-body" id="resultsContainer">
+            <!-- Results will be inserted here -->
+        </div>
+    </div>
+    
+    <!-- Usage Guide Card -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>راهنمای استفاده از اکانت‌های تلگرام</h4>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-light">
+                <h5 class="mb-3"><i class="fas fa-question-circle me-2"></i> چگونه اکانت تلگرام اضافه کنم؟</h5>
+                <ol>
+                    <li>ابتدا به <a href="https://my.telegram.org/apps" target="_blank">my.telegram.org/apps</a> مراجعه کنید و وارد حساب کاربری‌تان شوید.</li>
+                    <li>روی "API development tools" کلیک کنید و اطلاعات درخواستی را وارد نمایید.</li>
+                    <li>پس از تکمیل فرم، مقادیر API ID و API Hash به شما نمایش داده می‌شود.</li>
+                    <li>این مقادیر را در فرم "افزودن اکانت جدید" وارد کنید.</li>
+                    <li>شماره تلفن خود را با فرمت بین‌المللی (مثلا +989123456789) وارد کنید.</li>
+                    <li>پس از ثبت، کد تأیید به تلگرام شما ارسال می‌شود که باید آن را وارد کنید.</li>
+                    <li>اگر احراز هویت دو مرحله‌ای روی اکانت فعال باشد، باید رمز آن را نیز وارد کنید.</li>
+                </ol>
+            </div>
+            
+            <div class="alert alert-light">
+                <h5 class="mb-3"><i class="fas fa-cogs me-2"></i> ویژگی‌ها و عملکرد</h5>
+                <ul>
+                    <li>سیستم به صورت خودکار هر دقیقه گروه‌های اکانت‌های متصل را بررسی می‌کند.</li>
+                    <li>لینک‌های تلگرامی موجود در پیام‌ها استخراج و به لیست لینک‌ها اضافه می‌شوند.</li>
+                    <li>در صفحه لینک‌ها می‌توانید لینک‌های استخراج شده را بر اساس دسته‌بندی مشاهده کنید.</li>
+                    <li>می‌توانید لینک‌ها را به فایل اکسل صادر کنید.</li>
+                </ul>
+            </div>
+            
+            <div class="alert alert-warning">
+                <h5 class="mb-3"><i class="fas fa-exclamation-triangle me-2"></i> نکات مهم</h5>
+                <ul>
+                    <li>از این ابزار صرفاً برای استخراج لینک‌های کانال‌های عمومی استفاده کنید.</li>
+                    <li>استفاده از اکانت‌های تلگرام برای اسپم یا فعالیت‌های مخرب ممکن است منجر به مسدود شدن اکانت شما توسط تلگرام شود.</li>
+                    <li>اطلاعات حساس خود مانند کد تأیید و رمز دو مرحله‌ای را به صورت امن نگه دارید.</li>
+                    <li>این ابزار مستقیماً با اکانت شما ارتباط برقرار می‌کند و هیچ داده‌ای را به سرورهای دیگر ارسال نمی‌کند.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Account Modal -->
+<div class="modal fade" id="addAccountModal" tabindex="-1" aria-labelledby="addAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addAccountModalLabel">افزودن اکانت تلگرام جدید</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addAccountForm" method="post" action="{{ url_for('add_account') }}">
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">شماره تلفن (با فرمت بین‌المللی)</label>
+                        <input type="text" class="form-control" id="phone" name="phone" 
+                               placeholder="+989123456789" required>
+                        <div class="form-text">شماره تلفن را با فرمت بین‌المللی وارد کنید (مثلا +989123456789)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="api_id" class="form-label">API ID</label>
+                        <input type="number" class="form-control" id="api_id" name="api_id" 
+                               placeholder="12345678" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="api_hash" class="form-label">API Hash</label>
+                        <input type="text" class="form-control" id="api_hash" name="api_hash" 
+                               placeholder="1a2b3c4d5e6f7g8h9i0j" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="account_name" class="form-label">نام (اختیاری)</label>
+                        <input type="text" class="form-control" id="account_name" name="account_name" 
+                               placeholder="اکانت اصلی">
+                        <div class="form-text">نامی برای شناسایی راحت‌تر این اکانت</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">لغو</button>
+                <button type="submit" form="addAccountForm" class="btn btn-primary">افزودن</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enter Code Modal -->
+<div class="modal fade" id="enterCodeModal" tabindex="-1" aria-labelledby="enterCodeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="enterCodeModalLabel">ورود کد تأیید تلگرام</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="enterCodeForm" method="post" action="{{ url_for('verify_code') }}">
+                    <input type="hidden" id="code_phone" name="phone" value="">
+                    <div class="mb-3">
+                        <label for="verification_code" class="form-label">کد تأیید تلگرام</label>
+                        <input type="text" class="form-control" id="verification_code" name="code" 
+                               placeholder="12345" required>
+                        <div class="form-text">کد تأیید ارسال شده از طرف تلگرام را وارد کنید</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">رمز دو مرحله‌ای (اختیاری)</label>
+                        <input type="password" class="form-control" id="password" name="password" 
+                               placeholder="در صورت داشتن رمز دو مرحله‌ای وارد کنید">
+                        <div class="form-text">اگر احراز هویت دو مرحله‌ای فعال کرده‌اید، رمز را وارد کنید</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">لغو</button>
+                <button type="submit" form="enterCodeForm" class="btn btn-primary">تأیید</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enter 2FA Modal -->
+<div class="modal fade" id="enter2FAModal" tabindex="-1" aria-labelledby="enter2FAModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="enter2FAModalLabel">ورود رمز دو مرحله‌ای</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="enter2FAForm" method="post" action="{{ url_for('verify_2fa') }}">
+                    <input type="hidden" id="twofa_phone" name="phone" value="">
+                    <div class="mb-3">
+                        <label for="twofa_password" class="form-label">رمز دو مرحله‌ای</label>
+                        <input type="password" class="form-control" id="twofa_password" name="password" 
+                               placeholder="رمز دو مرحله‌ای خود را وارد کنید" required>
+                        <div class="form-text">رمز دو مرحله‌ای اکانت تلگرام خود را وارد کنید</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">لغو</button>
+                <button type="submit" form="enter2FAForm" class="btn btn-primary">تأیید</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmDeleteModalLabel">تأیید حذف اکانت</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>آیا از حذف این اکانت اطمینان دارید؟</p>
+                <p>این عمل غیرقابل بازگشت است و تمام اطلاعات مربوط به این اکانت حذف خواهد شد.</p>
+                <form id="removeAccountForm" method="post" action="{{ url_for('remove_account') }}">
+                    <input type="hidden" id="remove_phone" name="phone" value="">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">لغو</button>
+                <button type="submit" form="removeAccountForm" class="btn btn-danger">حذف</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set phone for code verification
+        document.querySelectorAll('.enter-code-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.getElementById('code_phone').value = this.dataset.phone;
+            });
+        });
+        
+        // Set phone for 2FA verification
+        document.querySelectorAll('.enter-2fa-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.getElementById('twofa_phone').value = this.dataset.phone;
+            });
+        });
+        
+        // Set phone for account removal
+        document.querySelectorAll('.remove-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.getElementById('remove_phone').value = this.dataset.phone;
+            });
+        });
+        
+        // Connect account
+        document.querySelectorAll('.connect-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const phone = this.dataset.phone;
+                fetch('{{ url_for("connect_account") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phone: phone })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert('خطا: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('خطا در اتصال به اکانت');
+                });
+            });
+        });
+        
+        // Disconnect account
+        document.querySelectorAll('.disconnect-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const phone = this.dataset.phone;
+                fetch('{{ url_for("disconnect_account") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phone: phone })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert('خطا: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('خطا در قطع اتصال اکانت');
+                });
+            });
+        });
+        
+        // Check accounts for links
+        document.getElementById('checkAccountsBtn')?.addEventListener('click', function() {
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> در حال بررسی...';
+            
+            fetch('{{ url_for("check_accounts_for_links") }}', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-sync-alt me-1"></i> بررسی گروه‌ها برای لینک‌های جدید';
+                
+                // Display results
+                displayResults(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-sync-alt me-1"></i> بررسی گروه‌ها برای لینک‌های جدید';
+                alert('خطا در بررسی گروه‌ها');
+            });
+        });
+        
+        // Refresh accounts status
+        document.getElementById('refreshAccountsBtn')?.addEventListener('click', function() {
+            window.location.reload();
+        });
+        
+        // Display check results
+        function displayResults(data) {
+            const resultsCard = document.getElementById('resultsCard');
+            const resultsContainer = document.getElementById('resultsContainer');
+            
+            let html = `
+                <div class="alert alert-info">
+                    <h5 class="mb-3">نتیجه بررسی</h5>
+                    <p>تعداد کل لینک‌های جدید: <strong>${data.total_new_links}</strong></p>
+                    <p>اکانت‌های بررسی شده: <strong>${data.accounts_checked}</strong></p>
+                    <p>اکانت‌های دارای لینک جدید: <strong>${data.accounts_with_links}</strong></p>
+                </div>
+            `;
+            
+            if (data.accounts_with_links > 0) {
+                html += `<h5 class="mt-4">جزئیات لینک‌های یافت شده</h5>`;
+                
+                for (const phone in data.account_results) {
+                    const result = data.account_results[phone];
+                    if (result.success && result.new_links > 0) {
+                        html += `
+                            <div class="card mt-3">
+                                <div class="card-header bg-light">
+                                    اکانت: ${phone} - لینک‌های جدید: ${result.new_links}
+                                </div>
+                                <div class="card-body">
+                                    <h6>گروه‌های دارای لینک جدید:</h6>
+                                    <ul>
+                        `;
+                        
+                        for (const group in result.groups_with_links) {
+                            html += `<li>${group}: ${result.groups_with_links[group]} لینک</li>`;
+                        }
+                        
+                        html += `
+                                    </ul>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            resultsContainer.innerHTML = html;
+            resultsCard.style.display = 'block';
+            
+            // Scroll to results
+            resultsCard.scrollIntoView({ behavior: 'smooth' });
+        }
+    });
+</script>
+{% endblock %}

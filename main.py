@@ -14,6 +14,12 @@ logger = get_logger(__name__)
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "default-secret-key-for-development")
 
+# Import the accounts blueprint
+from account_routes import accounts_bp, setup_account_scheduler
+
+# Register blueprints
+app.register_blueprint(accounts_bp)
+
 # Initialize the link manager
 link_manager = LinkManager()
 

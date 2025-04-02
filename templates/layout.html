@@ -32,7 +32,12 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('channels') %}active{% endif %}" href="{{ url_for('channels') }}">
-                            <i class="fas fa-list"></i> Channels
+                            <i class="fas fa-bullhorn"></i> Channels
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/accounts' %}active{% endif %}" href="{{ url_for('accounts.accounts') }}">
+                            <i class="fas fa-user"></i> Accounts
                         </a>
                     </li>
                     <li class="nav-item">

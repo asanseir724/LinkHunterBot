@@ -1,8 +1,15 @@
 import json
 import os
-import pandas as pd
+import re
+import time
 from datetime import datetime
+from urllib.parse import urlparse, parse_qs
 from logger import get_logger
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 # Get module logger
 logger = get_logger(__name__)
