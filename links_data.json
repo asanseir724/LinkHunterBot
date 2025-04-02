@@ -31,9 +31,11 @@
     ]
   },
   "check_interval": 5,
-  "last_check": "2025-04-02T22:59:24.273928",
-  "telegram_token": null,
-  "telegram_tokens": [],
+  "last_check": "2025-04-02T23:01:45.609382",
+  "telegram_token": "7970651043:AAGgiQEDVTC1XufBrwSVAm3e_pIfh6FNhS0",
+  "telegram_tokens": [
+    "7970651043:AAGgiQEDVTC1XufBrwSVAm3e_pIfh6FNhS0"
+  ],
   "current_token_index": 0,
   "channel_link_counts": {},
   "website_link_counts": {

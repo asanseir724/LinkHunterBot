@@ -1,6 +1,8 @@
 """
 Web crawler module for extracting Telegram links from websites with auto-scrolling capability.
-This module uses Selenium to simulate browser behavior including scrolling for infinite scroll pages.
+This module offers two methods:
+1. Selenium for dynamic websites with scrolling (if available)
+2. Requests+BeautifulSoup as a fallback for static content
 """
 
 import time
@@ -25,6 +27,7 @@ try:
     SELENIUM_AVAILABLE = True
 except ImportError:
     SELENIUM_AVAILABLE = False
+    print("Selenium not available, will use requests/BeautifulSoup instead")
 
 from logger import get_logger
 
@@ -36,8 +39,8 @@ logger = get_logger("web_crawler")
 TELEGRAM_INVITE_PATTERN = r'(?:https?://)?(?:www\.)?(?:t(?:elegram)?\.me|telegram\.org)/(?:joinchat/|\+)([a-zA-Z0-9_-]+)'
 # 2. Pattern for public group/channel links with @ or t.me format
 TELEGRAM_PUBLIC_PATTERN = r'(?:@([a-zA-Z0-9_]{5,})|(?:https?://)?(?:www\.)?(?:t(?:elegram)?\.me|telegram\.org)/([a-zA-Z0-9_]{5,}))'
-# Combined pattern to use both
-TELEGRAM_LINK_PATTERN = TELEGRAM_INVITE_PATTERN
+# 3. Pattern for @ username format specifically
+AT_USERNAME_PATTERN = r'@([a-zA-Z][a-zA-Z0-9_]{3,})'
 
 
 class WebCrawler:
