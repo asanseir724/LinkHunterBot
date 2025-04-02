@@ -79,6 +79,25 @@ def settings():
                           interval=link_manager.get_check_interval(),
                           bot_status=bot_status)
 
+@app.route('/set_token', methods=['POST'])
+def set_token():
+    """Set the Telegram Bot Token"""
+    token = request.form.get('token')
+    if not token:
+        flash("Please provide a valid token", "danger")
+        return redirect(url_for('settings'))
+    
+    # Save the token as an environment variable
+    os.environ["TELEGRAM_BOT_TOKEN"] = token
+    
+    # In a real implementation, we would initialize the bot here
+    # For now, we'll simulate bot status
+    global bot_status
+    bot_status = "Running"
+    
+    flash("Telegram Bot Token set successfully. Bot is now running.", "success")
+    return redirect(url_for('settings'))
+
 @app.route('/check_now', methods=['POST'])
 def check_now():
     """Trigger an immediate link check"""

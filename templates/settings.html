@@ -53,18 +53,31 @@
                                     {% if bot_status == "Running" %}
                                         The bot is actively monitoring channels.
                                     {% else %}
-                                        The bot is not running. Please check the logs for errors.
+                                        The bot is not running. Please configure your Telegram Bot Token below.
                                     {% endif %}
                                 </p>
                             </div>
                         </div>
                         
-                        {% if bot_status != "Running" %}
-                            <div class="alert alert-warning">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                Bot is not running. Make sure your Telegram Bot Token is set correctly in the environment variables.
-                            </div>
-                        {% endif %}
+                        <div class="mb-3">
+                            <form action="{{ url_for('set_token') }}" method="post">
+                                <div class="mb-3">
+                                    <label for="token" class="form-label">Telegram Bot Token</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="token" name="token" placeholder="Enter your Telegram Bot Token" required>
+                                        <button class="btn btn-outline-secondary" type="button" id="toggleToken">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-text">
+                                        Get a token from @BotFather on Telegram. This is required for the bot to work.
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-success mb-3">
+                                    <i class="fas fa-save"></i> Save Token & Start Bot
+                                </button>
+                            </form>
+                        </div>
                         
                         <form action="{{ url_for('check_now') }}" method="post">
                             <button type="submit" class="btn btn-primary">
@@ -73,6 +86,23 @@
                         </form>
                     </div>
                 </div>
+                
+                <script>
+                    document.getElementById('toggleToken').addEventListener('click', function() {
+                        const tokenInput = document.getElementById('token');
+                        const icon = this.querySelector('i');
+                        
+                        if (tokenInput.type === 'password') {
+                            tokenInput.type = 'text';
+                            icon.classList.remove('fa-eye');
+                            icon.classList.add('fa-eye-slash');
+                        } else {
+                            tokenInput.type = 'password';
+                            icon.classList.remove('fa-eye-slash');
+                            icon.classList.add('fa-eye');
+                        }
+                    });
+                </script>
             </div>
         </div>
         
@@ -82,10 +112,11 @@
             </div>
             <div class="card-body">
                 <ol>
-                    <li>Create a Telegram bot using BotFather and get the API token</li>
-                    <li>Set the TELEGRAM_BOT_TOKEN environment variable with your token</li>
+                    <li>Create a Telegram bot using <a href="https://t.me/BotFather" target="_blank">@BotFather</a> and get the API token</li>
+                    <li>Enter your bot token in the "Bot Status" section above</li>
                     <li>Add the bot to the channels you want to monitor</li>
-                    <li>Configure the check interval above</li>
+                    <li>Configure the check interval in minutes</li>
+                    <li>Add channels to monitor in the Channels page</li>
                 </ol>
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle"></i>
