@@ -126,44 +126,27 @@ def check_now():
         
         # Try to perform a check using the scheduler
         try:
-            import asyncio
-            from bot import check_channels_for_links
+            from bot import check_channels_for_links, setup_bot
             
-            # Get bot instance
-            try:
-                from telegram.ext import Application
-                bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-                if not bot_token:
-                    raise ValueError("Telegram bot token not set")
-                
-                # Create a temporary application to get a bot instance
-                application = Application.builder().token(bot_token).build()
-                bot = application.bot
-                
-                # Run the check
-                logger.info("Starting manual link check")
-                
-                # Create an event loop
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                
-                try:
-                    # Run the check
-                    result = loop.run_until_complete(check_channels_for_links(bot, link_manager))
-                    logger.info(f"Manual check complete. Found {result} new links.")
-                    flash(f"Check complete! Found {result} new links.", "success")
-                finally:
-                    loop.close()
-                
-            except Exception as e:
-                logger.error(f"Failed to create bot instance: {str(e)}")
-                logger.error(f"Exception type: {type(e)}")
-                import traceback
-                logger.error(f"Traceback: {traceback.format_exc()}")
-                flash(f"Failed to create bot instance: {str(e)}", "danger")
+            # Initialize bot if needed
+            bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+            if not bot_token:
+                raise ValueError("Telegram bot token not set")
+            
+            # Create a bot instance
+            bot = setup_bot(link_manager)
+            if not bot:
+                raise ValueError("Failed to initialize bot")
+            
+            # Run the check directly (now synchronized)
+            logger.info("Starting manual link check")
+            result = check_channels_for_links(bot, link_manager)
+            
+            logger.info(f"Manual check complete. Found {result} new links.")
+            flash(f"Check complete! Found {result} new links.", "success")
                 
         except Exception as e:
-            logger.error(f"Failed to import bot module: {str(e)}")
+            logger.error(f"Failed to run check: {str(e)}")
             logger.error(f"Exception type: {type(e)}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
