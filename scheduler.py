@@ -110,7 +110,15 @@ def setup_scheduler(bot, link_manager):
                 
                 # Run the check function directly (it's now synchronous)
                 logger.info(f"Checking {len(channels)} channels for new links")
-                result = check_channels_for_links(bot, link_manager)
+                
+                # Adjust max_channels based on total channels
+                max_channels = 15  # For scheduled checks, use a smaller batch size
+                total_channels = len(channels)
+                if total_channels > 50:
+                    max_channels = 20
+                    logger.info(f"Large number of channels ({total_channels}), using batch size of {max_channels}")
+                
+                result = check_channels_for_links(bot, link_manager, max_channels)
                 logger.info(f"Found {result} new links in scheduled check")
                 
             except ImportError as e:

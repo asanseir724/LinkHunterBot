@@ -17,8 +17,25 @@ class TelegramBot:
     def make_request(self, method, params=None):
         """Make a request to the Telegram API"""
         url = self.api_base_url + method
-        response = requests.post(url, data=params or {})
-        return response.json()
+        max_retries = 3
+        retry_delay = 1  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(url, data=params or {}, timeout=30)  # Add timeout
+                response.raise_for_status()  # Raise exception for HTTP errors
+                return response.json()
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Request failed (attempt {attempt+1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    logger.error(f"Max retries reached for {method}")
+                    return {"ok": False, "description": f"Request failed after {max_retries} attempts: {str(e)}"}
+        
+        # If we get here, something unexpected happened
+        return {"ok": False, "description": "Unknown error occurred"}
     
     def get_updates(self, offset=None, timeout=30):
         """Get updates from Telegram API"""
@@ -66,8 +83,18 @@ def setup_bot(link_manager):
         return None
 
 
-def check_channels_for_links(bot, link_manager):
-    """Check monitored channels for new links"""
+def check_channels_for_links(bot, link_manager, max_channels=20):
+    """
+    Check monitored channels for new links
+    
+    Args:
+        bot: The Telegram bot instance
+        link_manager: The LinkManager instance
+        max_channels: Maximum number of channels to check in one run (default: 20)
+    
+    Returns:
+        int: Total number of new links found
+    """
     if not bot:
         logger.error("Bot not initialized")
         return 0
@@ -80,11 +107,21 @@ def check_channels_for_links(bot, link_manager):
         logger.info("No channels to check")
         return 0
     
-    logger.info(f"Starting check for {len(channels)} channels")
+    # Rate limiting - don't try to check too many channels at once
+    # If there are too many channels, we'll check only a subset
+    total_channel_count = len(channels)
+    if total_channel_count > max_channels:
+        logger.warning(f"Too many channels ({total_channel_count}), checking only {max_channels}")
+        # Get the first max_channels channels
+        channels_to_check = channels[:max_channels]
+    else:
+        channels_to_check = channels
     
-    for channel in channels:
+    logger.info(f"Starting check for {len(channels_to_check)} channels (out of {total_channel_count})")
+    
+    for idx, channel in enumerate(channels_to_check):
         try:
-            logger.info(f"Checking channel: {channel}")
+            logger.info(f"Checking channel {idx+1}/{len(channels_to_check)}: {channel}")
             channel_new_links[channel] = 0
             
             # We'll try to get the latest messages from the channel
@@ -99,37 +136,49 @@ def check_channels_for_links(bot, link_manager):
                     continue
                     
                 chat = chat_info['result']
-                logger.info(f"Connected to channel: {chat.get('title')} ({chat_id})")
+                logger.info(f"Connected to channel: {chat.get('title', 'Unknown')} ({chat_id})")
+                
+                # Add a small delay between API calls to avoid rate limiting
+                time.sleep(0.5)
                 
                 # Try to get the recent messages from this channel
                 try:
                     # In a real-world scenario, we would use getHistory API
-                    # For now, we'll use the forwardMessages method to get recent posts
-                    # First try to get updates directly
-                    offset = -10  # Get last 10 messages
-                    limit = 10
-                    
-                    # Try using getUpdates to get recent messages
-                    updates_response = bot.make_request('getUpdates', {
-                        'offset': offset,
-                        'limit': limit
-                    })
-                    
-                    # Check if there are any messages
+                    # For now, we'll try scraping first as it's more reliable
                     found_links = []
                     
-                    if updates_response.get('ok'):
-                        # Process each update
-                        updates = updates_response.get('result', [])
-                        logger.debug(f"Retrieved {len(updates)} updates")
+                    # Try to fetch the channel's messages directly from URL (public channel messages)
+                    try:
+                        import requests
+                        from bs4 import BeautifulSoup
                         
-                        # Let's try a different approach - directly fetch some messages from the channel
-                        try:
-                            # Get the channel ID
-                            channel_id = chat.get('id')
+                        # Try to scrape public channel webpage for t.me links
+                        channel_url = f"https://t.me/s/{channel}"
+                        response = requests.get(channel_url, timeout=10)
+                        
+                        if response.status_code == 200:
+                            soup = BeautifulSoup(response.text, 'html.parser')
+                            message_texts = soup.select('.tgme_widget_message_text')
                             
-                            # Try to get history (this might not work without proper permissions)
-                            # We'll use getHistory if available
+                            for message in message_texts[:10]:  # Get the first 10 messages
+                                message_text = message.get_text()
+                                t_me_links = re.findall(r'https?://t\.me/[^\s]+', message_text)
+                                if t_me_links:
+                                    found_links.extend(t_me_links)
+                            
+                            logger.info(f"Found {len(found_links)} links by scraping channel webpage")
+                        else:
+                            logger.debug(f"Failed to scrape channel webpage, status: {response.status_code}")
+                    except Exception as e:
+                        logger.warning(f"Error scraping channel webpage: {str(e)}")
+                        # Don't use fallback links in production
+                    
+                    # Only try API method if web scraping didn't work
+                    if not found_links:
+                        # Try to use Telegram API methods
+                        try:
+                            # First try getHistory if available
+                            channel_id = chat.get('id')
                             history = bot.make_request('getHistory', {
                                 'chat_id': channel_id,
                                 'limit': 10
@@ -149,39 +198,26 @@ def check_channels_for_links(bot, link_manager):
                                             found_links.extend(t_me_links)
                             else:
                                 logger.debug("getHistory not supported or not authorized")
-                        except Exception as e:
-                            logger.debug(f"Error getting channel history: {str(e)}")
-                    
-                    # If we didn't find any links using the API, let's make a simulated link for testing
-                    if not found_links:
-                        logger.debug("No links found through API, trying to get messages")
-                        # Try to fetch the channel's messages directly from URL (public channel messages)
-                        try:
-                            import requests
-                            from bs4 import BeautifulSoup
-                            
-                            # Try to scrape public channel webpage for t.me links
-                            channel_url = f"https://t.me/s/{channel}"
-                            response = requests.get(channel_url, timeout=10)
-                            
-                            if response.status_code == 200:
-                                soup = BeautifulSoup(response.text, 'html.parser')
-                                message_texts = soup.select('.tgme_widget_message_text')
                                 
-                                for message in message_texts[:10]:  # Get the first 10 messages
-                                    message_text = message.get_text()
-                                    t_me_links = re.findall(r'https?://t\.me/[^\s]+', message_text)
-                                    if t_me_links:
-                                        found_links.extend(t_me_links)
+                                # If getHistory didn't work, fall back to getUpdates
+                                updates_response = bot.make_request('getUpdates', {
+                                    'offset': -10,  # Get last 10 messages
+                                    'limit': 10
+                                })
                                 
-                                logger.info(f"Found {len(found_links)} links by scraping channel webpage")
-                            else:
-                                logger.debug(f"Failed to scrape channel webpage, status: {response.status_code}")
+                                if updates_response.get('ok'):
+                                    updates = updates_response.get('result', [])
+                                    logger.debug(f"Retrieved {len(updates)} updates")
+                                    
+                                    # Process updates for links
+                                    for update in updates:
+                                        if 'message' in update and 'text' in update['message']:
+                                            text = update['message']['text']
+                                            t_me_links = re.findall(r'https?://t\.me/[^\s]+', text)
+                                            if t_me_links:
+                                                found_links.extend(t_me_links)
                         except Exception as e:
-                            logger.error(f"Error scraping channel webpage: {str(e)}")
-                            # Use a fallback example link for testing
-                            found_links = [f"https://t.me/example_group_{channel}_{int(time.time())}"]
-                            logger.debug("Using fallback example link")
+                            logger.warning(f"Error using Telegram API: {str(e)}")
                     
                     # Add the links to storage
                     for link in found_links:
@@ -200,17 +236,17 @@ def check_channels_for_links(bot, link_manager):
                 
             except Exception as e:
                 logger.error(f"Error accessing channel {chat_id}: {str(e)}")
-                logger.error(f"Exception type: {type(e)}")
-                import traceback
-                logger.error(f"Traceback: {traceback.format_exc()}")
+                continue  # Skip to next channel on error
             
             logger.info(f"Found {channel_new_links[channel]} new links in {channel}")
             
+            # Add a delay between channels to avoid rate limiting
+            if idx < len(channels_to_check) - 1:  # Don't delay after the last channel
+                time.sleep(1)
+                
         except Exception as e:
             logger.error(f"Error checking channel {channel}: {str(e)}")
-            logger.error(f"Exception type: {type(e)}")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            continue  # Skip to next channel on error
     
     # Update last check time
     link_manager.update_last_check_time()
@@ -218,6 +254,7 @@ def check_channels_for_links(bot, link_manager):
     # Log summary
     logger.info(f"Total new links found: {total_new_links}")
     for channel, count in channel_new_links.items():
-        logger.info(f"Channel {channel}: {count} new links")
+        if count > 0:  # Only log channels with new links
+            logger.info(f"Channel {channel}: {count} new links")
     
     return total_new_links

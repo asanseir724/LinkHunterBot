@@ -193,7 +193,17 @@ def check_now():
             
             # Run the check directly (now synchronized)
             logger.info("Starting manual link check")
-            result = check_channels_for_links(bot, link_manager)
+            # Get the total number of channels
+            total_channels = len(link_manager.get_channels())
+            
+            # Adjust max_channels based on total channels
+            # For manual checks, we can handle more channels than automated checks
+            max_channels = 20
+            if total_channels > 50:
+                max_channels = 30  # Handle more channels in one batch for manual check
+                logger.info(f"Large number of channels ({total_channels}), using batch size of {max_channels}")
+            
+            result = check_channels_for_links(bot, link_manager, max_channels)
             
             logger.info(f"Manual check complete. Found {result} new links.")
             flash(f"Check complete! Found {result} new links.", "success")
