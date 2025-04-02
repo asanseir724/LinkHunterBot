@@ -54,9 +54,23 @@ class LinkManager:
     
     def add_channel(self, channel):
         """Add a channel to monitor"""
-        # Normalize channel name (remove @ if present)
+        # Normalize channel name
+        # Remove @ if present
         if channel.startswith('@'):
             channel = channel[1:]
+        
+        # Remove https://t.me/ or http://t.me/ if present
+        if channel.startswith('https://t.me/'):
+            channel = channel[13:]  # Remove 'https://t.me/'
+        elif channel.startswith('http://t.me/'):
+            channel = channel[12:]  # Remove 'http://t.me/'
+        elif channel.startswith('t.me/'):
+            channel = channel[5:]   # Remove 't.me/'
+            
+        # Make sure channel name is valid
+        if not channel or '/' in channel:
+            logger.warning(f"Invalid channel name: {channel}")
+            return False
         
         if channel in self.channels:
             logger.info(f"Channel {channel} already exists")
@@ -69,9 +83,18 @@ class LinkManager:
     
     def remove_channel(self, channel):
         """Remove a channel from monitoring"""
-        # Normalize channel name (remove @ if present)
+        # Normalize channel name
+        # Remove @ if present
         if channel.startswith('@'):
             channel = channel[1:]
+        
+        # Remove https://t.me/ or http://t.me/ if present
+        if channel.startswith('https://t.me/'):
+            channel = channel[13:]  # Remove 'https://t.me/'
+        elif channel.startswith('http://t.me/'):
+            channel = channel[12:]  # Remove 'http://t.me/'
+        elif channel.startswith('t.me/'):
+            channel = channel[5:]   # Remove 't.me/'
         
         if channel not in self.channels:
             logger.info(f"Channel {channel} not found")

@@ -61,23 +61,28 @@ def add_bulk_channels():
     # Process each channel
     added_count = 0
     already_exists_count = 0
+    invalid_count = 0
     
     for channel in channels_to_add:
-        # Remove @ symbol if present
-        if channel.startswith('@'):
-            channel = channel[1:]
-            
-        if link_manager.add_channel(channel):
+        # Note: No need to pre-process channel links here
+        # The add_channel method in LinkManager will handle normalization of URLs and @ symbols
+        result = link_manager.add_channel(channel)
+        if result is True:
             added_count += 1
-        else:
+        elif result is False:
             already_exists_count += 1
+        else:
+            # This happens when add_channel returns None or False due to invalid format
+            invalid_count += 1
     
     # Display results
     if added_count > 0:
         flash(f"Added {added_count} new channels successfully", "success")
     if already_exists_count > 0:
         flash(f"{already_exists_count} channels already existed", "info")
-    if added_count == 0 and already_exists_count == 0:
+    if invalid_count > 0:
+        flash(f"{invalid_count} invalid channel format(s) detected", "warning")
+    if added_count == 0 and already_exists_count == 0 and invalid_count == 0:
         flash("No valid channels found", "warning")
     
     return redirect(url_for('channels'))
