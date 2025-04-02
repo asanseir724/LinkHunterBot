@@ -274,6 +274,25 @@ def setup_account_scheduler(scheduler):
             
             # Log the results
             logger.info(f"Scheduled check complete. Found {results['total_new_links']} new links from {results['accounts_with_links']} accounts")
+            
+            # Update the global last_check_result in main module to include user account stats
+            try:
+                import sys
+                if 'main' in sys.modules:
+                    main_module = sys.modules['main']
+                    if hasattr(main_module, 'last_check_result') and hasattr(main_module, 'lock'):
+                        with main_module.lock:
+                            main_module.last_check_result.update({
+                                'user_groups_checked': results.get('groups_checked', 0),
+                                'user_accounts_checked': results.get('accounts_checked', 0)
+                            })
+                        logger.info(f"Updated main check stats with user account info: {results.get('groups_checked', 0)} groups from {results.get('accounts_checked', 0)} accounts")
+                    else:
+                        logger.warning("Could not update main check stats: last_check_result or lock not found")
+                else:
+                    logger.warning("Could not update main check stats: main module not found")
+            except Exception as e:
+                logger.error(f"Error updating main check stats: {str(e)}")
         except Exception as e:
             from logger import get_logger
             logger = get_logger("account_checker")

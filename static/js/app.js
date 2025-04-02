@@ -94,12 +94,16 @@ function checkBackgroundStatus() {
     fetch('/api/check_status')
         .then(response => response.json())
         .then(data => {
+            // Update the dashboard statistics regardless of status
+            updateDashboardStats(data);
+            
             if (data.status === 'completed') {
                 // Update the status display with results
                 statusElement.innerHTML = `
                     <div class="alert alert-success">
                         <strong>عملیات موفق!</strong> ${data.new_links} لینک جدید در تاریخ ${data.timestamp} استخراج شد.
                         از مجموع ${data.total_channels} کانال، ${data.channels_checked} کانال بررسی شد.
+                        ${getGroupsCheckedMessage(data)}
                     </div>
                 `;
                 
@@ -122,4 +126,51 @@ function checkBackgroundStatus() {
         .catch(error => {
             console.error('Error checking status:', error);
         });
+}
+
+/**
+ * Update dashboard statistics with the latest check data
+ */
+function updateDashboardStats(data) {
+    // Update the last check time
+    const lastCheckTimeElement = document.getElementById('last-check-time');
+    if (lastCheckTimeElement && data.timestamp) {
+        lastCheckTimeElement.textContent = data.timestamp;
+    }
+    
+    // Update channels stats
+    const channelsCheckedElement = document.getElementById('channels-checked');
+    const totalChannelsElement = document.getElementById('total-channels');
+    if (channelsCheckedElement && data.channels_checked) {
+        channelsCheckedElement.textContent = data.channels_checked;
+    }
+    if (totalChannelsElement && data.total_channels) {
+        totalChannelsElement.textContent = data.total_channels;
+    }
+    
+    // Update groups stats
+    const groupsCheckedElement = document.getElementById('groups-checked');
+    const accountsCheckedElement = document.getElementById('accounts-checked');
+    if (groupsCheckedElement && data.user_groups_checked !== undefined) {
+        groupsCheckedElement.textContent = data.user_groups_checked;
+    }
+    if (accountsCheckedElement && data.user_accounts_checked !== undefined) {
+        accountsCheckedElement.textContent = data.user_accounts_checked;
+    }
+    
+    // Update new links count
+    const newLinksCountElement = document.getElementById('new-links-count');
+    if (newLinksCountElement && data.new_links !== undefined) {
+        newLinksCountElement.textContent = data.new_links;
+    }
+}
+
+/**
+ * Generate a message about groups checked by user accounts
+ */
+function getGroupsCheckedMessage(data) {
+    if (data.user_groups_checked && data.user_accounts_checked) {
+        return `همچنین ${data.user_groups_checked} گروه توسط ${data.user_accounts_checked} اکانت کاربر بررسی شد.`;
+    }
+    return '';
 }

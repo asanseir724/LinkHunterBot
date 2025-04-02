@@ -70,6 +70,55 @@
 </div>
 
 <div class="row mt-4">
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-center">
+            <div class="card-header">User Accounts</div>
+            <div class="card-body">
+                <h2 class="display-4">{{ stats.user_accounts_count }}</h2>
+                <p class="text-muted">Connected user accounts</p>
+                <a href="{{ url_for('accounts.accounts') }}" class="btn btn-sm btn-outline-primary">Manage Accounts</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-center">
+            <div class="card-header">User Groups</div>
+            <div class="card-body">
+                <h2 class="display-4">{{ stats.groups_checked }}</h2>
+                <p class="text-muted">Groups checked by user accounts</p>
+                <p class="small text-muted">Last check</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-6 mb-4">
+        <div class="card text-center">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Last Check Results</span>
+                    <span class="badge bg-secondary" id="last-check-time"></span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <h5>Channels</h5>
+                        <p class="mb-0"><span id="channels-checked">0</span> of <span id="total-channels">0</span></p>
+                    </div>
+                    <div class="col-6">
+                        <h5>Groups</h5>
+                        <p class="mb-0"><span id="groups-checked">0</span> by <span id="accounts-checked">0</span> accounts</p>
+                    </div>
+                </div>
+                <hr>
+                <p><span class="badge bg-success" id="new-links-count">0</span> new links found</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
@@ -78,6 +127,7 @@
             <div class="card-body">
                 <ol class="list-group list-group-numbered">
                     <li class="list-group-item">Add channels to monitor in the <a href="{{ url_for('channels') }}">Channels</a> page</li>
+                    <li class="list-group-item">Add user accounts in the <a href="{{ url_for('accounts.accounts') }}">Accounts</a> page to access private groups</li>
                     <li class="list-group-item">Configure check interval in the <a href="{{ url_for('settings') }}">Settings</a> page</li>
                     <li class="list-group-item">Links will be automatically collected and can be viewed in the <a href="{{ url_for('links') }}">Links</a> page</li>
                     <li class="list-group-item">Click "Check Now" button to manually trigger a link collection</li>

@@ -401,6 +401,7 @@ class AccountManager:
         account_results = {}
         total_new_links = 0
         accounts_with_links = 0
+        total_groups_checked = 0
         
         # Check each active account
         for account in active_accounts:
@@ -409,12 +410,16 @@ class AccountManager:
                 result = await account.check_groups_for_links(link_manager, max_messages)
                 account_results[account.phone] = result
                 
+                # Track total groups checked across all accounts
+                groups_checked = result.get("groups_checked", 0)
+                total_groups_checked += groups_checked
+                
                 if result["success"] and result["new_links"] > 0:
                     logger.info(f"Account {account.phone} found {result['new_links']} new links in {len(result['groups_with_links'])} groups")
                     total_new_links += result["new_links"]
                     accounts_with_links += 1
                 else:
-                    logger.info(f"Account {account.phone} found no new links in {result.get('groups_checked', 0)} groups")
+                    logger.info(f"Account {account.phone} found no new links in {groups_checked} groups")
             except Exception as e:
                 logger.error(f"Error checking account {account.phone}: {str(e)}")
                 account_results[account.phone] = {
@@ -433,5 +438,6 @@ class AccountManager:
             "total_new_links": total_new_links,
             "accounts_checked": len(active_accounts),
             "accounts_with_links": accounts_with_links,
-            "account_results": account_results
+            "account_results": account_results,
+            "groups_checked": total_groups_checked
         }

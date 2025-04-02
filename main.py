@@ -145,6 +145,11 @@ if os.environ.get("TELEGRAM_BOT_TOKEN"):
 def index():
     """Render the home page with stats"""
     from datetime import datetime, timedelta
+    from user_accounts import AccountManager
+    
+    # Get account manager for user accounts stats
+    account_manager = AccountManager()
+    active_accounts = account_manager.get_active_accounts()
     
     # Calculate next check time based on last check and interval
     next_check = "زمان‌بندی نشده"
@@ -157,11 +162,18 @@ def index():
         except Exception as e:
             logger.error(f"Error calculating next check time: {str(e)}")
     
+    # Get groups checked from latest check results
+    groups_checked = 0
+    with lock:
+        groups_checked = last_check_result.get('user_groups_checked', 0)
+    
     stats = {
         'total_links': len(link_manager.get_all_links()),
         'total_channels': len(link_manager.get_channels()),
         'last_check': link_manager.get_last_check_time(),
-        'next_check': next_check
+        'next_check': next_check,
+        'user_accounts_count': len(active_accounts),
+        'groups_checked': groups_checked
     }
     return render_template('index.html', stats=stats)
 
@@ -440,7 +452,9 @@ last_check_result = {
     'status': 'not_run',
     'new_links': 0,
     'total_channels': 0,
-    'channels_checked': 0
+    'channels_checked': 0,
+    'user_groups_checked': 0,
+    'user_accounts_checked': 0
 }
 
 @app.route('/check_now', methods=['POST'])
