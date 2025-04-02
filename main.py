@@ -251,16 +251,41 @@ def links():
 def settings():
     """Configure bot settings"""
     if request.method == 'POST':
-        interval = request.form.get('interval')
-        try:
-            interval = int(interval)
-            if interval < 1:
-                flash("Interval must be at least 1 minute", "danger")
-            else:
-                link_manager.set_check_interval(interval)
-                flash(f"Check interval updated to {interval} minutes", "success")
-        except ValueError:
-            flash("Invalid interval value", "danger")
+        # Handle interval update
+        if 'interval' in request.form:
+            interval = request.form.get('interval')
+            try:
+                interval = int(interval)
+                if interval < 1:
+                    flash("Interval must be at least 1 minute", "danger")
+                else:
+                    link_manager.set_check_interval(interval)
+                    flash(f"Check interval updated to {interval} minutes", "success")
+            except ValueError:
+                flash("Invalid interval value", "danger")
+        
+        # Handle message count update
+        if 'message_count' in request.form:
+            message_count = request.form.get('message_count')
+            try:
+                message_count = int(message_count)
+                if message_count < 1:
+                    flash("Message count must be at least 1", "danger")
+                elif message_count > 50:
+                    flash("Message count cannot exceed 50 to avoid rate limits", "danger")
+                else:
+                    link_manager.check_message_count = message_count
+                    link_manager.save_data()
+                    flash(f"Message count updated to {message_count}", "success")
+            except ValueError:
+                flash("Invalid message count value", "danger")
+                
+        # Handle auto-discover toggle
+        if 'auto_discover' in request.form:
+            auto_discover = request.form.get('auto_discover') == 'on'
+            link_manager.auto_discover = auto_discover
+            link_manager.save_data()
+            flash(f"Auto-discover new channels: {'enabled' if auto_discover else 'disabled'}", "success")
         
         return redirect(url_for('settings'))
     
@@ -270,7 +295,9 @@ def settings():
     return render_template('settings.html', 
                           interval=link_manager.get_check_interval(),
                           bot_status=bot_status,
-                          categories=categories)
+                          categories=categories,
+                          message_count=link_manager.check_message_count,
+                          auto_discover=link_manager.auto_discover)
 
 @app.route('/set_token', methods=['POST'])
 def set_token():

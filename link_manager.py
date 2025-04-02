@@ -17,9 +17,19 @@ class LinkManager:
         self.new_links = [] # List of new links (current session)
         self.channel_categories = {}  # Dictionary mapping channel names to categories
         self.links_by_category = {}   # Dictionary mapping categories to links
+        self.channel_link_counts = {} # Dictionary to track link count per channel
+        self.auto_discover = True     # Auto-discover new link-sharing channels
+        self.check_message_count = 10 # Number of recent messages to check per channel
         
         # Default categories
-        self.default_categories = ["عمومی", "سرگرمی", "فیلم", "موسیقی", "علمی", "خبری", "ورزشی", "آموزشی"]
+        self.default_categories = ["عمومی", "سرگرمی", "فیلم", "موسیقی", "علمی", "خبری", "ورزشی", "آموزشی", "لینکدونی"]
+        
+        # Keywords to identify link directory channels (linkdoni)
+        self.linkdoni_keywords = [
+            "لینکدونی", "لینک دونی", "لینک یاب", "لینکیاب", "linkdoni", "link directory", 
+            "کانال یاب", "گروه یاب", "گپ یاب", "لینک گروه", "گروهکده", "گروه چت", 
+            "دایرکتوری لینک", "لینک جدید", "لینک کده", "لینکدونیا", "linkdonee"
+        ]
         
         # Category keywords mapping - for automatic categorization based on message text
         self.category_keywords = {
@@ -81,6 +91,9 @@ class LinkManager:
                     self.check_interval = data.get('check_interval', 5)
                     self.last_check = data.get('last_check')
                     self.telegram_token = data.get('telegram_token')
+                    self.channel_link_counts = data.get('channel_link_counts', {})
+                    self.auto_discover = data.get('auto_discover', True)
+                    self.check_message_count = data.get('check_message_count', 10)
                     
                     # If we have a token, set it in the environment
                     if self.telegram_token:
@@ -102,7 +115,10 @@ class LinkManager:
                 'links_by_category': self.links_by_category,
                 'check_interval': self.check_interval,
                 'last_check': self.last_check,
-                'telegram_token': self.telegram_token
+                'telegram_token': self.telegram_token,
+                'channel_link_counts': self.channel_link_counts,
+                'auto_discover': self.auto_discover,
+                'check_message_count': self.check_message_count
             }
             with open(self.data_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
@@ -230,6 +246,12 @@ class LinkManager:
             if link not in self.new_links:
                 self.new_links.append(link)
             
+            # Track link count for this channel
+            if channel:
+                if channel not in self.channel_link_counts:
+                    self.channel_link_counts[channel] = 0
+                self.channel_link_counts[channel] += 1
+            
             # Determine the category based on message content and channel
             category = "عمومی"
             
@@ -243,6 +265,9 @@ class LinkManager:
                 if detected_category:
                     category = detected_category
                     logger.debug(f"Detected category '{category}' from message text")
+                
+                # Check if message mentions a linkdoni channel we don't already monitor
+                self._check_for_linkdoni_channels(message_text)
             
             # Initialize category list if needed
             if category not in self.links_by_category:
@@ -257,6 +282,75 @@ class LinkManager:
             logger.info(f"Added new link: {link} in category '{category}'")
         
         return is_new
+        
+    def _check_for_linkdoni_channels(self, text):
+        """
+        Check if text mentions a linkdoni channel that we should add to our monitoring list
+        
+        Args:
+            text (str): Message text to analyze
+        """
+        if not self.auto_discover or not text:
+            return
+            
+        # Look for telegram links to channels
+        # Match patterns like https://t.me/channel_name or @channel_name
+        import re
+        
+        # Look for t.me/[channelname] or @[channelname]
+        matches = re.findall(r'(?:https?://)?t\.me/([a-zA-Z0-9_]+)|@([a-zA-Z0-9_]+)', text.lower())
+        
+        # Extract the matched channel names
+        for match in matches:
+            # Either the first or second group will have the channel name
+            channel_name = match[0] or match[1]
+            
+            if not channel_name:
+                continue
+                
+            # Skip if this is just a joinchat link
+            if channel_name == 'joinchat':
+                continue
+                
+            # Check if this might be a linkdoni channel
+            if self._is_linkdoni_channel(channel_name, text):
+                # Try to add it (will be ignored if already exists)
+                logger.info(f"Auto-discovered potential linkdoni channel: {channel_name}")
+                self.add_channel(channel_name, category="لینکدونی")
+                
+    def _is_linkdoni_channel(self, channel_name, description=None):
+        """
+        Check if a channel is likely a linkdoni (link sharing) channel
+        
+        Args:
+            channel_name (str): Channel name to check
+            description (str, optional): Channel description or context text
+            
+        Returns:
+            bool: True if likely a linkdoni channel
+        """
+        # Check channel name for linkdoni keywords
+        channel_name_lower = channel_name.lower()
+        
+        # First check channel name itself
+        for keyword in self.linkdoni_keywords:
+            if keyword.lower() in channel_name_lower:
+                return True
+                
+        # Then check description if provided
+        if description:
+            description_lower = description.lower()
+            
+            keyword_count = 0
+            for keyword in self.linkdoni_keywords:
+                if keyword.lower() in description_lower:
+                    keyword_count += 1
+                    
+            # If at least 2 linkdoni keywords in description, it's likely a linkdoni
+            if keyword_count >= 2:
+                return True
+                
+        return False
         
     def _detect_category_from_keywords(self, text):
         """

@@ -10,21 +10,42 @@
             <div class="col-md-6">
                 <div class="card mb-4">
                     <div class="card-header">
-                        <h4>Check Interval</h4>
+                        <h4>تنظیمات بررسی</h4>
                     </div>
                     <div class="card-body">
-                        <p>Configure how often the bot checks for new links (in minutes).</p>
+                        <p>پیکربندی نحوه بررسی لینک‌های جدید توسط ربات.</p>
                         
                         <form action="{{ url_for('settings') }}" method="post">
                             <div class="mb-3">
-                                <label for="interval" class="form-label">Check Interval (minutes)</label>
+                                <label for="interval" class="form-label">فاصله زمانی بررسی (دقیقه)</label>
                                 <input type="number" class="form-control" id="interval" name="interval" min="1" value="{{ interval }}" required>
                                 <div class="form-text">
-                                    How often the bot will check for new links in monitored channels.
+                                    هر چند دقیقه یکبار کانال‌ها برای لینک‌های جدید بررسی شوند.
                                 </div>
                             </div>
+                            
+                            <div class="mb-3">
+                                <label for="message_count" class="form-label">تعداد پیام‌های بررسی شده در هر کانال</label>
+                                <input type="number" class="form-control" id="message_count" name="message_count" 
+                                       min="1" max="50" value="{{ message_count }}" required>
+                                <div class="form-text">
+                                    تعداد پیام‌های اخیر که در هر کانال بررسی می‌شوند (حداکثر 50 پیام)
+                                </div>
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                <input type="checkbox" class="form-check-input" id="auto_discover" name="auto_discover" 
+                                       {% if auto_discover %}checked{% endif %}>
+                                <label class="form-check-label" for="auto_discover">
+                                    پیدا کردن خودکار کانال‌های لینکدونی جدید
+                                </label>
+                                <div class="form-text">
+                                    اگر این گزینه فعال باشد، ربات به طور خودکار لینکدونی‌های جدید را شناسایی و اضافه می‌کند
+                                </div>
+                            </div>
+                            
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Save Settings
+                                <i class="fas fa-save"></i> ذخیره تنظیمات
                             </button>
                         </form>
                     </div>
