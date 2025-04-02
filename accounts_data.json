@@ -1,12 +1,1 @@
-{
-  "+989900401383": {
-    "phone": "+989900401383",
-    "api_id": 27733157,
-    "api_hash": "779895c18bfa58dda3260acfcb6c04a5",
-    "name": "+989900401383",
-    "status": "error",
-    "connected": false,
-    "error": "The api_id/api_hash combination is invalid (caused by SendCodeRequest)",
-    "last_check": null
-  }
-}
+{}
