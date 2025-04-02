@@ -51,6 +51,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path == url_for('category_keywords') %}active{% endif %}" href="{{ url_for('category_keywords') }}">
+                            <i class="fas fa-tags"></i> Keywords
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('logs') %}active{% endif %}" href="{{ url_for('logs') }}">
                             <i class="fas fa-clipboard-list"></i> Logs
                         </a>

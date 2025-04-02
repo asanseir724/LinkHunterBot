@@ -1,0 +1,67 @@
+{% extends 'layout.html' %}
+
+{% block title %}مدیریت کلمات کلیدی دسته‌ها{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">مدیریت کلمات کلیدی دسته‌ها</h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">
+                        با استفاده از کلمات کلیدی، سیستم به طور خودکار محتوای پیام‌ها را تحلیل کرده و لینک‌ها را در دسته‌بندی مناسب قرار می‌دهد.
+                    </p>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">انتخاب دسته</div>
+                                <div class="card-body">
+                                    <div class="list-group">
+                                        {% for category in categories %}
+                                            <a href="{{ url_for('category_keywords', category=category) }}" 
+                                               class="list-group-item list-group-item-action {% if category == current_category %}active{% endif %}">
+                                                {{ category }}
+                                            </a>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    ویرایش کلمات کلیدی «{{ current_category }}»
+                                </div>
+                                <div class="card-body">
+                                    {% if current_category %}
+                                        <form action="{{ url_for('update_category_keywords') }}" method="post">
+                                            <input type="hidden" name="category" value="{{ current_category }}">
+                                            <div class="form-group">
+                                                <label for="keywords">کلمات کلیدی (هر کلمه در یک خط یا با کاما جدا شود)</label>
+                                                <textarea class="form-control" id="keywords" name="keywords" rows="10" dir="ltr">{{ keywords|join('\n') }}</textarea>
+                                            </div>
+                                            <div class="form-text mb-3 text-muted">
+                                                این کلمات برای تشخیص دسته‌بندی محتوا استفاده می‌شوند. محتوای جدید بر اساس تعداد تطابق کلمات کلیدی دسته‌بندی می‌شود.
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">ذخیره کلمات کلیدی</button>
+                                        </form>
+                                    {% else %}
+                                        <div class="alert alert-warning">
+                                            لطفاً ابتدا یک دسته را از لیست سمت راست انتخاب کنید.
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

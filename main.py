@@ -1,7 +1,9 @@
 import os
 import sys
 import time
+import re
 import threading
+from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from link_manager import LinkManager
 from datetime import datetime
@@ -155,10 +157,13 @@ def index():
     next_check = "زمان‌بندی نشده"
     if bot_status == "Running" and link_manager.get_last_check_time():
         try:
-            last_check_dt = datetime.fromisoformat(link_manager.last_check)
-            interval_mins = link_manager.get_check_interval()
-            next_check_dt = last_check_dt + timedelta(minutes=interval_mins)
-            next_check = next_check_dt.strftime("%Y-%m-%d %H:%M:%S")
+            # Make sure we have a valid string for datetime.fromisoformat
+            last_check_time = link_manager.last_check
+            if last_check_time and isinstance(last_check_time, str):
+                last_check_dt = datetime.fromisoformat(last_check_time)
+                interval_mins = link_manager.get_check_interval()
+                next_check_dt = last_check_dt + timedelta(minutes=interval_mins)
+                next_check = next_check_dt.strftime("%Y-%m-%d %H:%M:%S")
         except Exception as e:
             logger.error(f"Error calculating next check time: {str(e)}")
     
@@ -376,6 +381,52 @@ def settings():
                           phone_number=sms_settings['phone_number'],
                           min_links_for_notification=sms_settings['min_links'],
                           twilio_configured=sms_settings['twilio_configured'])
+
+@app.route('/category_keywords', methods=['GET'])
+def category_keywords():
+    """View category keywords"""
+    category = request.args.get('category')
+    categories = link_manager.get_categories()
+    
+    if not category and categories:
+        # Default to first category if none specified
+        category = categories[0]
+    
+    keywords = []
+    if category:
+        keywords = link_manager.get_category_keywords(category)
+    
+    return render_template('category_keywords.html',
+                          categories=categories,
+                          current_category=category,
+                          keywords=keywords)
+
+@app.route('/update_category_keywords', methods=['POST'])
+def update_category_keywords():
+    """Update keywords for a category"""
+    category = request.form.get('category')
+    keywords_text = request.form.get('keywords', '')
+    
+    if not category:
+        flash("No category specified", "danger")
+        return redirect(url_for('category_keywords'))
+    
+    # Split keywords by comma or newline and clean them
+    keywords = []
+    for keyword in re.split(r',|\n', keywords_text):
+        keyword = keyword.strip()
+        if keyword:  # Only add non-empty keywords
+            keywords.append(keyword)
+            
+    # Update keywords
+    success = link_manager.update_category_keywords(category, keywords)
+    
+    if success:
+        flash(f"Keywords for category '{category}' updated successfully", "success")
+    else:
+        flash(f"Failed to update keywords for category '{category}'", "danger")
+        
+    return redirect(url_for('category_keywords', category=category))
 
 @app.route('/set_token', methods=['POST'])
 def set_token():

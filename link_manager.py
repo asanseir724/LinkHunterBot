@@ -116,6 +116,10 @@ class LinkManager:
                     self.auto_discover = data.get('auto_discover', True)
                     self.check_message_count = data.get('check_message_count', 10)
                     
+                    # Load category keywords from file if available
+                    if 'category_keywords' in data:
+                        self.category_keywords = data.get('category_keywords', self.category_keywords)
+                    
                     # Load SMS notification settings if available
                     sms_notification_data = data.get('sms_notification', {})
                     if sms_notification_data:
@@ -168,6 +172,7 @@ class LinkManager:
                 'channel_link_counts': self.channel_link_counts,
                 'auto_discover': self.auto_discover,
                 'check_message_count': self.check_message_count,
+                'category_keywords': self.category_keywords,  # Save category keywords to make them editable
                 'sms_notification': {
                     'enabled': SMS_NOTIFICATION_SETTINGS.get('enabled', False),
                     'phone_number': SMS_NOTIFICATION_SETTINGS.get('phone_number'),
@@ -545,6 +550,40 @@ class LinkManager:
         categories.update(self.links_by_category.keys())
         return sorted(list(categories))
         
+    def get_category_keywords(self, category=None):
+        """
+        Get keywords for a specific category or all category keywords
+        
+        Args:
+            category (str, optional): The category to get keywords for. If None, returns all categories with keywords.
+            
+        Returns:
+            dict or list: Dictionary of all category keywords, or list of keywords for specific category
+        """
+        if category:
+            return self.category_keywords.get(category, [])
+        return self.category_keywords
+        
+    def update_category_keywords(self, category, keywords):
+        """
+        Update keywords for a specific category
+        
+        Args:
+            category (str): The category to update keywords for
+            keywords (list): The new list of keywords for this category
+            
+        Returns:
+            bool: True if successful
+        """
+        if category in self.category_keywords or category in self.default_categories:
+            self.category_keywords[category] = keywords
+            self.save_data()
+            logger.info(f"Updated keywords for category '{category}'")
+            return True
+        else:
+            logger.warning(f"Cannot update keywords for unknown category: {category}")
+            return False
+            
     def set_channel_category(self, channel, category):
         """
         Set or update category for a channel
