@@ -1,5 +1,6 @@
 import json
 import os
+import pandas as pd
 from datetime import datetime
 from logger import get_logger
 
@@ -12,8 +13,9 @@ class LinkManager:
     def __init__(self, data_file="links_data.json"):
         self.data_file = data_file
         self.channels = []  # List of channels to monitor
-        self.links = []     # List of unique links
-        self.check_interval = 30  # Default check interval in minutes
+        self.links = []     # List of all links (history)
+        self.new_links = [] # List of new links (current session)
+        self.check_interval = 10  # Default check interval in minutes (changed to 10)
         self.last_check = None
         
         # Load data from file if exists
@@ -27,9 +29,10 @@ class LinkManager:
                     data = json.load(f)
                     self.channels = data.get('channels', [])
                     self.links = data.get('links', [])
-                    self.check_interval = data.get('check_interval', 30)
+                    self.new_links = data.get('new_links', [])
+                    self.check_interval = data.get('check_interval', 10)
                     self.last_check = data.get('last_check')
-                logger.info(f"Loaded data: {len(self.channels)} channels, {len(self.links)} links")
+                logger.info(f"Loaded data: {len(self.channels)} channels, {len(self.links)} links, {len(self.new_links)} new links")
             except Exception as e:
                 logger.error(f"Error loading data: {e}")
     
@@ -39,6 +42,7 @@ class LinkManager:
             data = {
                 'channels': self.channels,
                 'links': self.links,
+                'new_links': self.new_links,
                 'check_interval': self.check_interval,
                 'last_check': self.last_check
             }
@@ -87,23 +91,42 @@ class LinkManager:
         # Normalize link (remove trailing slashes, etc.)
         link = link.strip()
         
-        if link in self.links:
-            return False
+        is_new = False
         
-        self.links.append(link)
-        self.save_data()
-        logger.info(f"Added new link: {link}")
-        return True
+        # Check if link is already in the history list
+        if link not in self.links:
+            self.links.append(link)
+            is_new = True
+            
+            # If it's a new link, add it to the new_links list as well
+            if link not in self.new_links:
+                self.new_links.append(link)
+            
+            self.save_data()
+            logger.info(f"Added new link: {link}")
+        
+        return is_new
     
     def get_all_links(self):
-        """Get all stored unique links"""
+        """Get all stored unique links (history)"""
         return self.links
+    
+    def get_new_links(self):
+        """Get only new links from the current session"""
+        return self.new_links
     
     def clear_links(self):
         """Clear all stored links"""
         self.links = []
+        self.new_links = []
         self.save_data()
         logger.info("All links cleared")
+        
+    def clear_new_links(self):
+        """Clear only the new links list, keeping the history"""
+        self.new_links = []
+        self.save_data()
+        logger.info("New links cleared")
     
     def set_check_interval(self, minutes):
         """Set the check interval in minutes"""
@@ -130,3 +153,55 @@ class LinkManager:
             return dt.strftime("%Y-%m-%d %H:%M:%S")
         except Exception:
             return self.last_check
+            
+    def export_all_links_to_excel(self, filename="all_links.xlsx"):
+        """Export all links to Excel file"""
+        try:
+            # Create a DataFrame for all links
+            df = pd.DataFrame(self.links, columns=["Link URL"])
+            
+            # Get the timestamp for the filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename_with_timestamp = f"{filename.split('.')[0]}_{timestamp}.xlsx"
+            
+            # Create 'exports' directory if it doesn't exist
+            os.makedirs('static/exports', exist_ok=True)
+            
+            # Save to Excel file
+            full_path = os.path.join('static/exports', filename_with_timestamp)
+            df.to_excel(full_path, index=False, sheet_name="All Links")
+            
+            logger.info(f"Exported all links ({len(self.links)}) to Excel: {full_path}")
+            return filename_with_timestamp
+            
+        except Exception as e:
+            logger.error(f"Error exporting all links to Excel: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return None
+            
+    def export_new_links_to_excel(self, filename="new_links.xlsx"):
+        """Export new links to Excel file"""
+        try:
+            # Create a DataFrame for new links
+            df = pd.DataFrame(self.new_links, columns=["Link URL"])
+            
+            # Get the timestamp for the filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename_with_timestamp = f"{filename.split('.')[0]}_{timestamp}.xlsx"
+            
+            # Create 'exports' directory if it doesn't exist
+            os.makedirs('static/exports', exist_ok=True)
+            
+            # Save to Excel file
+            full_path = os.path.join('static/exports', filename_with_timestamp)
+            df.to_excel(full_path, index=False, sheet_name="New Links")
+            
+            logger.info(f"Exported new links ({len(self.new_links)}) to Excel: {full_path}")
+            return filename_with_timestamp
+            
+        except Exception as e:
+            logger.error(f"Error exporting new links to Excel: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return None

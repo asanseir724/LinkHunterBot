@@ -13,7 +13,7 @@ class SimpleScheduler:
         self.running = False
         self.job_thread = None
         self.job_function = None
-        self.interval_minutes = 15  # Default interval
+        self.interval_minutes = 10  # Default interval - run every 10 minutes
         self.next_run_time = None
         
     def start(self):

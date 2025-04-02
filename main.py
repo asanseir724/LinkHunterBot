@@ -56,7 +56,8 @@ def remove_channel(channel):
 def links():
     """View stored links"""
     all_links = link_manager.get_all_links()
-    return render_template('links.html', links=all_links)
+    new_links = link_manager.get_new_links()
+    return render_template('links.html', links=all_links, new_links=new_links)
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
@@ -168,6 +169,45 @@ def clear_links():
     link_manager.clear_links()
     flash("All links cleared", "success")
     return redirect(url_for('links'))
+
+@app.route('/clear_new_links', methods=['POST'])
+def clear_new_links():
+    """Clear only the new links list"""
+    link_manager.clear_new_links()
+    flash("New links cleared", "success")
+    return redirect(url_for('links'))
+
+@app.route('/export_all_links', methods=['GET'])
+def export_all_links():
+    """Export all links to Excel"""
+    try:
+        filename = link_manager.export_all_links_to_excel()
+        if filename:
+            flash(f"All links exported to Excel successfully", "success")
+            return redirect(url_for('links'))
+        else:
+            flash("Failed to export links", "danger")
+            return redirect(url_for('links'))
+    except Exception as e:
+        logger.error(f"Error exporting all links: {str(e)}")
+        flash(f"Error exporting links: {str(e)}", "danger")
+        return redirect(url_for('links'))
+
+@app.route('/export_new_links', methods=['GET'])
+def export_new_links():
+    """Export new links to Excel"""
+    try:
+        filename = link_manager.export_new_links_to_excel()
+        if filename:
+            flash(f"New links exported to Excel successfully", "success")
+            return redirect(url_for('links'))
+        else:
+            flash("Failed to export links", "danger")
+            return redirect(url_for('links'))
+    except Exception as e:
+        logger.error(f"Error exporting new links: {str(e)}")
+        flash(f"Error exporting links: {str(e)}", "danger")
+        return redirect(url_for('links'))
 
 @app.route('/logs')
 def logs():
