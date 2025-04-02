@@ -43,6 +43,53 @@ def channels():
     
     return render_template('channels.html', channels=link_manager.get_channels())
 
+@app.route('/add_bulk_channels', methods=['POST'])
+def add_bulk_channels():
+    """Add multiple channels at once"""
+    bulk_channels = request.form.get('bulk_channels', '')
+    if not bulk_channels:
+        flash("No channels provided", "warning")
+        return redirect(url_for('channels'))
+    
+    # Split by commas or newlines
+    channels_to_add = []
+    if ',' in bulk_channels:
+        channels_to_add = [c.strip() for c in bulk_channels.split(',') if c.strip()]
+    else:
+        channels_to_add = [c.strip() for c in bulk_channels.splitlines() if c.strip()]
+    
+    # Process each channel
+    added_count = 0
+    already_exists_count = 0
+    
+    for channel in channels_to_add:
+        # Remove @ symbol if present
+        if channel.startswith('@'):
+            channel = channel[1:]
+            
+        if link_manager.add_channel(channel):
+            added_count += 1
+        else:
+            already_exists_count += 1
+    
+    # Display results
+    if added_count > 0:
+        flash(f"Added {added_count} new channels successfully", "success")
+    if already_exists_count > 0:
+        flash(f"{already_exists_count} channels already existed", "info")
+    if added_count == 0 and already_exists_count == 0:
+        flash("No valid channels found", "warning")
+    
+    return redirect(url_for('channels'))
+
+@app.route('/remove_all_channels', methods=['POST'])
+def remove_all_channels():
+    """Remove all channels from monitoring"""
+    count = len(link_manager.get_channels())
+    link_manager.remove_all_channels()
+    flash(f"Removed all {count} channels", "success")
+    return redirect(url_for('channels'))
+
 @app.route('/remove_channel/<channel>', methods=['POST'])
 def remove_channel(channel):
     """Remove a channel from sources"""
@@ -183,7 +230,10 @@ def export_all_links():
     try:
         filename = link_manager.export_all_links_to_excel()
         if filename:
-            flash(f"All links exported to Excel successfully", "success")
+            # Return a direct download link
+            full_path = os.path.join('static/exports', filename)
+            download_url = url_for('static', filename=f'exports/{filename}')
+            flash(f'All links exported to Excel successfully. <a href="{download_url}" class="alert-link">Click here to download</a>', "success")
             return redirect(url_for('links'))
         else:
             flash("Failed to export links", "danger")
@@ -199,7 +249,10 @@ def export_new_links():
     try:
         filename = link_manager.export_new_links_to_excel()
         if filename:
-            flash(f"New links exported to Excel successfully", "success")
+            # Return a direct download link
+            full_path = os.path.join('static/exports', filename)
+            download_url = url_for('static', filename=f'exports/{filename}')
+            flash(f'New links exported to Excel successfully. <a href="{download_url}" class="alert-link">Click here to download</a>', "success")
             return redirect(url_for('links'))
         else:
             flash("Failed to export links", "danger")

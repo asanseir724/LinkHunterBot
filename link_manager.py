@@ -82,6 +82,14 @@ class LinkManager:
         logger.info(f"Removed channel: {channel}")
         return True
     
+    def remove_all_channels(self):
+        """Remove all channels from monitoring"""
+        count = len(self.channels)
+        self.channels = []
+        self.save_data()
+        logger.info(f"Removed all {count} channels")
+        return count
+    
     def get_channels(self):
         """Get list of monitored channels"""
         return self.channels

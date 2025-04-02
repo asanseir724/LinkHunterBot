@@ -1,13 +1,5 @@
 {
-  "channels": [
-    "linkdoni_sib",
-    "linkdonilt1",
-    "linkdoniwar2",
-    "linkdoni_almaas",
-    "linkd",
-    "linkdoni",
-    "Link4you"
-  ],
+  "channels": [],
   "links": [
     "https://t.me/joinchat/rkajQKX6YExhNDNk",
     "https://t.me/+fIUQp-EzSiwwNTlk",
@@ -59,8 +51,12 @@
     "https://t.me/+_wj7tPZr_Kc2ODk0",
     "https://t.me/joinchat/wqe8t6I0yo1lNjE8",
     "https://t.me/+nZTYClMcNy45YTM8",
-    "https://t.me/+GY0Ep8Mckks1YWZk"
+    "https://t.me/+GY0Ep8Mckks1YWZk",
+    "https://t.me/+lVvi8SSLm50wZDU0"
+  ],
+  "new_links": [
+    "https://t.me/+lVvi8SSLm50wZDU0"
   ],
   "check_interval": 1,
-  "last_check": "2025-04-02T14:58:39.358338"
+  "last_check": "2025-04-02T15:06:46.118956"
 }
