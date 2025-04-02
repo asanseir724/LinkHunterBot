@@ -15,8 +15,9 @@ class LinkManager:
         self.channels = []  # List of channels to monitor
         self.links = []     # List of all links (history)
         self.new_links = [] # List of new links (current session)
-        self.check_interval = 10  # Default check interval in minutes (changed to 10)
+        self.check_interval = 5  # Default check interval in minutes (changed to 5)
         self.last_check = None
+        self.telegram_token = None  # Store the Telegram Bot Token
         
         # Load data from file if exists
         self.load_data()
@@ -30,8 +31,15 @@ class LinkManager:
                     self.channels = data.get('channels', [])
                     self.links = data.get('links', [])
                     self.new_links = data.get('new_links', [])
-                    self.check_interval = data.get('check_interval', 10)
+                    self.check_interval = data.get('check_interval', 5)
                     self.last_check = data.get('last_check')
+                    self.telegram_token = data.get('telegram_token')
+                    
+                    # If we have a token, set it in the environment
+                    if self.telegram_token:
+                        os.environ["TELEGRAM_BOT_TOKEN"] = self.telegram_token
+                        logger.info("Loaded Telegram token from storage")
+                        
                 logger.info(f"Loaded data: {len(self.channels)} channels, {len(self.links)} links, {len(self.new_links)} new links")
             except Exception as e:
                 logger.error(f"Error loading data: {e}")
@@ -44,13 +52,27 @@ class LinkManager:
                 'links': self.links,
                 'new_links': self.new_links,
                 'check_interval': self.check_interval,
-                'last_check': self.last_check
+                'last_check': self.last_check,
+                'telegram_token': self.telegram_token
             }
             with open(self.data_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             logger.info("Data saved successfully")
         except Exception as e:
             logger.error(f"Error saving data: {e}")
+            
+    def set_telegram_token(self, token):
+        """Set the Telegram Bot Token"""
+        self.telegram_token = token
+        # Also set in the environment for immediate use
+        os.environ["TELEGRAM_BOT_TOKEN"] = token
+        self.save_data()
+        logger.info("Telegram token set and saved to storage")
+        return True
+        
+    def get_telegram_token(self):
+        """Get the stored Telegram Bot Token"""
+        return self.telegram_token
     
     def add_channel(self, channel):
         """Add a channel to monitor"""

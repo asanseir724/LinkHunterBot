@@ -1,5 +1,7 @@
 import os
 import sys
+import time
+import threading
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from link_manager import LinkManager
 from datetime import datetime
@@ -15,17 +17,126 @@ app.secret_key = os.environ.get("SESSION_SECRET", "default-secret-key-for-develo
 # Initialize the link manager
 link_manager = LinkManager()
 
-# Mock some functionality for initial testing
+# Initialize bot status
 bot_status = "Not Running"
+
+# Scheduler background thread
+scheduler_thread = None
+scheduler_running = False
+
+def periodic_check():
+    """Run periodic link checking"""
+    global scheduler_running, last_check_result
+    
+    logger.info(f"Starting automatic scheduler with {link_manager.get_check_interval()} minute intervals")
+    
+    while scheduler_running:
+        # Only run if bot is initialized
+        if bot_status == "Running" and "TELEGRAM_BOT_TOKEN" in os.environ:
+            logger.info("Scheduler: Running automatic check")
+            
+            try:
+                from bot import check_channels_for_links, setup_bot
+                
+                # Create a bot instance
+                bot = setup_bot(link_manager)
+                if not bot:
+                    logger.error("Scheduler: Failed to initialize bot")
+                    time.sleep(60)  # Wait a minute before retrying
+                    continue
+                
+                # Get the total number of channels
+                total_channels = len(link_manager.get_channels())
+                
+                # Use fixed number of channels per batch
+                max_channels = 20
+                
+                # Run the check
+                logger.info("Scheduler: Starting link check")
+                result = check_channels_for_links(bot, link_manager, max_channels)
+                
+                logger.info(f"Scheduler: Check complete. Found {result} new links.")
+                
+                # Save the check result
+                with lock:
+                    last_check_result.update({
+                        'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        'new_links': result,
+                        'status': 'completed',
+                        'total_channels': total_channels,
+                        'channels_checked': min(total_channels, max_channels)
+                    })
+                
+            except Exception as e:
+                logger.error(f"Scheduler: Error in automatic check: {str(e)}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+            
+        # Sleep for the configured interval
+        check_interval = link_manager.get_check_interval()
+        logger.info(f"Scheduler: Sleeping for {check_interval} minutes until next check")
+        
+        # Sleep in smaller increments to allow faster shutdown
+        for _ in range(check_interval * 60 // 10):  # 10-second chunks
+            if not scheduler_running:
+                break
+            time.sleep(10)
+
+def init_scheduler():
+    """Initialize and start the background scheduler"""
+    global scheduler_thread, scheduler_running
+    
+    # Don't start if already running
+    if scheduler_running and scheduler_thread and scheduler_thread.is_alive():
+        logger.info("Scheduler already running")
+        return
+    
+    # Set the flag and start the thread
+    scheduler_running = True
+    scheduler_thread = threading.Thread(target=periodic_check)
+    scheduler_thread.daemon = True
+    scheduler_thread.start()
+    
+    logger.info("Automatic scheduler started")
+
+# Initialize the bot and scheduler if we have a token
+if os.environ.get("TELEGRAM_BOT_TOKEN"):
+    try:
+        from bot import setup_bot
+        # Initialize the bot with our link manager
+        bot_instance = setup_bot(link_manager)
+        if bot_instance:
+            bot_status = "Running"
+            logger.info("Bot initialized automatically with saved token")
+            # Start the scheduler for automatic checking
+            init_scheduler()
+    except Exception as e:
+        logger.error(f"Failed to auto-initialize bot: {str(e)}")
+        logger.error(f"Exception type: {type(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
 
 @app.route('/')
 def index():
     """Render the home page with stats"""
+    from datetime import datetime, timedelta
+    
+    # Calculate next check time based on last check and interval
+    next_check = "زمان‌بندی نشده"
+    if bot_status == "Running" and link_manager.get_last_check_time():
+        try:
+            last_check_dt = datetime.fromisoformat(link_manager.last_check)
+            interval_mins = link_manager.get_check_interval()
+            next_check_dt = last_check_dt + timedelta(minutes=interval_mins)
+            next_check = next_check_dt.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception as e:
+            logger.error(f"Error calculating next check time: {str(e)}")
+    
     stats = {
         'total_links': len(link_manager.get_all_links()),
         'total_channels': len(link_manager.get_channels()),
         'last_check': link_manager.get_last_check_time(),
-        'next_check': "Not scheduled" 
+        'next_check': next_check
     }
     return render_template('index.html', stats=stats)
 
@@ -137,12 +248,12 @@ def set_token():
     """Set the Telegram Bot Token"""
     token = request.form.get('token')
     if not token:
-        flash("Please provide a valid token", "danger")
+        flash("لطفا توکن معتبر وارد کنید", "danger")
         return redirect(url_for('settings'))
     
-    # Save the token as an environment variable
-    os.environ["TELEGRAM_BOT_TOKEN"] = token
-    logger.info("Telegram Bot Token set, attempting to initialize bot")
+    # Save the token permanently in link_manager
+    link_manager.set_telegram_token(token)
+    logger.info("Telegram Bot Token set and saved, attempting to initialize bot")
     
     # Try to initialize the bot
     try:
@@ -155,14 +266,17 @@ def set_token():
         bot_status = "Running"
         logger.info("Bot initialized successfully")
         
-        flash("Telegram Bot Token set successfully. Bot is now running.", "success")
+        flash("توکن تلگرام با موفقیت ذخیره شد. ربات اکنون در حال اجراست.", "success")
+        
+        # Start the scheduler to periodically check for new links
+        init_scheduler()
     except Exception as e:
         logger.error(f"Failed to initialize bot: {str(e)}")
         logger.error(f"Exception type: {type(e)}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
         
-        flash(f"Failed to initialize bot: {str(e)}", "danger")
+        flash(f"خطا در راه‌اندازی ربات: {str(e)}", "danger")
     
     return redirect(url_for('settings'))
 
@@ -369,4 +483,9 @@ def server_error(e):
     return render_template('500.html'), 500
 
 if __name__ == "__main__":
+    # Initialize the scheduler if we have a token in the environment
+    if os.environ.get("TELEGRAM_BOT_TOKEN"):
+        bot_status = "Running"
+        init_scheduler()
+        
     app.run(host="0.0.0.0", port=5000, debug=True)
