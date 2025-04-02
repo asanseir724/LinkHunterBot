@@ -1,0 +1,117 @@
+{
+  "channels": [],
+  "websites": [
+    "http://localhost:5000/static/local_test.html"
+  ],
+  "links": [
+    "https://t.me/joinchat/xyz789",
+    "https://t.me/telegram_group_test",
+    "https://t.me/direct_channel",
+    "https://t.me/joinchat/abcdef123456",
+    "https://t.me/telegram_test"
+  ],
+  "new_links": [
+    "https://t.me/joinchat/xyz789",
+    "https://t.me/telegram_group_test",
+    "https://t.me/direct_channel",
+    "https://t.me/joinchat/abcdef123456",
+    "https://t.me/telegram_test"
+  ],
+  "channel_categories": {},
+  "website_categories": {
+    "http://localhost:5000/static/local_test.html": "آزمایشی"
+  },
+  "links_by_category": {
+    "عمومی": [
+      "https://t.me/joinchat/xyz789",
+      "https://t.me/telegram_group_test",
+      "https://t.me/direct_channel",
+      "https://t.me/joinchat/abcdef123456",
+      "https://t.me/telegram_test"
+    ]
+  },
+  "check_interval": 5,
+  "last_check": "2025-04-02T22:59:24.273928",
+  "telegram_token": null,
+  "telegram_tokens": [],
+  "current_token_index": 0,
+  "channel_link_counts": {},
+  "website_link_counts": {
+    "http://localhost:5000/static/local_test.html": 5
+  },
+  "auto_discover": true,
+  "check_message_count": 10,
+  "scroll_count": 5,
+  "category_keywords": {
+    "عمومی": [
+      "لینک",
+      "گروه",
+      "کانال"
+    ],
+    "نرم‌افزار": [
+      "اپلیکیشن",
+      "نرم افزار",
+      "برنامه",
+      "اپ"
+    ],
+    "فیلم و سریال": [
+      "فیلم",
+      "سریال",
+      "انیمیشن",
+      "کارتون"
+    ],
+    "موسیقی": [
+      "موسیقی",
+      "آهنگ",
+      "موزیک",
+      "خواننده"
+    ],
+    "آموزشی": [
+      "آموزش",
+      "یادگیری",
+      "درس",
+      "کلاس"
+    ],
+    "خبری": [
+      "خبر",
+      "اخبار",
+      "رویداد",
+      "گزارش"
+    ],
+    "سرگرمی": [
+      "سرگرمی",
+      "بازی",
+      "فان",
+      "طنز"
+    ],
+    "ورزشی": [
+      "ورزش",
+      "فوتبال",
+      "بسکتبال",
+      "والیبال"
+    ],
+    "علمی": [
+      "علم",
+      "دانش",
+      "فیزیک",
+      "شیمی"
+    ],
+    "فرهنگی": [
+      "فرهنگ",
+      "هنر",
+      "ادبیات",
+      "شعر"
+    ],
+    "مذهبی": [
+      "مذهب",
+      "دین",
+      "اسلام",
+      "قرآن"
+    ]
+  },
+  "sms_notification": {
+    "enabled": false,
+    "phone_number": null,
+    "min_links": 5
+  }
+}
