@@ -36,6 +36,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path == url_for('websites') %}active{% endif %}" href="{{ url_for('websites') }}">
+                            <i class="fas fa-globe"></i> Websites
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.path == '/accounts' %}active{% endif %}" href="{{ url_for('accounts.accounts') }}">
                             <i class="fas fa-user"></i> Accounts
                         </a>

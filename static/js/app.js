@@ -102,7 +102,8 @@ function checkBackgroundStatus() {
                 statusElement.innerHTML = `
                     <div class="alert alert-success">
                         <strong>عملیات موفق!</strong> ${data.new_links} لینک جدید در تاریخ ${data.timestamp} استخراج شد.
-                        تمام ${data.total_channels} کانال بررسی شدند.
+                        تمام ${data.total_channels} کانال و ${data.total_websites || 0} وب‌سایت بررسی شدند.
+                        ${getWebsitesCheckedMessage(data)}
                         ${getGroupsCheckedMessage(data)}
                     </div>
                 `;
@@ -148,6 +149,21 @@ function updateDashboardStats(data) {
         totalChannelsElement.textContent = data.total_channels;
     }
     
+    // Update websites stats
+    const websitesCheckedElement = document.getElementById('websites-checked');
+    const totalWebsitesElement = document.getElementById('total-websites');
+    const websitesLinksElement = document.getElementById('websites-links');
+    
+    if (websitesCheckedElement && data.websites_checked !== undefined) {
+        websitesCheckedElement.textContent = data.websites_checked;
+    }
+    if (totalWebsitesElement && data.total_websites !== undefined) {
+        totalWebsitesElement.textContent = data.total_websites;
+    }
+    if (websitesLinksElement && data.websites_links !== undefined) {
+        websitesLinksElement.textContent = data.websites_links;
+    }
+    
     // Update groups stats
     const groupsCheckedElement = document.getElementById('groups-checked');
     const accountsCheckedElement = document.getElementById('accounts-checked');
@@ -171,6 +187,16 @@ function updateDashboardStats(data) {
 function getGroupsCheckedMessage(data) {
     if (data.user_groups_checked && data.user_accounts_checked) {
         return `همچنین ${data.user_groups_checked} گروه توسط ${data.user_accounts_checked} اکانت کاربر بررسی شد.`;
+    }
+    return '';
+}
+
+/**
+ * Generate a message about websites checked 
+ */
+function getWebsitesCheckedMessage(data) {
+    if (data.websites_links && data.websites_checked) {
+        return `از وب‌سایت‌ها ${data.websites_links} لینک جدید پیدا شد.`;
     }
     return '';
 }

@@ -1,0 +1,121 @@
+{% extends "layout.html" %}
+{% block title %}مدیریت وب‌سایت‌ها{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="page-title text-center mb-4">مدیریت وب‌سایت‌ها</h1>
+    
+    <!-- Form for adding a new website -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>افزودن وب‌سایت جدید</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('websites') }}">
+                <div class="mb-3">
+                    <label for="website" class="form-label">آدرس وب‌سایت</label>
+                    <input type="url" id="website" name="website" class="form-control" placeholder="https://example.com" required>
+                    <div class="form-text">آدرس کامل وب‌سایت را وارد کنید.</div>
+                </div>
+                <div class="mb-3">
+                    <label for="category" class="form-label">دسته‌بندی</label>
+                    <select id="category" name="category" class="form-select">
+                        {% for category in categories %}
+                        <option value="{{ category }}">{{ category }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">افزودن وب‌سایت</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Form for bulk adding multiple websites -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>افزودن گروهی وب‌سایت‌ها</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('add_bulk_websites') }}">
+                <div class="mb-3">
+                    <label for="bulk_websites" class="form-label">وب‌سایت‌ها</label>
+                    <textarea id="bulk_websites" name="bulk_websites" class="form-control" rows="5" placeholder="هر وب‌سایت در یک خط جداگانه یا با کاما جدا شده"></textarea>
+                    <div class="form-text">وب‌سایت‌ها را در هر خط جداگانه یا با کاما از هم جدا وارد کنید.</div>
+                </div>
+                <div class="mb-3">
+                    <label for="category" class="form-label">دسته‌بندی</label>
+                    <select id="category" name="category" class="form-select">
+                        {% for category in categories %}
+                        <option value="{{ category }}">{{ category }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">افزودن گروهی</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Configure scroll count -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>پیکربندی اسکرول</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('set_scroll_count') }}">
+                <div class="mb-3">
+                    <label for="scroll_count" class="form-label">تعداد دفعات اسکرول</label>
+                    <input type="number" id="scroll_count" name="scroll_count" class="form-control" value="{{ scroll_count }}" min="0" required>
+                    <div class="form-text">تعداد دفعات اسکرول صفحه برای پیدا کردن لینک‌های بیشتر. برای صفحات با اسکرول بی‌نهایت عدد بزرگتر استفاده کنید.</div>
+                </div>
+                <button type="submit" class="btn btn-primary">ذخیره تنظیمات</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- List of existing websites -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">وب‌سایت‌های فعلی</h5>
+            {% if websites %}
+            <form method="post" action="{{ url_for('remove_all_websites') }}" onsubmit="return confirm('آیا مطمئن هستید که می‌خواهید همه وب‌سایت‌ها را حذف کنید؟');">
+                <button type="submit" class="btn btn-danger btn-sm">حذف همه</button>
+            </form>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {% if websites %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>وب‌سایت</th>
+                            <th>دسته‌بندی</th>
+                            <th>عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for website, category in websites.items() %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                <a href="{{ website }}" target="_blank">{{ website }}</a>
+                            </td>
+                            <td>{{ category }}</td>
+                            <td>
+                                <form method="post" action="{{ url_for('remove_website', website=website) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('آیا مطمئن هستید؟')">حذف</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">هیچ وب‌سایتی برای نمایش وجود ندارد.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

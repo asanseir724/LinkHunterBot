@@ -8,7 +8,7 @@
                 <h3 class="mb-0">Link Collector Dashboard</h3>
                 <form action="{{ url_for('check_now') }}" method="post">
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-sync-alt"></i> چک کردن کانال‌ها
+                        <i class="fas fa-sync-alt"></i> چک کردن لینک‌ها
                     </button>
                 </form>
             </div>
@@ -32,6 +32,17 @@
                 <h2 class="display-4">{{ stats.total_channels }}</h2>
                 <p class="text-muted">Monitored channels</p>
                 <a href="{{ url_for('channels') }}" class="btn btn-sm btn-outline-primary">Manage Channels</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-center">
+            <div class="card-header">Total Websites</div>
+            <div class="card-body">
+                <h2 class="display-4">{{ stats.total_websites }}</h2>
+                <p class="text-muted">Monitored websites</p>
+                <a href="{{ url_for('websites') }}" class="btn btn-sm btn-outline-primary">Manage Websites</a>
             </div>
         </div>
     </div>
@@ -102,17 +113,21 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-6">
+                    <div class="col-4">
                         <h5>Channels</h5>
                         <p class="mb-0"><span id="channels-checked">0</span> of <span id="total-channels">0</span></p>
                     </div>
-                    <div class="col-6">
+                    <div class="col-4">
+                        <h5>Websites</h5>
+                        <p class="mb-0"><span id="websites-checked">0</span> of <span id="total-websites">0</span></p>
+                    </div>
+                    <div class="col-4">
                         <h5>Groups</h5>
                         <p class="mb-0"><span id="groups-checked">0</span> by <span id="accounts-checked">0</span> accounts</p>
                     </div>
                 </div>
                 <hr>
-                <p><span class="badge bg-success" id="new-links-count">0</span> new links found</p>
+                <p><span class="badge bg-success" id="new-links-count">0</span> new links found (<span id="websites-links">0</span> from websites)</p>
             </div>
         </div>
     </div>
@@ -127,6 +142,7 @@
             <div class="card-body">
                 <ol class="list-group list-group-numbered">
                     <li class="list-group-item">Add channels to monitor in the <a href="{{ url_for('channels') }}">Channels</a> page</li>
+                    <li class="list-group-item">Add websites to crawl in the <a href="{{ url_for('websites') }}">Websites</a> page</li>
                     <li class="list-group-item">Add user accounts in the <a href="{{ url_for('accounts.accounts') }}">Accounts</a> page to access private groups</li>
                     <li class="list-group-item">Configure check interval in the <a href="{{ url_for('settings') }}">Settings</a> page</li>
                     <li class="list-group-item">Links will be automatically collected and can be viewed in the <a href="{{ url_for('links') }}">Links</a> page</li>

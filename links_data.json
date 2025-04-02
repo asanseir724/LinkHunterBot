@@ -63,6 +63,7 @@
     "todelia2223",
     "persianvoicecall"
   ],
+  "websites": [],
   "links": [
     "https://t.me/joinchat/Gs2VzEbTA6owMmFk",
     "https://t.me/joinchat/R_Gzh-CGYXAzYmE0",
@@ -303,7 +304,9 @@
     "https://t.me/joinchat/RR0W9GpNz547DKDi»",
     "https://t.me/joinchat/zXBnPMpnRxVhMzE5",
     "https://t.me/+M9MMEQQovphhOTc0",
-    "https://t.me/joinchat/i5nl9PbWSGxjMGJk"
+    "https://t.me/joinchat/i5nl9PbWSGxjMGJk",
+    "https://t.me/+NtCHnR7ANnBhZjg0",
+    "https://t.me/+NtCHnR7ANnBhZjg0»"
   ],
   "new_links": [
     "https://t.me/joinchat/Gs2VzEbTA6owMmFk",
@@ -545,7 +548,9 @@
     "https://t.me/joinchat/RR0W9GpNz547DKDi»",
     "https://t.me/joinchat/zXBnPMpnRxVhMzE5",
     "https://t.me/+M9MMEQQovphhOTc0",
-    "https://t.me/joinchat/i5nl9PbWSGxjMGJk"
+    "https://t.me/joinchat/i5nl9PbWSGxjMGJk",
+    "https://t.me/+NtCHnR7ANnBhZjg0",
+    "https://t.me/+NtCHnR7ANnBhZjg0»"
   ],
   "channel_categories": {
     "cingroup1984https": "لینکدونی",
@@ -554,6 +559,7 @@
     "todelia2223": "لینکدونی",
     "persianvoicecall": "لینکدونی"
   },
+  "website_categories": {},
   "links_by_category": {
     "عمومی": [
       "https://t.me/joinchat/Gs2VzEbTA6owMmFk",
@@ -659,7 +665,9 @@
       "https://t.me/joinchat/RR0W9GpNz547DKDi»",
       "https://t.me/joinchat/zXBnPMpnRxVhMzE5",
       "https://t.me/+M9MMEQQovphhOTc0",
-      "https://t.me/joinchat/i5nl9PbWSGxjMGJk"
+      "https://t.me/joinchat/i5nl9PbWSGxjMGJk",
+      "https://t.me/+NtCHnR7ANnBhZjg0",
+      "https://t.me/+NtCHnR7ANnBhZjg0»"
     ],
     "سرگرمی": [
       "https://t.me/joinchat/AFtgN6gddwU2ZTg0",
@@ -801,7 +809,7 @@
     ]
   },
   "check_interval": 5,
-  "last_check": "2025-04-02T21:23:03.686602",
+  "last_check": "2025-04-02T22:36:04.286565",
   "telegram_token": "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA",
   "telegram_tokens": [
     "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA",
@@ -813,7 +821,7 @@
   "channel_link_counts": {
     "list_telegram": 30,
     "linkdoni_sv": 12,
-    "earn2": 12,
+    "earn2": 14,
     "LinkdoniPay": 1,
     "linkdoni_kade": 5,
     "linkgoin": 8,
@@ -835,8 +843,10 @@
     "the_best_linkdoni": 9,
     "link4kade": 1
   },
+  "website_link_counts": {},
   "auto_discover": true,
   "check_message_count": 10,
+  "scroll_count": 5,
   "category_keywords": {
     "سرگرمی": [
       "تفریح",

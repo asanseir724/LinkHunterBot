@@ -10,6 +10,7 @@ from datetime import datetime
 from logger import get_logger, get_all_logs, clear_logs
 from notification_utils import update_sms_settings, get_sms_settings, should_send_notification
 from send_message import send_notification
+from web_crawler import extract_links_from_websites
 
 # Get application logger
 logger = get_logger(__name__)
@@ -55,17 +56,25 @@ def periodic_check():
                     time.sleep(60)  # Wait a minute before retrying
                     continue
                 
-                # Get the total number of channels
+                # Get the total number of channels and websites
                 total_channels = len(link_manager.get_channels())
+                total_websites = len(link_manager.get_websites())
                 
                 # Use fixed number of channels per batch
                 max_channels = 20
                 
-                # Run the check
-                logger.info("Scheduler: Starting link check")
-                result = check_channels_for_links(bot, link_manager, max_channels)
+                # Run the check for channels
+                logger.info("Scheduler: Starting link check for channels")
+                channel_result = check_channels_for_links(bot, link_manager, max_channels)
                 
-                logger.info(f"Scheduler: Check complete. Found {result} new links.")
+                # Run the check for websites
+                logger.info("Scheduler: Starting link check for websites")
+                website_result = check_websites_for_links(link_manager)
+                
+                # Total result from both checks
+                result = channel_result + website_result
+                
+                logger.info(f"Scheduler: Check complete. Found {result} new links ({channel_result} from channels, {website_result} from websites).")
                 
                 # Save the check result
                 with lock:
@@ -74,7 +83,10 @@ def periodic_check():
                         'new_links': result,
                         'status': 'completed',
                         'total_channels': total_channels,
-                        'channels_checked': min(total_channels, max_channels)
+                        'channels_checked': min(total_channels, max_channels),
+                        'total_websites': total_websites,
+                        'websites_checked': total_websites,
+                        'websites_links': website_result
                     })
                 
                 # Check if we should send an SMS notification about new links
@@ -167,18 +179,25 @@ def index():
         except Exception as e:
             logger.error(f"Error calculating next check time: {str(e)}")
     
-    # Get groups checked from latest check results
+    # Get stats from latest check results
     groups_checked = 0
+    websites_checked = 0
+    websites_links = 0
     with lock:
         groups_checked = last_check_result.get('user_groups_checked', 0)
+        websites_checked = last_check_result.get('websites_checked', 0)
+        websites_links = last_check_result.get('websites_links', 0)
     
     stats = {
         'total_links': len(link_manager.get_all_links()),
         'total_channels': len(link_manager.get_channels()),
+        'total_websites': len(link_manager.get_websites()),
         'last_check': link_manager.get_last_check_time(),
         'next_check': next_check,
         'user_accounts_count': len(active_accounts),
-        'groups_checked': groups_checked
+        'groups_checked': groups_checked,
+        'websites_checked': websites_checked,
+        'websites_links': websites_links
     }
     return render_template('index.html', stats=stats)
 
@@ -288,6 +307,103 @@ def links():
                           categories=categories,
                           current_category=category_display,
                           link_categories=link_categories)
+
+@app.route('/websites', methods=['GET', 'POST'])
+def websites():
+    """View and manage website sources for crawling"""
+    if request.method == 'POST':
+        website = request.form.get('website')
+        category = request.form.get('category', 'عمومی')
+        
+        if website:
+            if link_manager.add_website(website, category):
+                flash(f"Website {website} added successfully", "success")
+            else:
+                flash(f"Website {website} already exists", "warning")
+        return redirect(url_for('websites'))
+    
+    return render_template('websites.html', 
+                          websites=link_manager.get_websites(),
+                          categories=link_manager.get_categories(),
+                          scroll_count=link_manager.get_scroll_count())
+
+@app.route('/add_bulk_websites', methods=['POST'])
+def add_bulk_websites():
+    """Add multiple websites at once"""
+    bulk_websites = request.form.get('bulk_websites', '')
+    category = request.form.get('category', 'عمومی')
+    
+    if not bulk_websites:
+        flash("No websites provided", "warning")
+        return redirect(url_for('websites'))
+    
+    # Split by commas or newlines
+    websites_to_add = []
+    if ',' in bulk_websites:
+        websites_to_add = [w.strip() for w in bulk_websites.split(',') if w.strip()]
+    else:
+        websites_to_add = [w.strip() for w in bulk_websites.splitlines() if w.strip()]
+    
+    # Process each website
+    added_count = 0
+    already_exists_count = 0
+    invalid_count = 0
+    
+    for website in websites_to_add:
+        # Add the website
+        result = link_manager.add_website(website, category)
+        if result is True:
+            added_count += 1
+        elif result is False:
+            already_exists_count += 1
+        else:
+            # This happens when add_website returns None or False due to invalid format
+            invalid_count += 1
+    
+    # Display results
+    if added_count > 0:
+        flash(f"Added {added_count} new websites successfully", "success")
+    if already_exists_count > 0:
+        flash(f"{already_exists_count} websites already existed", "info")
+    if invalid_count > 0:
+        flash(f"{invalid_count} invalid website format(s) detected", "warning")
+    if added_count == 0 and already_exists_count == 0 and invalid_count == 0:
+        flash("No valid websites found", "warning")
+    
+    return redirect(url_for('websites'))
+
+@app.route('/remove_all_websites', methods=['POST'])
+def remove_all_websites():
+    """Remove all websites from monitoring"""
+    count = len(link_manager.get_websites())
+    link_manager.remove_all_websites()
+    flash(f"Removed all {count} websites", "success")
+    return redirect(url_for('websites'))
+
+@app.route('/remove_website/<path:website>', methods=['POST'])
+def remove_website(website):
+    """Remove a website from sources"""
+    if link_manager.remove_website(website):
+        flash(f"Website removed successfully", "success")
+    else:
+        flash(f"Failed to remove website", "danger")
+    return redirect(url_for('websites'))
+
+@app.route('/set_scroll_count', methods=['POST'])
+def set_scroll_count():
+    """Set scroll count for website crawling"""
+    scroll_count = request.form.get('scroll_count')
+    try:
+        scroll_count = int(scroll_count)
+        if scroll_count < 0:
+            flash("Scroll count must be at least 0", "danger")
+        else:
+            link_manager.set_scroll_count(scroll_count)
+            flash(f"Scroll count updated to {scroll_count}", "success")
+    except ValueError:
+        flash("Invalid scroll count value", "danger")
+    
+    return redirect(url_for('websites'))
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
@@ -505,8 +621,66 @@ last_check_result = {
     'total_channels': 0,
     'channels_checked': 0,
     'user_groups_checked': 0,
-    'user_accounts_checked': 0
+    'user_accounts_checked': 0,
+    'websites_checked': 0,
+    'total_websites': 0,
+    'websites_links': 0
 }
+
+def check_websites_for_links(link_manager):
+    """
+    Check monitored websites for new links
+    
+    Args:
+        link_manager: The LinkManager instance
+    
+    Returns:
+        int: Total number of new links found
+    """
+    # Get the websites to check
+    websites = link_manager.get_websites()
+    if not websites:
+        logger.info("No websites configured for monitoring")
+        return 0
+        
+    logger.info(f"Checking {len(websites)} websites for Telegram links")
+    
+    try:
+        # Get the scroll count
+        scroll_count = link_manager.get_scroll_count()
+        
+        # Extract links from all websites
+        results = extract_links_from_websites(websites, scroll_count)
+        
+        # Track total new links found
+        total_new_links = 0
+        
+        # Process each website's links
+        for website_url, links in results.items():
+            logger.info(f"Found {len(links)} links on {website_url}")
+            
+            # Get the website content for category detection
+            website_content = None  # We don't have the content here, just the links
+            
+            # Add each link
+            new_links_count = 0
+            for link in links:
+                if link_manager.add_website_link(link, website_url, website_content):
+                    new_links_count += 1
+                    
+            logger.info(f"Added {new_links_count} new links from {website_url}")
+            total_new_links += new_links_count
+            
+        # Update the last check time
+        link_manager.update_last_check_time()
+        logger.info(f"Found {total_new_links} new links from websites")
+        return total_new_links
+        
+    except Exception as e:
+        logger.error(f"Error checking websites for links: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return 0
 
 @app.route('/check_now', methods=['POST'])
 def check_now():
@@ -544,18 +718,26 @@ def check_now():
                         logger.error("Failed to initialize bot")
                         return
                     
-                    # Get the total number of channels
+                    # Get the total number of channels and websites
                     total_channels = len(link_manager.get_channels())
+                    total_websites = len(link_manager.get_websites())
                     
                     # Adjust max_channels based on total channels - use all channels for manual check
                     max_channels = total_channels  # Process all channels in one batch for manual check
-                    logger.info(f"Processing all {total_channels} channels in manual check")
+                    logger.info(f"Processing all {total_channels} channels and {total_websites} websites in manual check")
                     
-                    # Run the check in the background thread
-                    logger.info("Starting background link check")
-                    result = check_channels_for_links(bot, link_manager, max_channels)
+                    # Run the check for channels in the background thread
+                    logger.info("Starting background link check for channels")
+                    channel_result = check_channels_for_links(bot, link_manager, max_channels)
                     
-                    logger.info(f"Background check complete. Found {result} new links.")
+                    # Run the check for websites
+                    logger.info("Starting background link check for websites")
+                    website_result = check_websites_for_links(link_manager)
+                    
+                    # Total result from both checks
+                    result = channel_result + website_result
+                    
+                    logger.info(f"Background check complete. Found {result} new links ({channel_result} from channels, {website_result} from websites).")
                     
                     # Save the check result for later retrieval
                     with lock:
@@ -564,7 +746,10 @@ def check_now():
                             'new_links': result,
                             'status': 'completed',
                             'total_channels': total_channels,
-                            'channels_checked': total_channels  # In manual check we process all channels
+                            'channels_checked': total_channels,  # In manual check we process all channels
+                            'total_websites': total_websites,
+                            'websites_checked': total_websites,
+                            'websites_links': website_result
                         })
                     
                 except Exception as e:

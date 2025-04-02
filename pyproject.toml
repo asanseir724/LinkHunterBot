@@ -16,9 +16,11 @@ dependencies = [
     "python-telegram-bot>=22.0",
     "requests>=2.32.3",
     "scheduler>=0.8.8",
+    "selenium>=4.30.0",
     "telegram>=0.0.1",
     "telethon>=1.39.0",
     "tlgbotfwk>=0.4.61",
     "trafilatura>=2.0.0",
     "twilio>=9.5.1",
+    "webdriver-manager>=4.0.2",
 ]

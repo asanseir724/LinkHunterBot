@@ -28,13 +28,17 @@ class LinkManager:
     def __init__(self, data_file="links_data.json"):
         self.data_file = data_file
         self.channels = []  # List of channels to monitor
+        self.websites = []  # List of websites to crawl for links
         self.links = []     # List of all links (history)
         self.new_links = [] # List of new links (current session)
         self.channel_categories = {}  # Dictionary mapping channel names to categories
+        self.website_categories = {}  # Dictionary mapping website URLs to categories
         self.links_by_category = {}   # Dictionary mapping categories to links
         self.channel_link_counts = {} # Dictionary to track link count per channel
+        self.website_link_counts = {} # Dictionary to track link count per website
         self.auto_discover = True     # Auto-discover new link-sharing channels
         self.check_message_count = 10 # Number of recent messages to check per channel
+        self.scroll_count = 5         # Number of times to scroll website pages
         self.telegram_tokens = []     # List of Telegram bot tokens to use in rotation
         self.current_token_index = 0  # Current index for token rotation
         
@@ -103,9 +107,11 @@ class LinkManager:
                 with open(self.data_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.channels = data.get('channels', [])
+                    self.websites = data.get('websites', [])  # Load websites list
                     self.links = data.get('links', [])
                     self.new_links = data.get('new_links', [])
                     self.channel_categories = data.get('channel_categories', {})
+                    self.website_categories = data.get('website_categories', {})  # Load website categories
                     self.links_by_category = data.get('links_by_category', {})
                     self.check_interval = data.get('check_interval', 5)
                     self.last_check = data.get('last_check')
@@ -113,8 +119,10 @@ class LinkManager:
                     self.telegram_tokens = data.get('telegram_tokens', [])
                     self.current_token_index = data.get('current_token_index', 0)
                     self.channel_link_counts = data.get('channel_link_counts', {})
+                    self.website_link_counts = data.get('website_link_counts', {})  # Load website link counts
                     self.auto_discover = data.get('auto_discover', True)
                     self.check_message_count = data.get('check_message_count', 10)
+                    self.scroll_count = data.get('scroll_count', 5)  # Load scroll count setting
                     
                     # Load category keywords from file if available
                     if 'category_keywords' in data:
@@ -148,7 +156,7 @@ class LinkManager:
                         self.telegram_tokens.append(self.telegram_token)
                         logger.debug("Added main token to the token rotation list")
                         
-                logger.info(f"Loaded data: {len(self.channels)} channels, {len(self.links)} links, {len(self.new_links)} new links")
+                logger.info(f"Loaded data: {len(self.channels)} channels, {len(self.websites)} websites, {len(self.links)} links, {len(self.new_links)} new links")
             except Exception as e:
                 logger.error(f"Error loading data: {e}")
     
@@ -160,9 +168,11 @@ class LinkManager:
             
             data = {
                 'channels': self.channels,
+                'websites': self.websites,  # Save websites list
                 'links': self.links,
                 'new_links': self.new_links,
                 'channel_categories': self.channel_categories,
+                'website_categories': self.website_categories,  # Save website categories
                 'links_by_category': self.links_by_category,
                 'check_interval': self.check_interval,
                 'last_check': self.last_check,
@@ -170,8 +180,10 @@ class LinkManager:
                 'telegram_tokens': getattr(self, 'telegram_tokens', []),
                 'current_token_index': getattr(self, 'current_token_index', 0),
                 'channel_link_counts': self.channel_link_counts,
+                'website_link_counts': self.website_link_counts,  # Save website link counts
                 'auto_discover': self.auto_discover,
                 'check_message_count': self.check_message_count,
+                'scroll_count': self.scroll_count,  # Save scroll count setting
                 'category_keywords': self.category_keywords,  # Save category keywords to make them editable
                 'sms_notification': {
                     'enabled': SMS_NOTIFICATION_SETTINGS.get('enabled', False),
@@ -347,6 +359,132 @@ class LinkManager:
     def get_channels(self):
         """Get list of monitored channels"""
         return self.channels
+        
+    def add_website(self, url, category="عمومی"):
+        """
+        Add a website to crawl for links with a specific category
+        
+        Args:
+            url (str): The website URL
+            category (str, optional): The category for this website. Defaults to "عمومی".
+        
+        Returns:
+            bool: True if added successfully, False if already exists or invalid
+        """
+        # Normalize URL (ensure it has scheme)
+        if not url.startswith('http://') and not url.startswith('https://'):
+            url = 'https://' + url
+        
+        # Make sure the URL is valid
+        try:
+            parsed_url = urlparse(url)
+            if not parsed_url.netloc:
+                logger.warning(f"Invalid website URL: {url}")
+                return False
+        except Exception as e:
+            logger.warning(f"Invalid website URL: {url} - {str(e)}")
+            return False
+        
+        if url in self.websites:
+            logger.info(f"Website {url} already exists")
+            return False
+        
+        self.websites.append(url)
+        # Add website category
+        self.website_categories[url] = category
+        self.save_data()
+        logger.info(f"Added website: {url} with category: {category}")
+        return True
+    
+    def remove_website(self, url):
+        """Remove a website from crawling"""
+        # Normalize URL (ensure it has scheme)
+        if not url.startswith('http://') and not url.startswith('https://'):
+            url = 'https://' + url
+        
+        if url not in self.websites:
+            logger.info(f"Website {url} not found")
+            return False
+        
+        self.websites.remove(url)
+        # Also remove from website_categories if exists
+        if url in self.website_categories:
+            del self.website_categories[url]
+        # Also remove from website_link_counts if exists
+        if url in self.website_link_counts:
+            del self.website_link_counts[url]
+            
+        self.save_data()
+        logger.info(f"Removed website: {url}")
+        return True
+    
+    def remove_all_websites(self):
+        """Remove all websites from crawling"""
+        count = len(self.websites)
+        self.websites = []
+        # Clear website categories and counts as well
+        self.website_categories = {}
+        self.website_link_counts = {}
+        self.save_data()
+        logger.info(f"Removed all {count} websites")
+        return count
+    
+    def get_websites(self):
+        """Get list of monitored websites"""
+        return self.websites
+        
+    def get_scroll_count(self):
+        """Get the scroll count for websites"""
+        return self.scroll_count
+        
+    def set_scroll_count(self, count):
+        """
+        Set the scroll count for website crawling
+        
+        Args:
+            count (int): Number of times to scroll each page
+            
+        Returns:
+            bool: True if successful
+        """
+        # Ensure count is an integer and has a reasonable value
+        try:
+            count = int(count)
+            if count < 0:
+                count = 0
+            elif count > 30:  # Limit to a reasonable maximum
+                count = 30
+                
+            self.scroll_count = count
+            self.save_data()
+            logger.info(f"Set scroll count to {count}")
+            return True
+        except ValueError:
+            logger.error(f"Invalid scroll count value: {count}")
+            return False
+            
+    def add_website_link(self, link, website_url=None, page_content=None):
+        """
+        Add a link from a website, similar to add_link but for websites
+        
+        Args:
+            link (str): The link to add
+            website_url (str, optional): The source website URL
+            page_content (str, optional): The page content that contained the link
+            
+        Returns:
+            bool: True if the link was new, False if it already existed
+        """
+        # Use the existing add_link method but with website-specific tracking
+        is_new = self.add_link(link, channel=None, message_text=page_content)
+        
+        # Track link count for this website
+        if is_new and website_url:
+            if website_url not in self.website_link_counts:
+                self.website_link_counts[website_url] = 0
+            self.website_link_counts[website_url] += 1
+            
+        return is_new
     
     def add_link(self, link, channel=None, message_text=None):
         """
