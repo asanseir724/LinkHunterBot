@@ -1,9 +1,10 @@
 import os
 import json
-import asyncio
+import asyncio  # Keep this for now to avoid breaking existing code
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from user_accounts import AccountManager, UserAccount
+from async_helper import run_async, safe_run_coroutine
 
 # Create blueprint
 accounts_bp = Blueprint('accounts', __name__)
@@ -62,16 +63,8 @@ def remove_account():
             
         # Disconnect if connected
         if account.connected:
-            # Create a new event loop for this function
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            try:
-                # Disconnect the account
-                loop.run_until_complete(account.disconnect())
-            finally:
-                # Clean up the loop when done
-                loop.close()
+            # Use our helper to safely run the coroutine
+            safe_run_coroutine(account.disconnect())
             
         # Remove the account
         success, message = account_manager.remove_account(phone)
@@ -101,17 +94,8 @@ def connect_account():
         if not account:
             return jsonify({"success": False, "message": "اکانت یافت نشد"})
             
-        # Connect the account
-        # Create a new event loop for this function
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        try:
-            # Connect the account
-            success, message = loop.run_until_complete(account.connect())
-        finally:
-            # Clean up the loop when done
-            loop.close()
+        # Connect the account using the singleton event loop helper
+        success, message = safe_run_coroutine(account.connect(), (False, "خطا در اتصال"))
         
         # Save account manager data
         account_manager.save_accounts()
@@ -136,17 +120,8 @@ def disconnect_account():
         if not account:
             return jsonify({"success": False, "message": "اکانت یافت نشد"})
             
-        # Disconnect the account
-        # Create a new event loop for this function
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        try:
-            # Disconnect the account
-            loop.run_until_complete(account.disconnect())
-        finally:
-            # Clean up the loop when done
-            loop.close()
+        # Disconnect the account using the singleton event loop helper
+        safe_run_coroutine(account.disconnect())
         
         # Save account manager data
         account_manager.save_accounts()
@@ -174,17 +149,8 @@ def verify_code():
             flash("اکانت یافت نشد", "danger")
             return redirect(url_for('accounts.accounts'))
             
-        # Sign in with the code
-        # Create a new event loop for this function
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        try:
-            # Sign in with the code
-            success, message = loop.run_until_complete(account.sign_in_with_code(code, password))
-        finally:
-            # Clean up the loop when done
-            loop.close()
+        # Sign in with the code using the singleton event loop helper
+        success, message = safe_run_coroutine(account.sign_in_with_code(code, password), (False, "خطا در تایید کد"))
         
         # Save account manager data
         account_manager.save_accounts()
@@ -222,16 +188,8 @@ def verify_2fa():
             
         # Sign in with the 2FA password
         if account.client:
-            # Create a new event loop for this function
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            try:
-                # Sign in with the 2FA password
-                success, message = loop.run_until_complete(account.client.sign_in(password=password))
-            finally:
-                # Clean up the loop when done
-                loop.close()
+            # Use our helper to safely run the coroutine
+            success, message = safe_run_coroutine(account.client.sign_in(password=password), (False, "خطا در تایید رمز دو مرحله‌ای"))
             account.status = "active" if success else "2fa_error"
             account.connected = success
             account.error = None if success else message
@@ -261,17 +219,18 @@ def check_accounts_for_links():
         # Get max messages count from settings or use default
         max_messages = 100  # Default, could be from settings
         
-        # Check all accounts for links
-        # Create a new event loop for this function
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        try:
-            # Check accounts for links
-            results = loop.run_until_complete(account_manager.check_all_accounts_for_links(link_manager, max_messages))
-        finally:
-            # Clean up the loop when done
-            loop.close()
+        # Check all accounts for links using the singleton event loop helper
+        results = safe_run_coroutine(
+            account_manager.check_all_accounts_for_links(link_manager, max_messages),
+            {
+                "success": False,
+                "error": "خطا در بررسی اکانت‌ها",
+                "total_new_links": 0,
+                "accounts_checked": 0,
+                "accounts_with_links": 0,
+                "account_results": {}
+            }
+        )
         
         return jsonify(results)
     
@@ -303,17 +262,18 @@ def setup_account_scheduler(scheduler):
             logger = get_logger("account_checker")
             logger.info(f"Starting scheduled check for {len(account_manager.get_active_accounts())} active accounts")
             
-            # Run the check
-            # Create a new event loop for this function
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            try:
-                # Check accounts for links
-                results = loop.run_until_complete(account_manager.check_all_accounts_for_links(link_manager, 100))
-            finally:
-                # Clean up the loop when done
-                loop.close()
+            # Run the check using the singleton event loop helper
+            results = safe_run_coroutine(
+                account_manager.check_all_accounts_for_links(link_manager, 100),
+                {
+                    "success": False,
+                    "error": "خطا در بررسی اکانت‌ها",
+                    "total_new_links": 0,
+                    "accounts_checked": 0,
+                    "accounts_with_links": 0,
+                    "account_results": {}
+                }
+            )
             
             # Log the results
             logger.info(f"Scheduled check complete. Found {results['total_new_links']} new links from {results['accounts_with_links']} accounts")
