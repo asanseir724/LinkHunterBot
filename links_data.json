@@ -301,7 +301,8 @@
     "https://t.me/+MKh1ZfOGc3VmOGY0",
     "https://t.me/motoriranianhttps://t.me/motoriranian",
     "https://t.me/joinchat/KuCx_Hk_Zc40MmU0",
-    "https://t.me/joinchat/hXzdT57ek6U0YzU0"
+    "https://t.me/joinchat/hXzdT57ek6U0YzU0",
+    "https://t.me/joinchat/IPZluyPt2vxjMzc0"
   ],
   "new_links": [
     "https://t.me/+5mD25fOskF1lNGE0",
@@ -546,7 +547,8 @@
     "https://t.me/+MKh1ZfOGc3VmOGY0",
     "https://t.me/motoriranianhttps://t.me/motoriranian",
     "https://t.me/joinchat/KuCx_Hk_Zc40MmU0",
-    "https://t.me/joinchat/hXzdT57ek6U0YzU0"
+    "https://t.me/joinchat/hXzdT57ek6U0YzU0",
+    "https://t.me/joinchat/IPZluyPt2vxjMzc0"
   ],
   "channel_categories": {},
   "links_by_category": {
@@ -625,7 +627,8 @@
       "https://t.me/+Uhj51TgS7hdjMDJk",
       "https://t.me/+MKh1ZfOGc3VmOGY0",
       "https://t.me/motoriranianhttps://t.me/motoriranian",
-      "https://t.me/joinchat/KuCx_Hk_Zc40MmU0"
+      "https://t.me/joinchat/KuCx_Hk_Zc40MmU0",
+      "https://t.me/joinchat/IPZluyPt2vxjMzc0"
     ],
     "سرگرمی": [
       "https://t.me/joinchat/uUWDgg5qvxg3Yjc0",
@@ -799,15 +802,18 @@
     ]
   },
   "check_interval": 5,
-  "last_check": "2025-04-02T19:35:22.610651",
+  "last_check": "2025-04-02T19:40:51.712029",
   "telegram_token": "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA",
   "telegram_tokens": [
-    "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA"
+    "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA",
+    "7767311603:AAGLrfRdGYMiYfVkymBvT34eCsMRTJGecDA",
+    "8083362597:AAEAybtFbyx68VSQm-hIgXY37R1n0Na0INQ",
+    "7970651043:AAGgiQEDVTC1XufBrwSVAm3e_pIfh6FNhS0"
   ],
   "current_token_index": 0,
   "channel_link_counts": {
     "list_telegram": 3,
-    "linkdoni_sv": 3
+    "linkdoni_sv": 4
   },
   "auto_discover": true,
   "check_message_count": 10

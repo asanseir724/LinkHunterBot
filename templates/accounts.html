@@ -9,9 +9,9 @@
         <div class="card-body">
             <div class="alert alert-info">
                 <i class="fas fa-info-circle me-2"></i>
-                برای استفاده از اکانت‌های تلگرام جهت استخراج لینک از گروه‌ها و کانال‌هایی که عضو آنها هستید، ابتدا مشخصات API تلگرام را وارد کنید. 
+                برای استفاده از اکانت‌های تلگرام جهت استخراج لینک از گروه‌ها و کانال‌هایی که عضو آنها هستید، شماره تلفن خود را وارد کنید.
                 <br>
-                <strong>برای دریافت API ID و API Hash به <a href="https://my.telegram.org/apps" target="_blank">my.telegram.org/apps</a> مراجعه کنید.</strong>
+                <strong>کد تأیید به تلگرام شما ارسال خواهد شد که باید آن را وارد کنید.</strong>
             </div>
             
             <div class="mb-4">
@@ -134,13 +134,11 @@
             <div class="alert alert-light">
                 <h5 class="mb-3"><i class="fas fa-question-circle me-2"></i> چگونه اکانت تلگرام اضافه کنم؟</h5>
                 <ol>
-                    <li>ابتدا به <a href="https://my.telegram.org/apps" target="_blank">my.telegram.org/apps</a> مراجعه کنید و وارد حساب کاربری‌تان شوید.</li>
-                    <li>روی "API development tools" کلیک کنید و اطلاعات درخواستی را وارد نمایید.</li>
-                    <li>پس از تکمیل فرم، مقادیر API ID و API Hash به شما نمایش داده می‌شود.</li>
-                    <li>این مقادیر را در فرم "افزودن اکانت جدید" وارد کنید.</li>
+                    <li>روی دکمه "افزودن اکانت جدید" کلیک کنید.</li>
                     <li>شماره تلفن خود را با فرمت بین‌المللی (مثلا +989123456789) وارد کنید.</li>
-                    <li>پس از ثبت، کد تأیید به تلگرام شما ارسال می‌شود که باید آن را وارد کنید.</li>
-                    <li>اگر احراز هویت دو مرحله‌ای روی اکانت فعال باشد، باید رمز آن را نیز وارد کنید.</li>
+                    <li>پس از ثبت، روی دکمه اتصال کلیک کنید تا کد تأیید به تلگرام شما ارسال شود.</li>
+                    <li>کد تأیید را در فرم مربوطه وارد کنید.</li>
+                    <li>اگر احراز هویت دو مرحله‌ای روی اکانت فعال باشد، در مرحله بعد باید رمز آن را نیز وارد کنید.</li>
                 </ol>
             </div>
             
@@ -183,16 +181,9 @@
                                placeholder="+989123456789" required>
                         <div class="form-text">شماره تلفن را با فرمت بین‌المللی وارد کنید (مثلا +989123456789)</div>
                     </div>
-                    <div class="mb-3">
-                        <label for="api_id" class="form-label">API ID</label>
-                        <input type="number" class="form-control" id="api_id" name="api_id" 
-                               placeholder="12345678" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="api_hash" class="form-label">API Hash</label>
-                        <input type="text" class="form-control" id="api_hash" name="api_hash" 
-                               placeholder="1a2b3c4d5e6f7g8h9i0j" required>
-                    </div>
+                    <!-- Hidden fields for API ID and Hash with default values -->
+                    <input type="hidden" id="api_id" name="api_id" value="27733157">
+                    <input type="hidden" id="api_hash" name="api_hash" value="779895c18bfa58dda3260acfcb6c04a5">
                     <div class="mb-3">
                         <label for="account_name" class="form-label">نام (اختیاری)</label>
                         <input type="text" class="form-control" id="account_name" name="account_name" 
