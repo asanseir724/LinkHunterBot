@@ -324,6 +324,7 @@ def websites():
     
     return render_template('websites.html', 
                           websites=link_manager.get_websites(),
+                          website_categories=link_manager.get_website_categories(),
                           categories=link_manager.get_categories(),
                           scroll_count=link_manager.get_scroll_count())
 
@@ -402,6 +403,22 @@ def set_scroll_count():
             flash(f"Scroll count updated to {scroll_count}", "success")
     except ValueError:
         flash("Invalid scroll count value", "danger")
+    
+    return redirect(url_for('websites'))
+
+@app.route('/set_website_category', methods=['POST'])
+def set_website_category():
+    """Set or update category for a website"""
+    website = request.form.get('website')
+    category = request.form.get('category')
+    
+    if not website or not category:
+        flash("Both website and category are required", "danger")
+    else:
+        if link_manager.set_website_category(website, category):
+            flash(f"Category for {website} updated to '{category}'", "success")
+        else:
+            flash(f"Failed to update category for {website}", "danger")
     
     return redirect(url_for('websites'))
 

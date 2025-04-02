@@ -95,17 +95,46 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for website, category in websites.items() %}
+                        {% for website in websites %}
                         <tr>
                             <td>{{ loop.index }}</td>
                             <td>
                                 <a href="{{ website }}" target="_blank">{{ website }}</a>
                             </td>
-                            <td>{{ category }}</td>
+                            <td>{{ website_categories.get(website, "عمومی") }}</td>
                             <td>
-                                <form method="post" action="{{ url_for('remove_website', website=website) }}" style="display: inline;">
+                                <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#categoryModal{{ loop.index }}">
+                                    تغییر دسته‌بندی
+                                </button>
+                                <form method="post" action="{{ url_for('remove_website', website=website) }}" style="display: inline; margin-left: 5px;">
                                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('آیا مطمئن هستید؟')">حذف</button>
                                 </form>
+                                
+                                <!-- Modal for changing category -->
+                                <div class="modal fade" id="categoryModal{{ loop.index }}" tabindex="-1" aria-labelledby="categoryModalLabel{{ loop.index }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="categoryModalLabel{{ loop.index }}">تغییر دسته‌بندی وب‌سایت</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <form method="post" action="{{ url_for('set_website_category') }}">
+                                                    <input type="hidden" name="website" value="{{ website }}">
+                                                    <div class="mb-3">
+                                                        <label for="category{{ loop.index }}" class="form-label">دسته‌بندی جدید</label>
+                                                        <select id="category{{ loop.index }}" name="category" class="form-select">
+                                                            {% for cat in categories %}
+                                                            <option value="{{ cat }}" {% if website_categories.get(website) == cat %}selected{% endif %}>{{ cat }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-primary">ذخیره</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}

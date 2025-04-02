@@ -433,6 +433,10 @@ class LinkManager:
         """Get list of monitored websites"""
         return self.websites
         
+    def get_website_categories(self):
+        """Get website categories dictionary"""
+        return self.website_categories
+        
     def get_scroll_count(self):
         """Get the scroll count for websites"""
         return self.scroll_count
@@ -751,6 +755,30 @@ class LinkManager:
         self.channel_categories[channel] = category
         self.save_data()
         logger.info(f"Set category '{category}' for channel {channel}")
+        return True
+        
+    def set_website_category(self, website, category):
+        """
+        Set or update category for a website
+        
+        Args:
+            website (str): The website URL
+            category (str): The category to assign
+            
+        Returns:
+            bool: True if successful, False if website not found
+        """
+        # Normalize URL (ensure it has scheme)
+        if not website.startswith('http://') and not website.startswith('https://'):
+            website = 'https://' + website
+            
+        if website not in self.websites:
+            logger.warning(f"Cannot set category for unknown website: {website}")
+            return False
+            
+        self.website_categories[website] = category
+        self.save_data()
+        logger.info(f"Set category '{category}' for website {website}")
         return True
     
     def clear_links(self):
