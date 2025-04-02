@@ -496,11 +496,9 @@ def check_now():
                     # Get the total number of channels
                     total_channels = len(link_manager.get_channels())
                     
-                    # Adjust max_channels based on total channels
-                    max_channels = 20
-                    if total_channels > 50:
-                        max_channels = 30  # Handle more channels in one batch for manual check
-                        logger.info(f"Large number of channels ({total_channels}), using batch size of {max_channels}")
+                    # Adjust max_channels based on total channels - use all channels for manual check
+                    max_channels = total_channels  # Process all channels in one batch for manual check
+                    logger.info(f"Processing all {total_channels} channels in manual check")
                     
                     # Run the check in the background thread
                     logger.info("Starting background link check")
