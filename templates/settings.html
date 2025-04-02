@@ -1,0 +1,98 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>Bot Settings</h3>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4>Check Interval</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>Configure how often the bot checks for new links (in minutes).</p>
+                        
+                        <form action="{{ url_for('settings') }}" method="post">
+                            <div class="mb-3">
+                                <label for="interval" class="form-label">Check Interval (minutes)</label>
+                                <input type="number" class="form-control" id="interval" name="interval" min="1" value="{{ interval }}" required>
+                                <div class="form-text">
+                                    How often the bot will check for new links in monitored channels.
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Settings
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4>Bot Status</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-3">
+                                <i class="fas fa-robot fa-3x"></i>
+                            </div>
+                            <div>
+                                <h5>Status: 
+                                    {% if bot_status == "Running" %}
+                                        <span class="badge bg-success">Running</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Not Running</span>
+                                    {% endif %}
+                                </h5>
+                                <p class="mb-0">
+                                    {% if bot_status == "Running" %}
+                                        The bot is actively monitoring channels.
+                                    {% else %}
+                                        The bot is not running. Please check the logs for errors.
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        {% if bot_status != "Running" %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Bot is not running. Make sure your Telegram Bot Token is set correctly in the environment variables.
+                            </div>
+                        {% endif %}
+                        
+                        <form action="{{ url_for('check_now') }}" method="post">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-sync-alt"></i> Check Links Now
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-2">
+            <div class="card-header">
+                <h4>Setup Instructions</h4>
+            </div>
+            <div class="card-body">
+                <ol>
+                    <li>Create a Telegram bot using BotFather and get the API token</li>
+                    <li>Set the TELEGRAM_BOT_TOKEN environment variable with your token</li>
+                    <li>Add the bot to the channels you want to monitor</li>
+                    <li>Configure the check interval above</li>
+                </ol>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    The bot needs to be a member of the channels it monitors to be able to collect links.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

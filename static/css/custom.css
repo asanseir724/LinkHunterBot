@@ -1,0 +1,39 @@
+/* Custom styles for the Telegram Link Collector */
+
+/* Make the tables more readable */
+.table td.link-cell {
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Card styling */
+.card {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    font-weight: 500;
+}
+
+/* Footer styling */
+.footer {
+    margin-top: 2rem;
+    padding: 1rem 0;
+}
+
+/* Make copy button feedback visible */
+.copy-btn.copied {
+    background-color: var(--bs-success);
+    border-color: var(--bs-success);
+}
+
+/* Improve responsiveness */
+@media (max-width: 768px) {
+    .container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+}

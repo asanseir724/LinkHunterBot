@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Link Collector Dashboard</h3>
+                <form action="{{ url_for('check_now') }}" method="post">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sync-alt"></i> Check Now
+                    </button>
+                </form>
+            </div>
+            <div class="card-body">
+                <p class="lead">
+                    Welcome to the Telegram Link Collector. This application automatically extracts and stores unique links from specified Telegram channels at regular intervals.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-center">
+            <div class="card-header">Total Channels</div>
+            <div class="card-body">
+                <h2 class="display-4">{{ stats.total_channels }}</h2>
+                <p class="text-muted">Monitored channels</p>
+                <a href="{{ url_for('channels') }}" class="btn btn-sm btn-outline-primary">Manage Channels</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-center">
+            <div class="card-header">Total Links</div>
+            <div class="card-body">
+                <h2 class="display-4">{{ stats.total_links }}</h2>
+                <p class="text-muted">Unique links collected</p>
+                <a href="{{ url_for('links') }}" class="btn btn-sm btn-outline-primary">View Links</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-center">
+            <div class="card-header">Last Check</div>
+            <div class="card-body">
+                <p class="lead">{{ stats.last_check or 'Never' }}</p>
+                <p class="text-muted">Last time links were checked</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-center">
+            <div class="card-header">Next Check</div>
+            <div class="card-body">
+                <p class="lead">{{ stats.next_check }}</p>
+                <p class="text-muted">Next scheduled check time</p>
+                <a href="{{ url_for('settings') }}" class="btn btn-sm btn-outline-primary">Configure</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Quick Start Guide</h4>
+            </div>
+            <div class="card-body">
+                <ol class="list-group list-group-numbered">
+                    <li class="list-group-item">Add channels to monitor in the <a href="{{ url_for('channels') }}">Channels</a> page</li>
+                    <li class="list-group-item">Configure check interval in the <a href="{{ url_for('settings') }}">Settings</a> page</li>
+                    <li class="list-group-item">Links will be automatically collected and can be viewed in the <a href="{{ url_for('links') }}">Links</a> page</li>
+                    <li class="list-group-item">Click "Check Now" button to manually trigger a link collection</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

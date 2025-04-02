@@ -1,0 +1,79 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>Monitored Channels</h3>
+    </div>
+    <div class="card-body">
+        <p class="lead">
+            Add or remove Telegram channels that will be monitored for links.
+        </p>
+        
+        <form action="{{ url_for('channels') }}" method="post" class="mb-4">
+            <div class="input-group">
+                <span class="input-group-text">@</span>
+                <input type="text" class="form-control" name="channel" placeholder="Channel username (without @)" required>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Channel
+                </button>
+            </div>
+            <small class="text-muted">Enter channel username without the @ symbol</small>
+        </form>
+        
+        {% if channels %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Channel</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for channel in channels %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>
+                                    <a href="https://t.me/{{ channel }}" target="_blank">
+                                        @{{ channel }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <form action="{{ url_for('remove_channel', channel=channel) }}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to remove this channel?')">
+                                            <i class="fas fa-trash"></i> Remove
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No channels added yet. Add a channel to start monitoring.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h4>How to Add a Channel</h4>
+    </div>
+    <div class="card-body">
+        <ol>
+            <li>Find the channel you want to monitor</li>
+            <li>Copy the username (the part after "t.me/" in the channel link)</li>
+            <li>Paste it in the form above (without the @ symbol)</li>
+            <li>Click "Add Channel"</li>
+        </ol>
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i> Note: The bot must be a member of the channel to extract links.
+        </div>
+    </div>
+</div>
+{% endblock %}
