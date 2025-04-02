@@ -175,6 +175,7 @@ def verify_2fa():
     try:
         phone = request.form.get('phone')
         password = request.form.get('password')
+        code = request.form.get('code', '')  # Also get the code if it was submitted
         
         if not phone or not password:
             flash("لطفا رمز دو مرحله‌ای را وارد کنید", "danger")
@@ -185,24 +186,20 @@ def verify_2fa():
         if not account:
             flash("اکانت یافت نشد", "danger")
             return redirect(url_for('accounts.accounts'))
-            
-        # Sign in with the 2FA password
-        if account.client:
-            # Use our helper to safely run the coroutine
-            success, message = safe_run_coroutine(account.client.sign_in(password=password), (False, "خطا در تایید رمز دو مرحله‌ای"))
-            account.status = "active" if success else "2fa_error"
-            account.connected = success
-            account.error = None if success else message
-            
-            # Save account manager data
-            account_manager.save_accounts()
-            
-            if success:
-                flash("اکانت با موفقیت تأیید شد", "success")
-            else:
-                flash(f"خطا در تأیید رمز دو مرحله‌ای: {message}", "danger")
+        
+        # Try to sign in again with the code and password
+        success, message = safe_run_coroutine(
+            account.sign_in_with_code(code, password),
+            (False, "خطا در تایید رمز دو مرحله‌ای")
+        )
+        
+        # Save account manager data
+        account_manager.save_accounts()
+        
+        if success:
+            flash("اکانت با موفقیت تأیید شد", "success")
         else:
-            flash("اکانت به درستی راه‌اندازی نشده است", "danger")
+            flash(f"خطا در تأیید رمز دو مرحله‌ای: {message}", "danger")
             
         return redirect(url_for('accounts.accounts'))
     

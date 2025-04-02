@@ -77,13 +77,29 @@ class UserAccount:
                 return False, "Client not initialized"
             
             try:
-                await self.client.sign_in(self.phone, code)
-                self.status = "active"
-                self.connected = True
-                self.error = None
-                return True, "Successfully signed in"
+                # If password is provided alongside the code, attempt to use it for 2FA
+                if password:
+                    try:
+                        # First sign in with the phone code
+                        await self.client.sign_in(self.phone, code)
+                    except SessionPasswordNeededError:
+                        # Now use the password for two-factor authentication
+                        await self.client.sign_in(password=password)
+                    
+                    self.status = "active"
+                    self.connected = True 
+                    self.error = None
+                    return True, "Successfully signed in with 2FA"
+                else:
+                    # Regular sign in without 2FA
+                    await self.client.sign_in(self.phone, code)
+                    self.status = "active"
+                    self.connected = True
+                    self.error = None
+                    return True, "Successfully signed in"
+                    
             except SessionPasswordNeededError:
-                # Two-factor authentication is enabled
+                # Two-factor authentication is enabled but no password was provided
                 self.status = "2fa_required"
                 return False, "Two-factor authentication required"
             except FloodWaitError as e:

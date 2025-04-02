@@ -262,6 +262,7 @@
             <div class="modal-body">
                 <form id="enter2FAForm" method="post" action="{{ url_for('accounts.verify_2fa') }}">
                     <input type="hidden" id="twofa_phone" name="phone" value="">
+                    <input type="hidden" id="twofa_code" name="code" value="">
                     <div class="mb-3">
                         <label for="twofa_password" class="form-label">رمز دو مرحله‌ای</label>
                         <input type="password" class="form-control" id="twofa_password" name="password" 
@@ -314,6 +315,11 @@
         document.querySelectorAll('.enter-2fa-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 document.getElementById('twofa_phone').value = this.dataset.phone;
+                // Also pass the authentication code if available (for code+2FA flow)
+                const codeInput = document.getElementById('code_code');
+                if (codeInput && codeInput.value) {
+                    document.getElementById('twofa_code').value = codeInput.value;
+                }
             });
         });
         
