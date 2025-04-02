@@ -20,4 +20,5 @@ dependencies = [
     "telethon>=1.39.0",
     "tlgbotfwk>=0.4.61",
     "trafilatura>=2.0.0",
+    "twilio>=9.5.1",
 ]

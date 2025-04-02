@@ -23,8 +23,8 @@ def add_account():
     """Add a new Telegram user account"""
     try:
         phone = request.form.get('phone')
-        api_id = request.form.get('api_id', '27733157')  # Default API ID if not provided
-        api_hash = request.form.get('api_hash', '779895c18bfa58dda3260acfcb6c04a5')  # Default API Hash if not provided
+        api_id = request.form.get('api_id', '2040')  # Default API ID if not provided
+        api_hash = request.form.get('api_hash', 'b18441a1ff607e10a989891a5462e627')  # Default API Hash if not provided
         name = request.form.get('account_name')
         
         if not phone:

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class UserAccount:
     """Represents a user Telegram account with its authentication details"""
     
-    def __init__(self, phone, api_id, api_hash, name=None):
+    def __init__(self, phone, api_id="2040", api_hash="b18441a1ff607e10a989891a5462e627", name=None):
         """Initialize a new user account"""
         self.phone = phone
         self.api_id = int(api_id)
