@@ -799,8 +799,12 @@
     ]
   },
   "check_interval": 5,
-  "last_check": "2025-04-02T19:22:56.869263",
+  "last_check": "2025-04-02T19:35:22.610651",
   "telegram_token": "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA",
+  "telegram_tokens": [
+    "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA"
+  ],
+  "current_token_index": 0,
   "channel_link_counts": {
     "list_telegram": 3,
     "linkdoni_sv": 3

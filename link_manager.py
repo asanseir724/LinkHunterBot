@@ -27,6 +27,8 @@ class LinkManager:
         self.channel_link_counts = {} # Dictionary to track link count per channel
         self.auto_discover = True     # Auto-discover new link-sharing channels
         self.check_message_count = 10 # Number of recent messages to check per channel
+        self.telegram_tokens = []     # List of Telegram bot tokens to use in rotation
+        self.current_token_index = 0  # Current index for token rotation
         
         # Default categories
         self.default_categories = ["عمومی", "سرگرمی", "فیلم", "موسیقی", "علمی", "خبری", "ورزشی", "آموزشی", "لینکدونی"]
@@ -98,6 +100,8 @@ class LinkManager:
                     self.check_interval = data.get('check_interval', 5)
                     self.last_check = data.get('last_check')
                     self.telegram_token = data.get('telegram_token')
+                    self.telegram_tokens = data.get('telegram_tokens', [])
+                    self.current_token_index = data.get('current_token_index', 0)
                     self.channel_link_counts = data.get('channel_link_counts', {})
                     self.auto_discover = data.get('auto_discover', True)
                     self.check_message_count = data.get('check_message_count', 10)
@@ -106,6 +110,11 @@ class LinkManager:
                     if self.telegram_token:
                         os.environ["TELEGRAM_BOT_TOKEN"] = self.telegram_token
                         logger.info("Loaded Telegram token from storage")
+                        
+                    # Make sure the main token is in the tokens list
+                    if self.telegram_token and self.telegram_token not in self.telegram_tokens:
+                        self.telegram_tokens.append(self.telegram_token)
+                        logger.debug("Added main token to the token rotation list")
                         
                 logger.info(f"Loaded data: {len(self.channels)} channels, {len(self.links)} links, {len(self.new_links)} new links")
             except Exception as e:
@@ -123,6 +132,8 @@ class LinkManager:
                 'check_interval': self.check_interval,
                 'last_check': self.last_check,
                 'telegram_token': self.telegram_token,
+                'telegram_tokens': getattr(self, 'telegram_tokens', []),
+                'current_token_index': getattr(self, 'current_token_index', 0),
                 'channel_link_counts': self.channel_link_counts,
                 'auto_discover': self.auto_discover,
                 'check_message_count': self.check_message_count
@@ -136,15 +147,84 @@ class LinkManager:
     def set_telegram_token(self, token):
         """Set the Telegram Bot Token"""
         self.telegram_token = token
+        
+        # Add to the token list if not already there
+        if not hasattr(self, 'telegram_tokens'):
+            self.telegram_tokens = []
+            self.current_token_index = 0
+            
+        if token not in self.telegram_tokens:
+            self.telegram_tokens.append(token)
+            
         # Also set in the environment for immediate use
         os.environ["TELEGRAM_BOT_TOKEN"] = token
         self.save_data()
         logger.info("Telegram token set and saved to storage")
         return True
         
+    def add_telegram_token(self, token):
+        """Add another Telegram Bot Token to the rotation"""
+        # Initialize token list if it doesn't exist
+        if not hasattr(self, 'telegram_tokens'):
+            self.telegram_tokens = []
+            self.current_token_index = 0
+            
+        # Check if this token already exists to prevent duplicates
+        if token not in self.telegram_tokens:
+            self.telegram_tokens.append(token)
+            # If this is the first token, also set it as main token
+            if not self.telegram_token:
+                self.telegram_token = token
+                os.environ["TELEGRAM_BOT_TOKEN"] = token
+            self.save_data()
+            logger.info(f"Added new token to rotation (total tokens: {len(self.telegram_tokens)})")
+            return True
+        return False
+        
+    def remove_telegram_token(self, token):
+        """Remove a Telegram Bot Token from the rotation"""
+        if not hasattr(self, 'telegram_tokens'):
+            return False
+            
+        if token in self.telegram_tokens:
+            self.telegram_tokens.remove(token)
+            
+            # If we removed the main token, update it to the first available token
+            if self.telegram_token == token and self.telegram_tokens:
+                self.telegram_token = self.telegram_tokens[0]
+                os.environ["TELEGRAM_BOT_TOKEN"] = self.telegram_token
+                
+            self.save_data()
+            logger.info(f"Removed token from rotation (remaining tokens: {len(self.telegram_tokens)})")
+            return True
+        return False
+        
     def get_telegram_token(self):
-        """Get the stored Telegram Bot Token"""
-        return self.telegram_token
+        """Get the next stored Telegram Bot Token using rotation"""
+        # If there are no tokens in the rotation, just return the main token
+        if not hasattr(self, 'telegram_tokens') or not self.telegram_tokens:
+            return self.telegram_token
+        
+        # Get the current token index for rotation
+        current_index = getattr(self, 'current_token_index', 0)
+        
+        # Get the token at the current index
+        token = self.telegram_tokens[current_index]
+        
+        # Update the index for the next call (circular rotation)
+        next_index = (current_index + 1) % len(self.telegram_tokens)
+        self.current_token_index = next_index
+        
+        logger.debug(f"Using token {current_index+1}/{len(self.telegram_tokens)} in rotation")
+        return token
+    
+    def get_all_telegram_tokens(self):
+        """Get all stored Telegram Bot Tokens"""
+        if hasattr(self, 'telegram_tokens') and self.telegram_tokens:
+            return self.telegram_tokens
+        elif self.telegram_token:
+            return [self.telegram_token]
+        return []
     
     def add_channel(self, channel, category="عمومی"):
         """

@@ -81,9 +81,40 @@
                         </div>
                         
                         <div class="mb-3">
+                            <h5>Token Management</h5>
+                            <p class="small text-muted">Use multiple tokens to avoid Telegram API rate limits.</p>
+                            
+                            {% if all_tokens %}
+                            <div class="mb-3">
+                                <div class="card">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">Active Tokens ({{ all_tokens|length }})</h6>
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <ul class="list-group list-group-flush">
+                                            {% for token in all_tokens %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <span class="badge bg-secondary me-2">Token {{ loop.index }}</span>
+                                                    <span class="token-preview">{{ token[:6] }}...{{ token[-4:] }}</span>
+                                                </div>
+                                                <form action="{{ url_for('remove_token') }}" method="post" class="d-inline">
+                                                    <input type="hidden" name="token" value="{{ token }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
                             <form action="{{ url_for('set_token') }}" method="post">
                                 <div class="mb-3">
-                                    <label for="token" class="form-label">Telegram Bot Token</label>
+                                    <label for="token" class="form-label">Add Telegram Bot Token</label>
                                     <div class="input-group">
                                         <input type="password" class="form-control" id="token" name="token" placeholder="Enter your Telegram Bot Token" required>
                                         <button class="btn btn-outline-secondary" type="button" id="toggleToken">
@@ -91,11 +122,11 @@
                                         </button>
                                     </div>
                                     <div class="form-text">
-                                        Get a token from @BotFather on Telegram. This is required for the bot to work.
+                                        Get a token from @BotFather on Telegram. Multiple tokens help bypass rate limits.
                                     </div>
                                 </div>
                                 <button type="submit" class="btn btn-success mb-3">
-                                    <i class="fas fa-save"></i> Save Token & Start Bot
+                                    <i class="fas fa-save"></i> Add Token & Start Bot
                                 </button>
                             </form>
                         </div>

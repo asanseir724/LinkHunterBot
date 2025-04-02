@@ -296,12 +296,16 @@ def settings():
     # Get available categories
     categories = link_manager.get_categories()
     
+    # Get all tokens for display
+    all_tokens = link_manager.get_all_telegram_tokens()
+    
     return render_template('settings.html', 
                           interval=link_manager.get_check_interval(),
                           bot_status=bot_status,
                           categories=categories,
                           message_count=link_manager.check_message_count,
-                          auto_discover=link_manager.auto_discover)
+                          auto_discover=link_manager.auto_discover,
+                          all_tokens=all_tokens)
 
 @app.route('/set_token', methods=['POST'])
 def set_token():
@@ -311,9 +315,12 @@ def set_token():
         flash("لطفا توکن معتبر وارد کنید", "danger")
         return redirect(url_for('settings'))
     
-    # Save the token permanently in link_manager
-    link_manager.set_telegram_token(token)
-    logger.info("Telegram Bot Token set and saved, attempting to initialize bot")
+    # Add the token to rotation in link_manager
+    if not link_manager.add_telegram_token(token):
+        flash("این توکن قبلاً اضافه شده است", "warning")
+        return redirect(url_for('settings'))
+    
+    logger.info("Telegram Bot Token added to rotation, attempting to initialize bot")
     
     # Try to initialize the bot
     try:
@@ -337,6 +344,31 @@ def set_token():
         logger.error(f"Traceback: {traceback.format_exc()}")
         
         flash(f"خطا در راه‌اندازی ربات: {str(e)}", "danger")
+    
+    return redirect(url_for('settings'))
+
+@app.route('/remove_token', methods=['POST'])
+def remove_token():
+    """Remove a Telegram Bot Token from rotation"""
+    token = request.form.get('token')
+    if not token:
+        flash("توکن مشخص نشده است", "danger")
+        return redirect(url_for('settings'))
+    
+    # Remove the token from rotation
+    if link_manager.remove_telegram_token(token):
+        flash("توکن با موفقیت حذف شد", "success")
+    else:
+        flash("این توکن در سیستم موجود نیست", "warning")
+    
+    # Get remaining tokens
+    remaining_tokens = link_manager.get_all_telegram_tokens()
+    
+    # If all tokens removed, update bot status
+    if not remaining_tokens:
+        global bot_status
+        bot_status = "Not Running"
+        flash("همه توکن‌ها حذف شدند. ربات غیرفعال شد.", "warning")
     
     return redirect(url_for('settings'))
 
