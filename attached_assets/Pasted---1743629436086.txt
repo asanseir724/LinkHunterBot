@@ -1,0 +1,161 @@
+راهنمای راه‌اندازی سیستم لینکدونی تلگرام
+این راهنمای نصب و راه‌اندازی کامل سیستم لینکدونی تلگرام روی سرور مجازی است. تمام دستورات به ترتیب اجرا آورده شده است.
+
+پیش‌نیازهای سیستم
+مشخصات سرور پیشنهادی
+سیستم عامل: اوبونتو ۲۰.۰۴ یا بالاتر
+RAM: حداقل ۲ گیگابایت (۴ گیگابایت پیشنهاد می‌شود)
+فضای دیسک: حداقل ۱۰ گیگابایت
+CPU: حداقل ۱ هسته (۲ هسته پیشنهاد می‌شود)
+مراحل نصب و راه‌اندازی
+۱. به‌روزرسانی سیستم و نصب پیش‌نیازها
+# به‌روزرسانی سیستم
+sudo apt update
+sudo apt upgrade -y
+# نصب پیش‌نیازهای ضروری
+sudo apt install -y python3 python3-pip python3-venv git screen build-essential libssl-dev
+۲. نصب PostgreSQL (اختیاری - در صورت نیاز)
+# نصب پستگرس
+sudo apt install -y postgresql postgresql-contrib
+# ایجاد کاربر و دیتابیس
+sudo -u postgres psql -c "CREATE USER linkdoni WITH PASSWORD 'رمز_عبور_مورد_نظر';"
+sudo -u postgres psql -c "CREATE DATABASE linkdoni_db OWNER linkdoni;"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE linkdoni_db TO linkdoni;"
+۳. دانلود و آماده‌سازی پروژه
+# ایجاد پوشه برای پروژه
+mkdir -p /var/www/linkdoni
+cd /var/www/linkdoni
+# نصب Git اگر قبلاً نصب نشده
+which git || sudo apt install -y git
+# کلون کردن مخزن (این دستور را با آدرس مخزن خود جایگزین کنید)
+git clone https://github.com/username/telegram-linkdoni.git .
+# ایجاد محیط مجازی پایتون
+python3 -m venv venv
+source venv/bin/activate
+# نصب کتابخانه‌های مورد نیاز
+pip install -r dependencies.txt
+# اگر فایل dependencies.txt وجود ندارد، می‌توانید با این دستور نصب کنید
+pip install flask flask-sqlalchemy gunicorn pandas openpyxl beautifulsoup4 requests trafilatura python-telegram-bot telethon twilio apscheduler email-validator psycopg2-binary scheduler
+۴. ساخت پوشه‌های مورد نیاز
+# ایجاد پوشه‌های لازم برای ذخیره لاگ‌ها و فایل‌های صادر شده
+mkdir -p logs
+mkdir -p static/exports
+mkdir -p sessions
+chmod 777 logs static/exports sessions
+۵. تنظیم متغیرهای محیطی
+# ایجاد فایل متغیرهای محیطی
+cat > .env << EOL
+# متغیرهای محیطی پروژه
+SESSION_SECRET=یک_مقدار_طولانی_و_تصادفی
+TELEGRAM_BOT_TOKEN=توکن_تلگرام_بات
+# تنظیمات Twilio (در صورتیکه قصد استفاده از نوتیفیکیشن SMS را دارید)
+TWILIO_ACCOUNT_SID=شناسه_اکانت_توییلیو
+TWILIO_AUTH_TOKEN=توکن_احراز_هویت_توییلیو
+TWILIO_PHONE_NUMBER=شماره_تلفن_توییلیو
+# تنظیمات دیتابیس (در صورت استفاده از PostgreSQL)
+DATABASE_URL=postgresql://linkdoni:رمز_عبور_مورد_نظر@localhost/linkdoni_db
+EOL
+# اعمال متغیرهای محیطی
+set -a
+source .env
+set +a
+۶. تست اولیه برنامه
+# تست اجرای برنامه
+python main.py
+# در صورت اجرای موفقیت‌آمیز، با Ctrl+C آن را متوقف کنید
+۷. نصب و راه‌اندازی Gunicorn برای اجرای تولید
+# اضافه کردن Gunicorn Service
+sudo tee /etc/systemd/system/linkdoni.service > /dev/null <<EOL
+[Unit]
+Description=Telegram Linkdoni Bot
+After=network.target
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/linkdoni
+Environment="PATH=/var/www/linkdoni/venv/bin"
+EnvironmentFile=/var/www/linkdoni/.env
+ExecStart=/var/www/linkdoni/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 --access-logfile /var/www/linkdoni/logs/access.log --error-logfile /var/www/linkdoni/logs/error.log main:app
+Restart=always
+[Install]
+WantedBy=multi-user.target
+EOL
+# تغییر مالکیت پوشه
+sudo chown -R www-data:www-data /var/www/linkdoni
+# فعال‌سازی و شروع سرویس
+sudo systemctl daemon-reload
+sudo systemctl enable linkdoni
+sudo systemctl start linkdoni
+۸. نصب Nginx (اختیاری - برای دسترسی از طریق وب)
+# نصب Nginx
+sudo apt install -y nginx
+# تنظیم کانفیگ Nginx
+sudo tee /etc/nginx/sites-available/linkdoni > /dev/null <<EOL
+server {
+    listen 80;
+    server_name دامنه_یا_آی‌پی_سرور;
+    location / {
+        include proxy_params;
+        proxy_pass http://127.0.0.1:5000;
+    }
+}
+EOL
+# فعال‌سازی سایت
+sudo ln -s /etc/nginx/sites-available/linkdoni /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+# نصب Let's Encrypt برای SSL (اختیاری)
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d دامنه_شما
+نکات ضروری
+ساخت Bot تلگرام
+به @BotFather در تلگرام پیام دهید
+با دستور /newbot یک بات جدید بسازید
+نام و نام کاربری بات را مشخص کنید
+توکن API را که BotFather به شما می‌دهد کپی کنید
+توکن را در فایل .env در متغیر TELEGRAM_BOT_TOKEN قرار دهید
+تنظیمات Twilio (برای نوتیفیکیشن SMS)
+در سایت Twilio ثبت‌نام کنید
+یک شماره تلفن از Twilio تهیه کنید
+شناسه حساب (Account SID) و توکن احراز هویت (Auth Token) را از داشبورد کپی کنید
+این اطلاعات را در فایل .env در متغیرهای مربوطه قرار دهید
+دستورات مفید برای مدیریت سیستم
+بررسی وضعیت سرویس
+sudo systemctl status linkdoni
+راه‌اندازی مجدد سرویس
+sudo systemctl restart linkdoni
+مشاهده لاگ‌های سیستم
+# لاگ‌های سرویس
+sudo journalctl -u linkdoni.service -f
+# لاگ‌های برنامه
+tail -f /var/www/linkdoni/logs/bot.log
+به‌روزرسانی برنامه از مخزن
+cd /var/www/linkdoni
+git pull
+source venv/bin/activate
+pip install -r dependencies.txt
+sudo systemctl restart linkdoni
+اجرای برنامه در پس‌زمینه با Screen (روش جایگزین)
+cd /var/www/linkdoni
+screen -S linkdoni
+source venv/bin/activate
+source .env
+python main.py
+# برای خارج شدن از screen بدون قطع برنامه: Ctrl+A و سپس D
+# برای بازگشت به screen: screen -r linkdoni
+عیب‌یابی
+اگر برنامه اجرا نمی‌شود
+# بررسی خطاها در لاگ‌ها
+tail -f /var/www/linkdoni/logs/bot.log
+sudo journalctl -u linkdoni.service -f
+# بررسی دسترسی‌ها
+sudo chown -R www-data:www-data /var/www/linkdoni
+sudo chmod -R 755 /var/www/linkdoni
+sudo chmod -R 777 /var/www/linkdoni/logs /var/www/linkdoni/static/exports /var/www/linkdoni/sessions
+اگر به وب‌سایت دسترسی ندارید
+# بررسی وضعیت Nginx
+sudo systemctl status nginx
+# بررسی فایروال
+sudo ufw status
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
