@@ -270,7 +270,17 @@
     "https://t.me/joinchat/KyMNXtwKWddkNmE0",
     "https://t.me/joinchat/Ac0QUOnSOe43YjFk",
     "https://t.me/joinchat/1ATTjUrhj8U5N2Rk",
-    "https://t.me/joinchat/SFsgUvtvVWiN_s2h"
+    "https://t.me/joinchat/SFsgUvtvVWiN_s2h",
+    "https://t.me/joinchat/UX6hGVFs5Z0CC0RDf7cxCQ",
+    "https://t.me/joinchat/0p9x7KeFR684ZWI0",
+    "https://t.me/joinchat/rJxU8k1UFtgzMzE0",
+    "https://t.me/joinchat/RNxuxUTlURi5R2zf",
+    "https://t.me/joinchat/xjKtSc1MlzU1NGI0",
+    "https://t.me/joinchat/0p0S7EJCQ2cxNWY8",
+    "https://t.me/joinchat/d0SxFQ9IOdw4NjQx",
+    "https://t.me/joinchat/VL-bcHkPNYWMOeED",
+    "https://t.me/joinchat/SwCaqZ__vf1jqJs9",
+    "https://t.me/+ndZ_kx4oanQxZDM8"
   ],
   "new_links": [
     "https://t.me/joinchat/Gs2VzEbTA6owMmFk",
@@ -477,7 +487,17 @@
     "https://t.me/joinchat/KyMNXtwKWddkNmE0",
     "https://t.me/joinchat/Ac0QUOnSOe43YjFk",
     "https://t.me/joinchat/1ATTjUrhj8U5N2Rk",
-    "https://t.me/joinchat/SFsgUvtvVWiN_s2h"
+    "https://t.me/joinchat/SFsgUvtvVWiN_s2h",
+    "https://t.me/joinchat/UX6hGVFs5Z0CC0RDf7cxCQ",
+    "https://t.me/joinchat/0p9x7KeFR684ZWI0",
+    "https://t.me/joinchat/rJxU8k1UFtgzMzE0",
+    "https://t.me/joinchat/RNxuxUTlURi5R2zf",
+    "https://t.me/joinchat/xjKtSc1MlzU1NGI0",
+    "https://t.me/joinchat/0p0S7EJCQ2cxNWY8",
+    "https://t.me/joinchat/d0SxFQ9IOdw4NjQx",
+    "https://t.me/joinchat/VL-bcHkPNYWMOeED",
+    "https://t.me/joinchat/SwCaqZ__vf1jqJs9",
+    "https://t.me/+ndZ_kx4oanQxZDM8"
   ],
   "channel_categories": {
     "cingroup1984https": "لینکدونی",
@@ -566,7 +586,14 @@
       "https://t.me/joinchat/AB_R_rg-nMpiNjQx",
       "https://t.me/joinchat/oHZUVcgwzn9kNjk8",
       "https://t.me/joinchat/xyo-CQIEbzAzYzJk",
-      "https://t.me/joinchat/KyMNXtwKWddkNmE0"
+      "https://t.me/joinchat/KyMNXtwKWddkNmE0",
+      "https://t.me/joinchat/0p9x7KeFR684ZWI0",
+      "https://t.me/joinchat/rJxU8k1UFtgzMzE0",
+      "https://t.me/joinchat/RNxuxUTlURi5R2zf",
+      "https://t.me/joinchat/d0SxFQ9IOdw4NjQx",
+      "https://t.me/joinchat/VL-bcHkPNYWMOeED",
+      "https://t.me/joinchat/SwCaqZ__vf1jqJs9",
+      "https://t.me/+ndZ_kx4oanQxZDM8"
     ],
     "سرگرمی": [
       "https://t.me/joinchat/AFtgN6gddwU2ZTg0",
@@ -696,11 +723,14 @@
       "https://t.me/joinchat/ewcKypFWrJIyM2Fk",
       "https://t.me/joinchat/Ac0QUOnSOe43YjFk",
       "https://t.me/joinchat/1ATTjUrhj8U5N2Rk",
-      "https://t.me/joinchat/SFsgUvtvVWiN_s2h"
+      "https://t.me/joinchat/SFsgUvtvVWiN_s2h",
+      "https://t.me/joinchat/UX6hGVFs5Z0CC0RDf7cxCQ",
+      "https://t.me/joinchat/xjKtSc1MlzU1NGI0",
+      "https://t.me/joinchat/0p0S7EJCQ2cxNWY8"
     ]
   },
   "check_interval": 5,
-  "last_check": "2025-04-02T20:53:49.957369",
+  "last_check": "2025-04-02T20:56:57.801018",
   "telegram_token": "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA",
   "telegram_tokens": [
     "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA",
@@ -726,7 +756,9 @@
     "linkyab_irani": 71,
     "kerman_tehran": 9,
     "esfahanlinkdoniesfone": 2,
-    "linkdoooniiiisho": 9
+    "linkdoooniiiisho": 9,
+    "turk_oshaglarin_linke": 9,
+    "linkdony_iran": 1
   },
   "auto_discover": true,
   "check_message_count": 10,

@@ -513,7 +513,7 @@ def check_now():
                             'new_links': result,
                             'status': 'completed',
                             'total_channels': total_channels,
-                            'channels_checked': min(total_channels, max_channels)
+                            'channels_checked': total_channels  # In manual check we process all channels
                         })
                     
                 except Exception as e:

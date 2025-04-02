@@ -102,7 +102,7 @@ function checkBackgroundStatus() {
                 statusElement.innerHTML = `
                     <div class="alert alert-success">
                         <strong>عملیات موفق!</strong> ${data.new_links} لینک جدید در تاریخ ${data.timestamp} استخراج شد.
-                        از مجموع ${data.total_channels} کانال، ${data.channels_checked} کانال بررسی شد.
+                        تمام ${data.total_channels} کانال بررسی شدند.
                         ${getGroupsCheckedMessage(data)}
                     </div>
                 `;
