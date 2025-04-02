@@ -1,64 +1,99 @@
-# استخراج کننده لینک‌های تلگرام (Telegram Link Extractor)
+# Link Hunter Bot (ربات لینک‌یاب تلگرام)
 
-ابزار جامع برای استخراج، مدیریت و سازماندهی خودکار لینک‌های گروه‌های تلگرام از کانال‌های منبع.
+A comprehensive Telegram bot designed to automatically extract and store links from Telegram channels. The bot monitors specified channels, extracts links from messages, and provides a web interface for managing the collected links.
 
-## ویژگی‌های اصلی
+## Features
 
-- استخراج خودکار لینک‌های تلگرام از کانال‌های مشخص شده
-- پشتیبانی از اکانت‌های کاربری تلگرام با احراز هویت دو مرحله‌ای
-- بررسی خودکار گروه‌ها برای یافتن لینک‌های جدید
-- دسته‌بندی خودکار لینک‌ها بر اساس محتوا و موضوع
-- رابط کاربری وب برای مدیریت آسان لینک‌ها و کانال‌ها
-- امکان خروجی‌گیری به فرمت Excel
-- لاگ‌های دقیق جهت نظارت بر فعالیت‌های سیستم
-- مدیریت توکن‌های تلگرام با سیستم چرخشی
+- **Automated Link Extraction**: Monitors Telegram channels and extracts links automatically
+- **Category-based Link Organization**: Classifies links into categories based on channel or content
+- **Web Dashboard**: Full-featured web interface for managing channels, links, and settings
+- **Excel Export**: Export links to Excel format with timestamps
+- **Token Rotation**: Support for multiple Telegram Bot tokens to avoid rate limits
+- **User Account Integration**: Support for adding Telegram user accounts to access private channels
+- **SMS Notifications**: Optional SMS notifications via Twilio when new links are found
+- **Auto-discovery**: Automatically finds and adds new link-sharing channels
 
-## نیازمندی‌ها
+## Requirements
 
-- Python 3.10+
+- Python 3.8+
 - Flask
 - Telethon
-- Flask-SQLAlchemy
-- Pandas
-- Requests
-- Gunicorn
+- Twilio (optional, for SMS notifications)
+- PostgreSQL (optional, for larger deployments)
 
-## روش نصب
+## Setup Instructions
 
-1. کلون کردن مخزن:
+### 1. Clone the Repository
+
 ```bash
-git clone https://github.com/yourusername/telegram-link-extractor.git
-cd telegram-link-extractor
+git clone https://github.com/asanseir724/LinkHunterBot.git
+cd LinkHunterBot
 ```
 
-2. نصب پکیج‌های مورد نیاز:
+### 2. Install Dependencies
+
 ```bash
-pip install -r requirements.txt
+pip install -r dependencies.txt
 ```
 
-3. اجرای برنامه:
+### 3. Set Environment Variables
+
+Create a `.env` file in the project root with the following variables:
+
+```
+SESSION_SECRET=your_session_secret
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+
+# For SMS notifications (optional)
+TWILIO_ACCOUNT_SID=your_twilio_account_sid
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_PHONE_NUMBER=your_twilio_phone_number
+```
+
+### 4. Run the Application
+
 ```bash
 python main.py
 ```
 
-## ساختار پروژه
+The web interface will be available at `http://localhost:5000`.
 
-- `main.py`: نقطه ورود اصلی برنامه
-- `bot.py`: پیاده‌سازی ربات تلگرام
-- `link_manager.py`: مدیریت لینک‌ها و استخراج آنها
-- `user_accounts.py`: مدیریت اکانت‌های کاربری تلگرام
-- `account_routes.py`: مسیرهای Flask برای مدیریت اکانت
-- `async_helper.py`: کلاس‌های کمکی برای عملیات ناهمگام
-- `templates/`: قالب‌های HTML برای رابط کاربری وب
-- `static/`: فایل‌های استاتیک (CSS، JS)
+## Configuration
 
-## تنظیمات
+1. **Bot Token**: Obtain a bot token from [@BotFather](https://t.me/BotFather) and set it in the `.env` file or through the settings page
+2. **Add Channels**: Add Telegram channels to monitor through the web interface
+3. **Configure Intervals**: Set how frequently the bot checks for new links
+4. **SMS Notifications**: Optionally configure SMS notifications for when new links are found
 
-برای استفاده از برنامه، نیاز به تنظیم موارد زیر دارید:
+## User Accounts (Optional)
 
-1. توکن ربات تلگرام (از @BotFather)
-2. در صورت نیاز، مشخصات API تلگرام برای اکانت‌های کاربری (از my.telegram.org/apps)
+To monitor private channels, you can add user accounts:
 
-## لایسنس
+1. Go to the Accounts page
+2. Add a new account with phone number, API ID, and API Hash
+3. Complete the authorization process
 
-این پروژه تحت لایسنس MIT منتشر شده است.
+## SMS Notifications (Optional)
+
+To enable SMS notifications:
+
+1. Create a Twilio account and get credentials
+2. Set environment variables for Twilio
+3. Configure notification settings in the web interface
+
+## Project Structure
+
+- `main.py`: Main application entry point
+- `bot.py`: Telegram bot functionality
+- `link_manager.py`: Link extraction and management
+- `user_accounts.py`: User account integration
+- `notification_utils.py`: Notification system
+- `templates/`: Web interface templates
+
+## License
+
+This project is open source software licensed under the MIT license.
+
+## Support
+
+For questions, issues, or contributions, please open an issue on GitHub or contact the repository owner.
