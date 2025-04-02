@@ -298,7 +298,8 @@
     "https://t.me/joinchat/KyMNXtwKWddkNmE0",
     "https://t.me/joinchat/Ac0QUOnSOe43YjFk",
     "https://t.me/joinchat/1ATTjUrhj8U5N2Rk",
-    "https://t.me/joinchat/SFsgUvtvVWiN_s2h"
+    "https://t.me/joinchat/SFsgUvtvVWiN_s2h",
+    "https://t.me/joinchat/Gs2VzEbTA6owMmFk"
   ],
   "new_links": [
     "https://t.me/+HNa-FSr3xZMyNGM0https://t.me/+HNa-FSr3xZMyNGM0",
@@ -540,8 +541,12 @@
     "https://t.me/joinchat/KyMNXtwKWddkNmE0",
     "https://t.me/joinchat/Ac0QUOnSOe43YjFk",
     "https://t.me/joinchat/1ATTjUrhj8U5N2Rk",
-    "https://t.me/joinchat/SFsgUvtvVWiN_s2h"
+    "https://t.me/joinchat/SFsgUvtvVWiN_s2h",
+    "https://t.me/joinchat/Gs2VzEbTA6owMmFk"
   ],
+  "channel_categories": {},
+  "links_by_category": {},
   "check_interval": 1,
-  "last_check": "2025-04-02T15:28:33.883448"
+  "last_check": "2025-04-02T15:52:55.574900",
+  "telegram_token": "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA"
 }

@@ -15,6 +15,9 @@ class LinkManager:
         self.channels = []  # List of channels to monitor
         self.links = []     # List of all links (history)
         self.new_links = [] # List of new links (current session)
+        self.channel_categories = {}  # Dictionary mapping channel names to categories
+        self.links_by_category = {}   # Dictionary mapping categories to links
+        self.default_categories = ["عمومی", "سرگرمی", "فیلم", "موسیقی", "علمی", "خبری", "ورزشی", "آموزشی"]
         self.check_interval = 5  # Default check interval in minutes (changed to 5)
         self.last_check = None
         self.telegram_token = None  # Store the Telegram Bot Token
@@ -31,6 +34,8 @@ class LinkManager:
                     self.channels = data.get('channels', [])
                     self.links = data.get('links', [])
                     self.new_links = data.get('new_links', [])
+                    self.channel_categories = data.get('channel_categories', {})
+                    self.links_by_category = data.get('links_by_category', {})
                     self.check_interval = data.get('check_interval', 5)
                     self.last_check = data.get('last_check')
                     self.telegram_token = data.get('telegram_token')
@@ -51,6 +56,8 @@ class LinkManager:
                 'channels': self.channels,
                 'links': self.links,
                 'new_links': self.new_links,
+                'channel_categories': self.channel_categories,
+                'links_by_category': self.links_by_category,
                 'check_interval': self.check_interval,
                 'last_check': self.last_check,
                 'telegram_token': self.telegram_token
@@ -74,8 +81,17 @@ class LinkManager:
         """Get the stored Telegram Bot Token"""
         return self.telegram_token
     
-    def add_channel(self, channel):
-        """Add a channel to monitor"""
+    def add_channel(self, channel, category="عمومی"):
+        """
+        Add a channel to monitor with a specific category
+        
+        Args:
+            channel (str): The channel name or URL
+            category (str, optional): The category for this channel. Defaults to "عمومی".
+        
+        Returns:
+            bool: True if added successfully, False if already exists or invalid
+        """
         # Normalize channel name
         # Remove @ if present
         if channel.startswith('@'):
@@ -99,8 +115,10 @@ class LinkManager:
             return False
         
         self.channels.append(channel)
+        # Add channel category
+        self.channel_categories[channel] = category
         self.save_data()
-        logger.info(f"Added channel: {channel}")
+        logger.info(f"Added channel: {channel} with category: {category}")
         return True
     
     def remove_channel(self, channel):
@@ -123,6 +141,9 @@ class LinkManager:
             return False
         
         self.channels.remove(channel)
+        # Also remove from channel_categories if exists
+        if channel in self.channel_categories:
+            del self.channel_categories[channel]
         self.save_data()
         logger.info(f"Removed channel: {channel}")
         return True
@@ -131,6 +152,8 @@ class LinkManager:
         """Remove all channels from monitoring"""
         count = len(self.channels)
         self.channels = []
+        # Clear channel categories as well
+        self.channel_categories = {}
         self.save_data()
         logger.info(f"Removed all {count} channels")
         return count
@@ -139,8 +162,17 @@ class LinkManager:
         """Get list of monitored channels"""
         return self.channels
     
-    def add_link(self, link):
-        """Add a unique link to storage"""
+    def add_link(self, link, channel=None):
+        """
+        Add a unique link to storage
+        
+        Args:
+            link (str): The link to add
+            channel (str, optional): The channel source of the link
+            
+        Returns:
+            bool: True if the link was new, False if it already existed
+        """
         # Normalize link (remove trailing slashes, etc.)
         link = link.strip()
         
@@ -155,6 +187,19 @@ class LinkManager:
             if link not in self.new_links:
                 self.new_links.append(link)
             
+            # If we have channel info, categorize the link
+            if channel and channel in self.channel_categories:
+                category = self.channel_categories.get(channel, "عمومی")
+                
+                # Initialize category list if needed
+                if category not in self.links_by_category:
+                    self.links_by_category[category] = []
+                
+                # Add to category if not already there
+                if link not in self.links_by_category[category]:
+                    self.links_by_category[category].append(link)
+                    logger.debug(f"Added link to category '{category}': {link}")
+            
             self.save_data()
             logger.info(f"Added new link: {link}")
         
@@ -167,11 +212,64 @@ class LinkManager:
     def get_new_links(self):
         """Get only new links from the current session"""
         return self.new_links
+        
+    def get_links_by_category(self, category=None):
+        """
+        Get links filtered by category
+        
+        Args:
+            category (str, optional): Category to filter by. If None, returns all categories.
+            
+        Returns:
+            dict: Dictionary of category to links list, or list of links for specific category
+        """
+        if category:
+            return self.links_by_category.get(category, [])
+        return self.links_by_category
+        
+    def get_categories(self):
+        """Get all available categories"""
+        # Return both default categories and any used categories from links
+        categories = set(self.default_categories)
+        categories.update(self.links_by_category.keys())
+        return sorted(list(categories))
+        
+    def set_channel_category(self, channel, category):
+        """
+        Set or update category for a channel
+        
+        Args:
+            channel (str): The channel name
+            category (str): The category to assign
+            
+        Returns:
+            bool: True if successful, False if channel not found
+        """
+        # Normalize channel name first
+        if channel.startswith('@'):
+            channel = channel[1:]
+        
+        if channel.startswith('https://t.me/'):
+            channel = channel[13:]
+        elif channel.startswith('http://t.me/'):
+            channel = channel[12:]
+        elif channel.startswith('t.me/'):
+            channel = channel[5:]
+        
+        if channel not in self.channels:
+            logger.warning(f"Cannot set category for unknown channel: {channel}")
+            return False
+            
+        self.channel_categories[channel] = category
+        self.save_data()
+        logger.info(f"Set category '{category}' for channel {channel}")
+        return True
     
     def clear_links(self):
         """Clear all stored links"""
         self.links = []
         self.new_links = []
+        self.links_by_category = {}  # Clear categorized links too
         self.save_data()
         logger.info("All links cleared")
         
@@ -207,28 +305,47 @@ class LinkManager:
         except Exception:
             return self.last_check
             
-    def export_all_links_to_excel(self, filename="all_links.xlsx"):
-        """Export all links to Excel file"""
+    def export_all_links_to_excel(self, filename="all_links.xlsx", category=None):
+        """
+        Export all links to Excel file
+        
+        Args:
+            filename (str, optional): Output filename. Defaults to "all_links.xlsx".
+            category (str, optional): Export only links from this category. Defaults to None (all links).
+        
+        Returns:
+            str: Filename of saved Excel file, or None if export failed
+        """
         try:
-            # Create a DataFrame for all links
-            df = pd.DataFrame(self.links, columns=["Link URL"])
+            if category and category in self.links_by_category:
+                # Export links for specific category
+                links_to_export = self.links_by_category[category]
+                sheet_name = f"Links - {category}"
+            else:
+                # Export all links
+                links_to_export = self.links
+                sheet_name = "All Links"
+            
+            # Create a DataFrame for links
+            df = pd.DataFrame(links_to_export, columns=["Link URL"])
             
             # Get the timestamp for the filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename_with_timestamp = f"{filename.split('.')[0]}_{timestamp}.xlsx"
+            category_suffix = f"_{category}" if category else ""
+            filename_with_timestamp = f"{filename.split('.')[0]}{category_suffix}_{timestamp}.xlsx"
             
             # Create 'exports' directory if it doesn't exist
             os.makedirs('static/exports', exist_ok=True)
             
             # Save to Excel file
             full_path = os.path.join('static/exports', filename_with_timestamp)
-            df.to_excel(full_path, index=False, sheet_name="All Links")
+            df.to_excel(full_path, index=False, sheet_name=sheet_name)
             
-            logger.info(f"Exported all links ({len(self.links)}) to Excel: {full_path}")
+            logger.info(f"Exported {len(links_to_export)} links to Excel: {full_path}")
             return filename_with_timestamp
             
         except Exception as e:
-            logger.error(f"Error exporting all links to Excel: {e}")
+            logger.error(f"Error exporting links to Excel: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
             return None

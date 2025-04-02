@@ -106,6 +106,30 @@
             </div>
         </div>
         
+        <!-- Categories Management -->
+        <div class="card mt-3 mb-3">
+            <div class="card-header">
+                <h4>Manage Categories</h4>
+            </div>
+            <div class="card-body">
+                <p>Configure categories for organizing your channels and links.</p>
+                
+                <div class="mb-3">
+                    <h5>Available Categories:</h5>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        {% for category in categories %}
+                        <span class="badge bg-primary p-2">{{ category }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    Categories help organize channels and filter links. When adding a channel, you can assign it to a category.
+                </div>
+            </div>
+        </div>
+        
         <div class="card mt-2">
             <div class="card-header">
                 <h4>Setup Instructions</h4>
@@ -116,7 +140,8 @@
                     <li>Enter your bot token in the "Bot Status" section above</li>
                     <li>Add the bot to the channels you want to monitor</li>
                     <li>Configure the check interval in minutes</li>
-                    <li>Add channels to monitor in the Channels page</li>
+                    <li>Add channels to monitor in the Channels page and assign them to categories</li>
+                    <li>Use the category filters on the Links page to view links by category</li>
                 </ol>
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle"></i>

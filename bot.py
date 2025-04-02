@@ -219,11 +219,11 @@ def check_channels_for_links(bot, link_manager, max_channels=20):
                         except Exception as e:
                             logger.warning(f"Error using Telegram API: {str(e)}")
                     
-                    # Add the links to storage
+                    # Add the links to storage with channel info for categorization
                     for link in found_links:
                         logger.debug(f"Processing link: {link}")
-                        if link_manager.add_link(link):
-                            logger.info(f"Added new link: {link}")
+                        if link_manager.add_link(link, channel=channel):
+                            logger.info(f"Added new link: {link} from channel {channel}")
                             total_new_links += 1
                             channel_new_links[channel] += 1
                         else:

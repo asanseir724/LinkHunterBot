@@ -218,9 +218,27 @@ def remove_channel(channel):
 @app.route('/links')
 def links():
     """View stored links"""
-    all_links = link_manager.get_all_links()
+    # Check if we have a category filter
+    category = request.args.get('category')
+    
+    if category:
+        # Get links for this category only
+        category_links = link_manager.get_links_by_category(category)
+        all_links = category_links
+        category_display = category
+    else:
+        # Get all links
+        all_links = link_manager.get_all_links()
+        category_display = None
+        
     new_links = link_manager.get_new_links()
-    return render_template('links.html', links=all_links, new_links=new_links)
+    categories = link_manager.get_categories()
+    
+    return render_template('links.html', 
+                          links=all_links, 
+                          new_links=new_links,
+                          categories=categories,
+                          current_category=category_display)
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
@@ -239,9 +257,13 @@ def settings():
         
         return redirect(url_for('settings'))
     
+    # Get available categories
+    categories = link_manager.get_categories()
+    
     return render_template('settings.html', 
                           interval=link_manager.get_check_interval(),
-                          bot_status=bot_status)
+                          bot_status=bot_status,
+                          categories=categories)
 
 @app.route('/set_token', methods=['POST'])
 def set_token():
@@ -415,12 +437,21 @@ def clear_new_links():
 def export_all_links():
     """Export all links to Excel"""
     try:
-        filename = link_manager.export_all_links_to_excel()
+        # Check if a category filter was provided
+        category = request.args.get('category', None)
+        
+        if category:
+            filename = link_manager.export_all_links_to_excel(category=category)
+            category_display = f" - {category}"
+        else:
+            filename = link_manager.export_all_links_to_excel()
+            category_display = ""
+            
         if filename:
             # Return a direct download link
             full_path = os.path.join('static/exports', filename)
             download_url = url_for('static', filename=f'exports/{filename}')
-            flash(f'All links exported to Excel successfully. <a href="{download_url}" class="alert-link">Click here to download</a>', "success")
+            flash(f'تمام لینک ها{category_display} با موفقیت به اکسل صادر شدند. <a href="{download_url}" class="alert-link">برای دانلود کلیک کنید</a>', "success")
             return redirect(url_for('links'))
         else:
             flash("Failed to export links", "danger")

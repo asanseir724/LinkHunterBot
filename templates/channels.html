@@ -34,12 +34,19 @@
                     <div class="input-group">
                         <span class="input-group-text">@</span>
                         <input type="text" class="form-control" name="channel" placeholder="Channel username (without @)" required>
+                        
+                        <select class="form-select" name="category" style="max-width: 200px;">
+                            {% for category in categories %}
+                            <option value="{{ category }}">{{ category }}</option>
+                            {% endfor %}
+                        </select>
+                        
                         <input type="hidden" name="add_type" value="single">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Add Channel
                         </button>
                     </div>
-                    <small class="text-muted">Enter channel username without the @ symbol</small>
+                    <small class="text-muted">Enter channel username without the @ symbol and select a category</small>
                 </form>
             </div>
             
