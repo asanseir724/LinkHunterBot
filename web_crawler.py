@@ -6,17 +6,25 @@ This module uses Selenium to simulate browser behavior including scrolling for i
 import time
 import re
 import logging
+import requests
+from bs4 import BeautifulSoup
+import traceback
 from typing import List, Set, Dict, Optional
 from urllib.parse import urlparse
 
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, WebDriverException
-from webdriver_manager.chrome import ChromeDriverManager
+# Selenium imports - may fail in some environments
+try:
+    from selenium import webdriver
+    from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.common.exceptions import TimeoutException, WebDriverException
+    from webdriver_manager.chrome import ChromeDriverManager
+    SELENIUM_AVAILABLE = True
+except ImportError:
+    SELENIUM_AVAILABLE = False
 
 from logger import get_logger
 
@@ -51,7 +59,7 @@ class WebCrawler:
         try:
             chrome_options = Options()
             if self.headless:
-                chrome_options.add_argument("--headless")
+                chrome_options.add_argument("--headless=new")
             
             # Add required arguments for running in container environments
             chrome_options.add_argument("--no-sandbox")
@@ -63,14 +71,36 @@ class WebCrawler:
             chrome_prefs = {"profile.managed_default_content_settings.images": 2}
             chrome_options.add_experimental_option("prefs", chrome_prefs)
             
-            # Initialize the Chrome driver
-            service = Service(ChromeDriverManager().install())
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            # For Replit environment
+            chrome_options.binary_location = "/nix/store/xxx-chromium/bin/chromium"  # Will be ignored if not exists
+
+            # Try with different approaches for better compatibility
+            try:
+                # First approach - using ChromeDriverManager
+                service = Service(ChromeDriverManager().install())
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            except Exception as inner_e:
+                logger.warning(f"First driver approach failed: {str(inner_e)}, trying alternative...")
+                
+                # Second approach - using direct Chrome
+                self.driver = webdriver.Chrome(options=chrome_options)
             
             logger.info("Chrome WebDriver initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Chrome WebDriver: {str(e)}")
-            raise
+            # Try a fallback method for Replit environment
+            try:
+                logger.info("Trying fallback method for Chrome initialization...")
+                from selenium.webdriver.chrome.service import Service as ChromeService
+                chrome_options = Options()
+                chrome_options.add_argument("--headless=new")
+                chrome_options.add_argument("--no-sandbox")
+                chrome_options.add_argument("--disable-dev-shm-usage")
+                self.driver = webdriver.Chrome(options=chrome_options)
+                logger.info("Fallback Chrome initialization successful")
+            except Exception as fallback_e:
+                logger.error(f"Fallback Chrome initialization also failed: {str(fallback_e)}")
+                raise
     
     def close(self):
         """Close the WebDriver."""
@@ -219,6 +249,95 @@ class WebCrawler:
         return results
 
 
+def extract_links_with_requests(url: str) -> Set[str]:
+    """
+    Extract Telegram links using simple requests and BeautifulSoup instead of Selenium.
+    This is a fallback method when Selenium is not available or fails.
+    
+    Args:
+        url (str): URL to extract links from
+        
+    Returns:
+        Set[str]: Set of unique Telegram links found
+    """
+    telegram_links = set()
+    
+    try:
+        logger.info(f"Using requests to extract links from: {url}")
+        
+        # Use a modern User-Agent to avoid being blocked
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
+        }
+        
+        # Make the request
+        response = requests.get(url, headers=headers, timeout=20)
+        if response.status_code != 200:
+            logger.warning(f"Got status code {response.status_code} from {url}")
+            return telegram_links
+            
+        # Parse the HTML content
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Get the text content to find @username mentions
+        text_content = soup.get_text()
+        links_from_text = _find_telegram_links_static(text_content)
+        telegram_links.update(links_from_text)
+        
+        # Also extract all href attributes from links
+        for a_tag in soup.find_all('a', href=True):
+            href = a_tag['href']
+            if 't.me' in href or 'telegram.me' in href:
+                telegram_links.add(href)
+            
+        # Extract from the full HTML to catch any links in attributes, etc.
+        links_from_html = _find_telegram_links_static(response.text)
+        telegram_links.update(links_from_html)
+        
+        logger.info(f"Found {len(telegram_links)} links using requests method from {url}")
+    except Exception as e:
+        logger.error(f"Error extracting links with requests from {url}: {str(e)}")
+        logger.debug(f"Traceback: {traceback.format_exc()}")
+    
+    return telegram_links
+
+
+def _find_telegram_links_static(content: str) -> Set[str]:
+    """
+    Static version of find_telegram_links that can be used without a WebCrawler instance.
+    
+    Args:
+        content (str): HTML or text content to search
+        
+    Returns:
+        Set[str]: Set of found Telegram links
+    """
+    links = []
+    
+    # Find t.me/joinchat and t.me/+ links (private groups/channels)
+    invite_matches = re.findall(r'https?://(?:www\.)?t(?:elegram)?\.me/(?:joinchat/|\+)([a-zA-Z0-9_-]+)', content)
+    for match in invite_matches:
+        links.append(f"https://t.me/joinchat/{match}")
+    
+    # Find t.me/username links (public channels/groups)
+    username_matches = re.findall(r'https?://(?:www\.)?t(?:elegram)?\.me/([a-zA-Z][a-zA-Z0-9_]{3,})', content)
+    for match in username_matches:
+        # Skip common non-channel usernames
+        if match.lower() not in ['joinchat', 'share', 'home', 'login', 'download', 'features', 
+                               'contact', 'privacy', 'faq', 'blog', 'terms', 'apps', 'premium']:
+            links.append(f"https://t.me/{match}")
+    
+    # Find @username mentions (public channels/groups)
+    at_username_matches = re.findall(r'@([a-zA-Z][a-zA-Z0-9_]{3,})', content)
+    for match in at_username_matches:
+        # Skip if it looks like an email address or common words
+        if '.' not in match and match.lower() not in ['gmail', 'yahoo', 'hotmail', 'outlook', 'mail', 'email']:
+            links.append(f"@{match}")
+    
+    # Remove duplicates and return
+    return set(links)
+
+
 def extract_links_from_websites(urls: List[str], scroll_count: int = 5) -> Dict[str, List[str]]:
     """
     Extract Telegram links from a list of websites.
@@ -232,22 +351,42 @@ def extract_links_from_websites(urls: List[str], scroll_count: int = 5) -> Dict[
     """
     results = {}
     
-    try:
-        crawler = WebCrawler(headless=True)
-        
-        for url in urls:
-            try:
-                logger.info(f"Extracting links from {url}")
-                links = crawler.extract_telegram_links(url, scroll_count=scroll_count)
-                results[url] = list(links)
-                logger.info(f"Found {len(links)} unique links from {url}")
-            except Exception as e:
-                logger.error(f"Error extracting links from {url}: {str(e)}")
-                results[url] = []
-        
-        crawler.close()
-    except Exception as e:
-        logger.error(f"Error in extract_links_from_websites: {str(e)}")
+    # First try using Selenium if available
+    if SELENIUM_AVAILABLE:
+        try:
+            logger.info("Attempting to extract links using Selenium...")
+            crawler = WebCrawler(headless=True)
+            
+            for url in urls:
+                try:
+                    logger.info(f"Extracting links from {url} with Selenium")
+                    links = crawler.extract_telegram_links(url, scroll_count=scroll_count)
+                    results[url] = list(links)
+                    logger.info(f"Found {len(links)} unique links from {url} with Selenium")
+                except Exception as e:
+                    logger.error(f"Selenium error extracting from {url}: {str(e)}")
+                    # Fallback to requests-based extraction for this URL
+                    logger.info(f"Falling back to requests-based extraction for {url}")
+                    links = extract_links_with_requests(url)
+                    results[url] = list(links)
+            
+            crawler.close()
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error in Selenium extraction, falling back to requests: {str(e)}")
+    
+    # If Selenium is not available or failed, use requests/BeautifulSoup
+    logger.info("Using requests/BeautifulSoup for extraction (fallback method)...")
+    
+    for url in urls:
+        try:
+            links = extract_links_with_requests(url)
+            results[url] = list(links)
+            logger.info(f"Found {len(links)} unique links from {url} with requests")
+        except Exception as e:
+            logger.error(f"Error extracting links from {url}: {str(e)}")
+            results[url] = []
     
     return results
 
