@@ -271,8 +271,6 @@ def settings():
                 message_count = int(message_count)
                 if message_count < 1:
                     flash("Message count must be at least 1", "danger")
-                elif message_count > 50:
-                    flash("Message count cannot exceed 50 to avoid rate limits", "danger")
                 else:
                     link_manager.check_message_count = message_count
                     link_manager.save_data()

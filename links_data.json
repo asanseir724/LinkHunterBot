@@ -297,7 +297,8 @@
     "https://t.me/+Uhj51TgS7hdjMDJk",
     "https://t.me/joinchat/68X_T7zKv845MDM0",
     "https://t.me/joinchat/6OMgQWf6FLpkZGQ0",
-    "https://t.me/+EPFfvWhX_1kwZjRk"
+    "https://t.me/+EPFfvWhX_1kwZjRk",
+    "https://t.me/+MKh1ZfOGc3VmOGY0"
   ],
   "new_links": [
     "https://t.me/+5mD25fOskF1lNGE0",
@@ -538,7 +539,8 @@
     "https://t.me/+Uhj51TgS7hdjMDJk",
     "https://t.me/joinchat/68X_T7zKv845MDM0",
     "https://t.me/joinchat/6OMgQWf6FLpkZGQ0",
-    "https://t.me/+EPFfvWhX_1kwZjRk"
+    "https://t.me/+EPFfvWhX_1kwZjRk",
+    "https://t.me/+MKh1ZfOGc3VmOGY0"
   ],
   "channel_categories": {},
   "links_by_category": {
@@ -614,7 +616,8 @@
       "https://t.me/joinchat/oHZUVcgwzn9kNjk8",
       "https://t.me/joinchat/xyo-CQIEbzAzYzJk",
       "https://t.me/joinchat/KyMNXtwKWddkNmE0",
-      "https://t.me/+Uhj51TgS7hdjMDJk"
+      "https://t.me/+Uhj51TgS7hdjMDJk",
+      "https://t.me/+MKh1ZfOGc3VmOGY0"
     ],
     "سرگرمی": [
       "https://t.me/joinchat/uUWDgg5qvxg3Yjc0",
@@ -787,10 +790,10 @@
     ]
   },
   "check_interval": 5,
-  "last_check": "2025-04-02T18:59:27.224834",
+  "last_check": "2025-04-02T19:02:24.651297",
   "telegram_token": "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA",
   "channel_link_counts": {
-    "list_telegram": 2
+    "list_telegram": 3
   },
   "auto_discover": true,
   "check_message_count": 10
