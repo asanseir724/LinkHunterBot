@@ -23,8 +23,13 @@ from logger import get_logger
 # Setup logger
 logger = get_logger("web_crawler")
 
-# Regular expression for finding Telegram links
-TELEGRAM_LINK_PATTERN = r'(?:https?://)?(?:www\.)?(?:t(?:elegram)?\.me|telegram\.org)/(?:joinchat/|\+)([a-zA-Z0-9_-]+)'
+# Regular expressions for finding Telegram links
+# 1. Pattern for invite links (t.me/joinchat or t.me/+)
+TELEGRAM_INVITE_PATTERN = r'(?:https?://)?(?:www\.)?(?:t(?:elegram)?\.me|telegram\.org)/(?:joinchat/|\+)([a-zA-Z0-9_-]+)'
+# 2. Pattern for public group/channel links with @ or t.me format
+TELEGRAM_PUBLIC_PATTERN = r'(?:@([a-zA-Z0-9_]{5,})|(?:https?://)?(?:www\.)?(?:t(?:elegram)?\.me|telegram\.org)/([a-zA-Z0-9_]{5,}))'
+# Combined pattern to use both
+TELEGRAM_LINK_PATTERN = TELEGRAM_INVITE_PATTERN
 
 
 class WebCrawler:
@@ -159,18 +164,30 @@ class WebCrawler:
         # Find all matches in the content
         links = []
         
-        # Find t.me/joinchat and t.me/+ links
-        matches = re.findall(r'https?://(?:www\.)?t(?:elegram)?\.me/(?:joinchat/|\+)([a-zA-Z0-9_-]+)', content)
-        for match in matches:
+        # Find t.me/joinchat and t.me/+ links (private groups/channels)
+        invite_matches = re.findall(r'https?://(?:www\.)?t(?:elegram)?\.me/(?:joinchat/|\+)([a-zA-Z0-9_-]+)', content)
+        for match in invite_matches:
             links.append(f"https://t.me/joinchat/{match}")
         
-        # Find t.me/username links
+        # Find t.me/username links (public channels/groups)
         username_matches = re.findall(r'https?://(?:www\.)?t(?:elegram)?\.me/([a-zA-Z][a-zA-Z0-9_]{3,})', content)
         for match in username_matches:
             # Skip common non-channel usernames
-            if match.lower() not in ['joinchat', 'share', 'home', 'login', 'download', 'features']:
+            if match.lower() not in ['joinchat', 'share', 'home', 'login', 'download', 'features', 
+                                     'contact', 'privacy', 'faq', 'blog', 'terms', 'apps', 'premium']:
                 links.append(f"https://t.me/{match}")
         
+        # Find @username mentions (public channels/groups)
+        # This is especially important for sites like combot.org that list Telegram groups with @ format
+        at_username_matches = re.findall(r'@([a-zA-Z][a-zA-Z0-9_]{3,})', content)
+        for match in at_username_matches:
+            # Skip if it looks like an email address or common words
+            if '.' not in match and match.lower() not in ['gmail', 'yahoo', 'hotmail', 'outlook', 'mail', 'email']:
+                # For combot.org and similar sites, return the @username format
+                # which will be normalized in link_manager.add_website_link
+                links.append(f"@{match}")
+        
+        # Remove duplicates and return
         return set(links)
 
     def batch_process_urls(self, urls: List[str], scroll_count: int = 5) -> Dict[str, Set[str]]:

@@ -64,20 +64,7 @@
     "persianvoicecall"
   ],
   "websites": [
-    "https://combot.org/top/telegram/groups",
-    "https://telegramchannels.me/groups",
-    "https://telegra.ph/List-of-Groups-11-27",
-    "https://newtelegroups.com/",
-    "https://bestoftelegram.com/groups/cryptocurrency",
-    "https://www.hottg.com/",
-    "https://tgstat.com/ratings/chats/marketing?sort=members",
-    "https://telegramchannels.me/category/marketing",
-    "https://www.telegram-groups.com/english-telegram-group/",
-    "https://telegramchan.com/",
-    "https://www.telegram-groups.com/business-telegram-group/",
-    "https://www.telegram-group.com/en/cryptocurrency/",
-    "https://newtelegroups.com/#20-digital-marketing-telegram-group",
-    "https://bestoftelegram.com/groups/marketing-links"
+    "https://combot.org/top/telegram/groups?lng=all&page=1"
   ],
   "links": [
     "https://t.me/joinchat/Gs2VzEbTA6owMmFk",
@@ -575,20 +562,7 @@
     "persianvoicecall": "لینکدونی"
   },
   "website_categories": {
-    "https://combot.org/top/telegram/groups": "عمومی",
-    "https://telegramchannels.me/groups": "عمومی",
-    "https://telegra.ph/List-of-Groups-11-27": "عمومی",
-    "https://newtelegroups.com/": "عمومی",
-    "https://bestoftelegram.com/groups/cryptocurrency": "عمومی",
-    "https://www.hottg.com/": "عمومی",
-    "https://tgstat.com/ratings/chats/marketing?sort=members": "عمومی",
-    "https://telegramchannels.me/category/marketing": "عمومی",
-    "https://www.telegram-groups.com/english-telegram-group/": "عمومی",
-    "https://telegramchan.com/": "عمومی",
-    "https://www.telegram-groups.com/business-telegram-group/": "عمومی",
-    "https://www.telegram-group.com/en/cryptocurrency/": "عمومی",
-    "https://newtelegroups.com/#20-digital-marketing-telegram-group": "عمومی",
-    "https://bestoftelegram.com/groups/marketing-links": "عمومی"
+    "https://combot.org/top/telegram/groups?lng=all&page=1": "لینکدونی"
   },
   "links_by_category": {
     "عمومی": [
@@ -839,7 +813,7 @@
     ]
   },
   "check_interval": 5,
-  "last_check": "2025-04-02T22:38:25.198852",
+  "last_check": "2025-04-02T22:44:17.978988",
   "telegram_token": "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA",
   "telegram_tokens": [
     "7725583218:AAF75VVVb7mCJe6sTfltoL6ELAL365iBsaA",

@@ -479,6 +479,14 @@ class LinkManager:
         Returns:
             bool: True if the link was new, False if it already existed
         """
+        # Normalize the link for consistency
+        # For t.me links, keep them as is
+        # For @username format, convert to t.me/username
+        if link.startswith('@'):
+            username = link[1:]
+            link = f"https://t.me/{username}"
+            logger.debug(f"Converted @{username} to {link}")
+            
         # Use the existing add_link method but with website-specific tracking
         is_new = self.add_link(link, channel=None, message_text=page_content)
         
