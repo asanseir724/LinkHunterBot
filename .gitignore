@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Log files
+logs/
+*.log
+
+# Local session data
+sessions/
+
+# Data files
+accounts_data.json
+links_data.json
+
+# Environment variables
+.env
+
+# Replit specific files
+.replit
+.pythonlibs/
+.upm/
+.cache/
+.local/
+replit.nix
+
+# Other
+.DS_Store

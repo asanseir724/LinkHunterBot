@@ -1,0 +1,15 @@
+apscheduler==3.10.1
+beautifulsoup4==4.12.0
+email-validator==2.0.0
+flask==2.3.3
+flask-sqlalchemy==3.1.1
+gunicorn==21.2.0
+openpyxl==3.1.2
+pandas==2.0.0
+psycopg2-binary==2.9.6
+python-telegram-bot==20.3
+requests==2.31.0
+scheduler==0.8.4
+telethon==1.28.5
+twilio==8.2.0
+trafilatura==1.6.0
