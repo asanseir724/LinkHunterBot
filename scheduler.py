@@ -1,11 +1,11 @@
-import logging
+import asyncio
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime, timedelta
+from logger import get_logger
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# Get module logger
+logger = get_logger(__name__)
 
 def setup_scheduler(bot, link_manager):
     """Set up scheduler for automatic link checking"""
@@ -21,18 +21,46 @@ def setup_scheduler(bot, link_manager):
                 logger.info("No channels to check")
                 return
             
-            # This would normally use bot.check_channels_for_links,
-            # but we need to adapt it for the BackgroundScheduler
-            # which doesn't support async functions directly
-            
-            # Create a synchronous way to trigger the async function
-            # This is a placeholder - in a real implementation, you would need
-            # to properly handle the async/sync transition
-            logger.info(f"Checking {len(channels)} channels for new links")
-            link_manager.update_last_check_time()
+            # We need to adapt async function for BackgroundScheduler
+            # Create an event loop to run the async function
+            try:
+                # Create a new event loop
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                # Import the check_channels_for_links function from bot module
+                try:
+                    from bot import check_channels_for_links
+                    logger.info(f"Imported check_channels_for_links function")
+                    
+                    # Run the async function in the event loop
+                    logger.info(f"Checking {len(channels)} channels for new links")
+                    result = loop.run_until_complete(check_channels_for_links(bot, link_manager))
+                    logger.info(f"Found {result} new links in scheduled check")
+                    
+                except ImportError as e:
+                    logger.error(f"Failed to import check_channels_for_links: {e}")
+                except Exception as e:
+                    logger.error(f"Error running check_channels_for_links: {e}")
+                    import traceback
+                    logger.error(f"Traceback: {traceback.format_exc()}")
+                finally:
+                    # Close the event loop
+                    loop.close()
+                    
+            except Exception as e:
+                logger.error(f"Error with event loop: {e}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                
+                # Fallback - just update the timestamp
+                logger.info("Using fallback - just updating last check time")
+                link_manager.update_last_check_time()
             
         except Exception as e:
             logger.error(f"Error in scheduled job: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     interval = link_manager.get_check_interval()
     

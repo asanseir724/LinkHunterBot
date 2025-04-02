@@ -1,12 +1,12 @@
 import os
-import logging
+import sys
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from link_manager import LinkManager
 from datetime import datetime
+from logger import get_logger, get_all_logs, clear_logs
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# Get application logger
+logger = get_logger(__name__)
 
 # Create the Flask app
 app = Flask(__name__)
@@ -89,23 +89,92 @@ def set_token():
     
     # Save the token as an environment variable
     os.environ["TELEGRAM_BOT_TOKEN"] = token
+    logger.info("Telegram Bot Token set, attempting to initialize bot")
     
-    # In a real implementation, we would initialize the bot here
-    # For now, we'll simulate bot status
-    global bot_status
-    bot_status = "Running"
+    # Try to initialize the bot
+    try:
+        from bot import setup_bot
+        # Initialize the bot with our link manager
+        bot_instance = setup_bot(link_manager)
+        
+        # If we get here, the bot was initialized successfully
+        global bot_status
+        bot_status = "Running"
+        logger.info("Bot initialized successfully")
+        
+        flash("Telegram Bot Token set successfully. Bot is now running.", "success")
+    except Exception as e:
+        logger.error(f"Failed to initialize bot: {str(e)}")
+        logger.error(f"Exception type: {type(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        
+        flash(f"Failed to initialize bot: {str(e)}", "danger")
     
-    flash("Telegram Bot Token set successfully. Bot is now running.", "success")
     return redirect(url_for('settings'))
 
 @app.route('/check_now', methods=['POST'])
 def check_now():
     """Trigger an immediate link check"""
     try:
-        link_manager.update_last_check_time()
-        flash("Link check initiated (placeholder)", "success")
+        logger.info("Manual check requested")
+        
+        if bot_status != "Running":
+            logger.warning("Bot is not running, cannot perform check")
+            flash("Bot is not running. Please set up the token first.", "warning")
+            return redirect(url_for('settings'))
+        
+        # Try to perform a check using the scheduler
+        try:
+            import asyncio
+            from bot import check_channels_for_links
+            
+            # Get bot instance
+            try:
+                from telegram.ext import Application
+                bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+                if not bot_token:
+                    raise ValueError("Telegram bot token not set")
+                
+                # Create a temporary application to get a bot instance
+                application = Application.builder().token(bot_token).build()
+                bot = application.bot
+                
+                # Run the check
+                logger.info("Starting manual link check")
+                
+                # Create an event loop
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                try:
+                    # Run the check
+                    result = loop.run_until_complete(check_channels_for_links(bot, link_manager))
+                    logger.info(f"Manual check complete. Found {result} new links.")
+                    flash(f"Check complete! Found {result} new links.", "success")
+                finally:
+                    loop.close()
+                
+            except Exception as e:
+                logger.error(f"Failed to create bot instance: {str(e)}")
+                logger.error(f"Exception type: {type(e)}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                flash(f"Failed to create bot instance: {str(e)}", "danger")
+                
+        except Exception as e:
+            logger.error(f"Failed to import bot module: {str(e)}")
+            logger.error(f"Exception type: {type(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            link_manager.update_last_check_time()  # At least update timestamp
+            flash(f"Error during check: {str(e)}", "danger")
+    
     except Exception as e:
-        logger.error(f"Failed to run immediate check: {e}")
+        logger.error(f"Failed to run immediate check: {str(e)}")
+        logger.error(f"Exception type: {type(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         flash(f"Failed to run check: {str(e)}", "danger")
     
     return redirect(url_for('index'))
@@ -116,6 +185,26 @@ def clear_links():
     link_manager.clear_links()
     flash("All links cleared", "success")
     return redirect(url_for('links'))
+
+@app.route('/logs')
+def logs():
+    """View system logs"""
+    all_logs = get_all_logs()
+    return render_template('logs.html', logs=all_logs)
+
+@app.route('/clear_logs', methods=['POST'])
+def clear_logs_route():
+    """Clear all logs"""
+    if clear_logs():
+        flash("All logs cleared successfully", "success")
+    else:
+        flash("Failed to clear logs", "danger")
+    return redirect(url_for('logs'))
+
+@app.route('/refresh_logs', methods=['POST'])
+def refresh_logs():
+    """Refresh logs page"""
+    return redirect(url_for('logs'))
 
 @app.route('/api/links', methods=['GET'])
 def api_links():

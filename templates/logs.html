@@ -1,0 +1,121 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3>System Logs</h3>
+        <div>
+            <form action="{{ url_for('clear_logs_route') }}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to clear all logs? This cannot be undone.')">
+                <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-eraser"></i> Clear Logs
+                </button>
+            </form>
+            <form action="{{ url_for('refresh_logs') }}" method="post" class="d-inline">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </form>
+        </div>
+    </div>
+    <div class="card-body">
+        <p class="lead">
+            System logs showing bot activity and errors.
+        </p>
+        
+        <div class="mb-3">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="filterInfo" checked>
+                <label class="form-check-label" for="filterInfo">
+                    <span class="badge bg-info">INFO</span>
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="filterWarning" checked>
+                <label class="form-check-label" for="filterWarning">
+                    <span class="badge bg-warning">WARNING</span>
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="filterError" checked>
+                <label class="form-check-label" for="filterError">
+                    <span class="badge bg-danger">ERROR</span>
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="filterDebug" checked>
+                <label class="form-check-label" for="filterDebug">
+                    <span class="badge bg-secondary">DEBUG</span>
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="text" id="searchLogs" placeholder="Search logs...">
+            </div>
+        </div>
+        
+        <div class="log-container bg-dark p-3 rounded" style="max-height: 500px; overflow-y: auto; font-family: monospace;">
+            {% if logs %}
+                {% for log in logs %}
+                    <div class="log-entry {{ log.level.lower() }}">
+                        <span class="timestamp text-muted">{{ log.timestamp }}</span>
+                        {% if log.level == 'INFO' %}
+                            <span class="badge bg-info">INFO</span>
+                        {% elif log.level == 'WARNING' %}
+                            <span class="badge bg-warning">WARNING</span>
+                        {% elif log.level == 'ERROR' %}
+                            <span class="badge bg-danger">ERROR</span>
+                        {% elif log.level == 'DEBUG' %}
+                            <span class="badge bg-secondary">DEBUG</span>
+                        {% endif %}
+                        <span class="module">[{{ log.module }}]</span>
+                        <span class="message">{{ log.message }}</span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-muted">No logs available.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Filters for log levels
+        const filterInfo = document.getElementById('filterInfo');
+        const filterWarning = document.getElementById('filterWarning');
+        const filterError = document.getElementById('filterError');
+        const filterDebug = document.getElementById('filterDebug');
+        const searchInput = document.getElementById('searchLogs');
+        const logEntries = document.querySelectorAll('.log-entry');
+        
+        function applyFilters() {
+            const searchTerm = searchInput.value.toLowerCase();
+            
+            logEntries.forEach(entry => {
+                const isInfo = entry.classList.contains('info');
+                const isWarning = entry.classList.contains('warning');
+                const isError = entry.classList.contains('error');
+                const isDebug = entry.classList.contains('debug');
+                const messageText = entry.querySelector('.message').textContent.toLowerCase();
+                
+                const matchesSearch = messageText.includes(searchTerm);
+                const showByLevel = (isInfo && filterInfo.checked) || 
+                                    (isWarning && filterWarning.checked) || 
+                                    (isError && filterError.checked) ||
+                                    (isDebug && filterDebug.checked);
+                
+                entry.style.display = (matchesSearch && showByLevel) ? '' : 'none';
+            });
+        }
+        
+        filterInfo.addEventListener('change', applyFilters);
+        filterWarning.addEventListener('change', applyFilters);
+        filterError.addEventListener('change', applyFilters);
+        filterDebug.addEventListener('change', applyFilters);
+        searchInput.addEventListener('input', applyFilters);
+        
+        // Auto-scroll to bottom on load
+        const logContainer = document.querySelector('.log-container');
+        logContainer.scrollTop = logContainer.scrollHeight;
+    });
+</script>
+{% endblock %}

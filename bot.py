@@ -1,12 +1,12 @@
 import os
-import logging
 import re
-from python_telegram_bot import Bot
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+import asyncio
+from telegram import Update
+from telegram.ext import Application, CommandHandler, CallbackContext, ContextTypes
+from logger import get_logger
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# Get application logger
+logger = get_logger(__name__)
 
 def setup_bot(link_manager):
     """Set up and configure the Telegram bot"""
@@ -185,42 +185,98 @@ async def check_channels_for_links(bot, link_manager):
     """Check monitored channels for new links"""
     channels = link_manager.get_channels()
     total_new_links = 0
+    channel_new_links = {}  # Track new links per channel
     
     if not channels:
         logger.info("No channels to check")
         return 0
     
+    logger.info(f"Starting check for {len(channels)} channels")
+    
     for channel in channels:
         try:
             logger.info(f"Checking channel: {channel}")
+            channel_new_links[channel] = 0
             
             # We'll try to get the latest messages from the channel
             # This requires the bot to be a member of the channel
             chat_id = f"@{channel}"
             
-            # Get the last 100 messages (or fewer if the channel has fewer)
-            async for message in bot.get_updates():
-                if message.channel_post and message.channel_post.chat.username == channel:
-                    text = message.channel_post.text or message.channel_post.caption or ""
+            try:
+                # Get channel information to verify bot access
+                chat = await bot.get_chat(chat_id)
+                logger.info(f"Connected to channel: {chat.title} ({chat_id})")
+                
+                # Try to get the chat history
+                logger.debug(f"Attempting to get history for {chat_id}")
+                
+                # Get the last 100 messages using get_updates
+                # This is a simplified approach - in production we should use getChatHistory
+                try:
+                    # First check if the bot has the necessary permissions
+                    member = await bot.get_chat_member(chat_id=chat_id, user_id=bot.id)
+                    logger.debug(f"Bot membership status in channel: {member.status}")
                     
-                    # Extract Telegram group/channel links
-                    # Look for t.me links
-                    links = re.findall(r'https?://t\.me/[^\s]+', text)
-                    # Also look for telegram.me links
-                    links.extend(re.findall(r'https?://telegram\.me/[^\s]+', text))
+                    # Use getUpdates to get recent messages
+                    updates = await bot.get_updates(offset=-1, limit=100)
+                    logger.debug(f"Retrieved {len(updates)} updates")
                     
-                    # Add unique links to storage
-                    for link in links:
-                        if link_manager.add_link(link):
-                            total_new_links += 1
+                    for update in updates:
+                        # Check if the update is from the channel we're monitoring
+                        if update.channel_post and update.channel_post.chat.username == channel:
+                            logger.debug(f"Found message from channel {channel}")
+                            text = update.channel_post.text or update.channel_post.caption or ""
+                            
+                            # Extract Telegram group/channel links
+                            links = []
+                            # Look for t.me links
+                            t_me_links = re.findall(r'https?://t\.me/[^\s]+', text)
+                            if t_me_links:
+                                logger.debug(f"Found {len(t_me_links)} t.me links")
+                                links.extend(t_me_links)
+                            
+                            # Also look for telegram.me links
+                            telegram_me_links = re.findall(r'https?://telegram\.me/[^\s]+', text)
+                            if telegram_me_links:
+                                logger.debug(f"Found {len(telegram_me_links)} telegram.me links")
+                                links.extend(telegram_me_links)
+                            
+                            # Add unique links to storage
+                            for link in links:
+                                logger.debug(f"Processing link: {link}")
+                                if link_manager.add_link(link):
+                                    logger.info(f"Added new link: {link}")
+                                    total_new_links += 1
+                                    channel_new_links[channel] += 1
+                                else:
+                                    logger.debug(f"Link already exists: {link}")
+                
+                except Exception as e:
+                    logger.error(f"Error getting messages from {chat_id}: {str(e)}")
+                    logger.error(f"Exception type: {type(e)}")
+                    import traceback
+                    logger.error(f"Traceback: {traceback.format_exc()}")
             
-            logger.info(f"Found {total_new_links} new links in {channel}")
+            except Exception as e:
+                logger.error(f"Error accessing channel {chat_id}: {str(e)}")
+                logger.error(f"Exception type: {type(e)}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+            
+            logger.info(f"Found {channel_new_links[channel]} new links in {channel}")
             
         except Exception as e:
-            logger.error(f"Error checking channel {channel}: {e}")
+            logger.error(f"Error checking channel {channel}: {str(e)}")
+            logger.error(f"Exception type: {type(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     # Update last check time
     link_manager.update_last_check_time()
     
+    # Log summary
     logger.info(f"Total new links found: {total_new_links}")
+    for channel, count in channel_new_links.items():
+        logger.info(f"Channel {channel}: {count} new links")
+    
     return total_new_links

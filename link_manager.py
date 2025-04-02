@@ -1,11 +1,10 @@
 import json
 import os
-import logging
 from datetime import datetime
+from logger import get_logger
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# Get module logger
+logger = get_logger(__name__)
 
 class LinkManager:
     """Manages link extraction, storage, and monitoring of channels"""
