@@ -169,8 +169,8 @@ class AvalaiAPI:
         max_tokens = self.settings.get('max_tokens', 500)
         temperature = self.settings.get('temperature', 0.7)
         
-        # Construct the message payload
-        # The actual API request structure may need to be adjusted based on Avalai's API docs
+        # Construct the message payload - Fix format to remove unsupported parameters
+        # Remove any parameters that cause errors with Avalai API
         payload = {
             "model": "gpt-3.5-turbo",  # Adjust as needed based on Avalai's available models
             "messages": [
@@ -187,11 +187,11 @@ class AvalaiAPI:
             "temperature": temperature
         }
         
-        # NOTE: Avalai API doesn't support these parameters directly in the payload
-        # We'll store them locally for our own tracking purposes but not send them to the API
-        # We get an error: "Unrecognized request arguments supplied: conversation_id, username"
+        # Store metadata locally but don't send to API
+        # We previously got an error: "Unrecognized request arguments supplied: conversation_id, username"
+        # so we ensure we're not sending these parameters to the API
         
-        # Create a local copy of this data for logging
+        # Create a local copy of this data for logging only
         self._current_request_metadata = {
             "user_id": user_id,
             "username": username,

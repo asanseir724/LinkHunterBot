@@ -298,7 +298,7 @@ def telegram_desktop():
         # Get Avalai settings
         avalai_settings = avalai_client.get_settings()
         
-        return render_template('private_messages.html',
+        return render_template('telegram_desktop.html',
                                chat_history=chat_history, 
                                avalai_settings=avalai_settings,
                                avalai_enabled=avalai_client.is_enabled())
@@ -342,10 +342,10 @@ def clear_chat_history():
         else:
             flash("خطا در پاک کردن تاریخچه چت", "danger")
             
-        return redirect(url_for('accounts.private_messages'))
+        return redirect(url_for('accounts.telegram_desktop'))
     except Exception as e:
         flash(f"خطا در پاک کردن تاریخچه چت: {str(e)}", "danger")
-        return redirect(url_for('accounts.private_messages'))
+        return redirect(url_for('accounts.telegram_desktop'))
 
 # Add a scheduled task to check accounts periodically
 def setup_account_scheduler(scheduler):
