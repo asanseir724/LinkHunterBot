@@ -1,1 +1,12 @@
-{}
+{
+  "+989115387115": {
+    "phone": "+989115387115",
+    "api_id": 2040,
+    "api_hash": "b18441a1ff607e10a989891a5462e627",
+    "name": "+989115387115",
+    "status": "error",
+    "connected": false,
+    "error": "Returned when all available options for this type of number were already used (e.g. flash-call, then SMS, then this error might be returned to trigger a second resend) (caused by ResendCodeRequest)",
+    "last_check": null
+  }
+}
