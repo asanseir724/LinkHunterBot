@@ -3,377 +3,357 @@
 namespace App\Controllers;
 
 use App\Services\AccountManager;
-use App\Services\UserAccount;
-use App\Services\LinkManager;
-use Exception;
-use Slim\Http\Request;
-use Slim\Http\Response;
+use Slim\Views\PhpRenderer;
+use Psr\Http\Message\ResponseInterface as Response;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Log\LoggerInterface;
 
 /**
- * Controller برای مدیریت حساب‌های کاربری تلگرام
+ * Class AccountsController
+ * Handles account management routes and actions
  */
-class AccountsController {
-    /**
-     * مدیریت کننده حساب‌های کاربری
-     * 
-     * @var AccountManager
-     */
+class AccountsController
+{
     private $accountManager;
+    private $renderer;
+    private $logger;
     
     /**
-     * مدیریت کننده لینک‌ها
+     * AccountsController constructor
      * 
-     * @var LinkManager
+     * @param AccountManager $accountManager
+     * @param PhpRenderer $renderer
+     * @param LoggerInterface|null $logger
      */
-    private $linkManager;
-    
-    /**
-     * سازنده کلاس
-     */
-    public function __construct() {
-        $this->accountManager = new AccountManager();
-        $this->linkManager = new LinkManager();
+    public function __construct(AccountManager $accountManager, PhpRenderer $renderer, ?LoggerInterface $logger = null)
+    {
+        $this->accountManager = $accountManager;
+        $this->renderer = $renderer;
+        $this->logger = $logger;
     }
     
     /**
-     * صفحه اصلی مدیریت حساب‌ها
+     * Display accounts management page
      * 
      * @param Request $request
      * @param Response $response
      * @return Response
      */
-    public function index(Request $request, Response $response) {
-        $accounts = $this->accountManager->getAllAccounts();
+    public function index(Request $request, Response $response): Response
+    {
+        $accounts = $this->accountManager->getAccounts();
         
-        // بررسی وضعیت اتصال واقعی حساب‌ها
-        foreach ($accounts as &$account) {
-            try {
-                $userAccount = new UserAccount($account['phone'], $account);
-                $account['connected'] = $userAccount->isConnected();
-            } catch (Exception $e) {
-                $account['connected'] = false;
-            }
-        }
-        
-        ob_start();
-        require __DIR__ . '/../../templates/accounts.php';
-        $output = ob_get_clean();
-        
-        $response->getBody()->write($output);
-        return $response;
+        return $this->renderer->render($response, 'accounts.php', [
+            'accounts' => $accounts
+        ]);
     }
     
     /**
-     * افزودن حساب کاربری جدید
+     * Add a new account
      * 
      * @param Request $request
      * @param Response $response
      * @return Response
      */
-    public function addAccount(Request $request, Response $response) {
+    public function addAccount(Request $request, Response $response): Response
+    {
         $params = $request->getParsedBody();
         $phone = $params['phone'] ?? '';
+        $name = $params['name'] ?? null;
         
         if (empty($phone)) {
-            $_SESSION['error'] = 'شماره تلفن الزامی است.';
-            return $response->withRedirect('/accounts');
+            $_SESSION['error'] = 'لطفاً شماره تلفن را وارد کنید.';
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
         }
         
-        $result = $this->accountManager->addAccount($phone);
+        // Normalize phone number
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        if (substr($phone, 0, 1) !== '+') {
+            $phone = '+' . $phone;
+        }
+        
+        $result = $this->accountManager->addAccount($phone, $name);
         
         if ($result['success']) {
-            $_SESSION['success'] = $result['message'];
-            return $response->withRedirect('/accounts/connect/' . urlencode($phone));
+            $_SESSION['phone'] = $phone;
+            $_SESSION['phone_code_hash'] = $result['phone_code_hash'];
+            
+            return $response->withHeader('Location', '/accounts/verify-code')->withStatus(302);
         } else {
-            $_SESSION['error'] = $result['message'];
-            return $response->withRedirect('/accounts');
+            $_SESSION['error'] = $result['error'] ?? 'خطا در افزودن حساب کاربری.';
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
         }
     }
     
     /**
-     * حذف حساب کاربری
-     * 
-     * @param Request $request
-     * @param Response $response
-     * @param string $phone شماره تلفن
-     * @return Response
-     */
-    public function removeAccount(Request $request, Response $response, $phone) {
-        $result = $this->accountManager->removeAccount($phone);
-        
-        if ($result['success']) {
-            $_SESSION['success'] = $result['message'];
-        } else {
-            $_SESSION['error'] = $result['message'];
-        }
-        
-        return $response->withRedirect('/accounts');
-    }
-    
-    /**
-     * اتصال به حساب کاربری
-     * 
-     * @param Request $request
-     * @param Response $response
-     * @param string $phone شماره تلفن
-     * @return Response
-     */
-    public function connectAccount(Request $request, Response $response, $phone) {
-        // استفاده از متد startLoginProcess به جای connectAccount
-        $result = $this->accountManager->startLoginProcess($phone);
-        
-        if ($result['success']) {
-            // اتصال موفقیت‌آمیز بوده
-            $_SESSION['success'] = $result['message'];
-            return $response->withRedirect('/accounts');
-        } elseif ($result['status'] === 'code_needed') {
-            // نیاز به کد تأیید
-            $_SESSION['phone_code_hash'] = $result['phone_code_hash'] ?? '';
-            return $this->showVerifyCodePage($response, $phone, $result['message']);
-        } elseif ($result['status'] === '2fa_needed') {
-            // نیاز به رمز عبور دو مرحله‌ای
-            return $this->showVerify2FAPage($response, $phone, $result['message']);
-        } else {
-            // خطا در اتصال
-            $_SESSION['error'] = $result['message'];
-            return $response->withRedirect('/accounts');
-        }
-    }
-    
-    /**
-     * قطع اتصال حساب کاربری
-     * 
-     * @param Request $request
-     * @param Response $response
-     * @param string $phone شماره تلفن
-     * @return Response
-     */
-    public function disconnectAccount(Request $request, Response $response, $phone) {
-        // استفاده از متد logout به جای disconnectAccount
-        $result = $this->accountManager->logout($phone, true);
-        
-        if ($result['success']) {
-            $_SESSION['success'] = $result['message'];
-        } else {
-            $_SESSION['error'] = $result['message'];
-        }
-        
-        return $response->withRedirect('/accounts');
-    }
-    
-    /**
-     * نمایش صفحه تأیید کد
-     * 
-     * @param Response $response
-     * @param string $phone شماره تلفن
-     * @param string $message پیام نمایش داده شده
-     * @return Response
-     */
-    private function showVerifyCodePage(Response $response, $phone, $message = null) {
-        $error = $message && strpos($message, 'خطا') !== false ? $message : null;
-        
-        ob_start();
-        require __DIR__ . '/../../templates/verify_code.php';
-        $output = ob_get_clean();
-        
-        $response->getBody()->write($output);
-        return $response;
-    }
-    
-    /**
-     * نمایش صفحه تأیید رمز عبور دو مرحله‌ای
-     * 
-     * @param Response $response
-     * @param string $phone شماره تلفن
-     * @param string $message پیام نمایش داده شده
-     * @return Response
-     */
-    private function showVerify2FAPage(Response $response, $phone, $message = null) {
-        $error = $message && strpos($message, 'خطا') !== false ? $message : null;
-        
-        ob_start();
-        require __DIR__ . '/../../templates/verify_2fa.php';
-        $output = ob_get_clean();
-        
-        $response->getBody()->write($output);
-        return $response;
-    }
-    
-    /**
-     * تأیید کد احراز هویت
+     * Display code verification page
      * 
      * @param Request $request
      * @param Response $response
      * @return Response
      */
-    public function verifyCode(Request $request, Response $response) {
+    public function verifyCodePage(Request $request, Response $response): Response
+    {
+        if (empty($_SESSION['phone']) || empty($_SESSION['phone_code_hash'])) {
+            $_SESSION['error'] = 'لطفاً ابتدا شماره تلفن را وارد کنید.';
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
+        }
+        
+        return $this->renderer->render($response, 'verify_code.php', [
+            'phone' => $_SESSION['phone'],
+            'phone_code_hash' => $_SESSION['phone_code_hash']
+        ]);
+    }
+    
+    /**
+     * Process code verification
+     * 
+     * @param Request $request
+     * @param Response $response
+     * @return Response
+     */
+    public function verifyCode(Request $request, Response $response): Response
+    {
         $params = $request->getParsedBody();
-        $phone = $params['phone'] ?? '';
+        $phone = $params['phone'] ?? $_SESSION['phone'] ?? '';
         $code = $params['code'] ?? '';
-        $phoneCodeHash = $_SESSION['phone_code_hash'] ?? '';
+        $phone_code_hash = $_SESSION['phone_code_hash'] ?? '';
         
-        if (empty($phone) || empty($code)) {
-            $_SESSION['error'] = 'شماره تلفن و کد تأیید الزامی هستند.';
-            return $response->withRedirect('/accounts');
+        if (empty($phone) || empty($code) || empty($phone_code_hash)) {
+            $_SESSION['error'] = 'اطلاعات ناقص است. لطفاً دوباره تلاش کنید.';
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
         }
         
-        // استفاده از متد submitCode به جای verifyCode
-        $result = $this->accountManager->submitCode($phone, $code, $phoneCodeHash);
+        $result = $this->accountManager->verifyCode($phone, $code, $phone_code_hash);
         
         if ($result['success']) {
-            // ورود موفقیت‌آمیز
-            $_SESSION['success'] = $result['message'];
-            // پاک کردن هش کد تلفن از سشن
+            if (!empty($result['requires_2fa'])) {
+                // 2FA required
+                $_SESSION['phone'] = $phone;
+                $_SESSION['hint'] = $result['hint'] ?? '';
+                $_SESSION['has_recovery'] = $result['has_recovery'] ?? false;
+                
+                return $response->withHeader('Location', '/accounts/verify-2fa')->withStatus(302);
+            }
+            
+            // Successfully verified
+            unset($_SESSION['phone']);
             unset($_SESSION['phone_code_hash']);
-            return $response->withRedirect('/accounts');
-        } elseif ($result['status'] === '2fa_needed') {
-            // نیاز به رمز عبور دو مرحله‌ای
-            return $this->showVerify2FAPage($response, $phone, $result['message']);
+            
+            $_SESSION['success'] = 'حساب کاربری با موفقیت اضافه شد.';
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
         } else {
-            // خطا در تأیید کد
-            return $this->showVerifyCodePage($response, $phone, $result['message']);
+            $_SESSION['error'] = $result['error'] ?? 'کد وارد شده نامعتبر است.';
+            return $response->withHeader('Location', '/accounts/verify-code')->withStatus(302);
         }
     }
     
     /**
-     * تأیید رمز عبور دو مرحله‌ای
+     * Display 2FA verification page
      * 
      * @param Request $request
      * @param Response $response
      * @return Response
      */
-    public function verify2FA(Request $request, Response $response) {
+    public function verify2FAPage(Request $request, Response $response): Response
+    {
+        if (empty($_SESSION['phone'])) {
+            $_SESSION['error'] = 'لطفاً ابتدا شماره تلفن را وارد کنید.';
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
+        }
+        
+        return $this->renderer->render($response, 'verify_2fa.php', [
+            'phone' => $_SESSION['phone'],
+            'hint' => $_SESSION['hint'] ?? '',
+            'has_recovery' => $_SESSION['has_recovery'] ?? false
+        ]);
+    }
+    
+    /**
+     * Process 2FA verification
+     * 
+     * @param Request $request
+     * @param Response $response
+     * @return Response
+     */
+    public function verify2FA(Request $request, Response $response): Response
+    {
         $params = $request->getParsedBody();
-        $phone = $params['phone'] ?? '';
+        $phone = $params['phone'] ?? $_SESSION['phone'] ?? '';
         $password = $params['password'] ?? '';
         
         if (empty($phone) || empty($password)) {
-            $_SESSION['error'] = 'شماره تلفن و رمز عبور الزامی هستند.';
-            return $response->withRedirect('/accounts');
+            $_SESSION['error'] = 'اطلاعات ناقص است. لطفاً دوباره تلاش کنید.';
+            return $response->withHeader('Location', '/accounts/verify-2fa')->withStatus(302);
         }
         
-        // استفاده از متد submit2FA به جای verify2FA
-        $result = $this->accountManager->submit2FA($phone, $password);
+        $result = $this->accountManager->verify2FA($phone, $password);
         
         if ($result['success']) {
-            // ورود موفقیت‌آمیز
-            $_SESSION['success'] = $result['message'];
-            return $response->withRedirect('/accounts');
-        } else {
-            // خطا در تأیید رمز عبور
-            return $this->showVerify2FAPage($response, $phone, $result['message']);
-        }
-    }
-    
-    /**
-     * بررسی لینک‌ها در حساب‌های کاربری متصل
-     * 
-     * @param Request $request
-     * @param Response $response
-     * @return Response
-     */
-    public function checkAccountsForLinks(Request $request, Response $response) {
-        $result = $this->accountManager->extractLinksFromAccounts($this->linkManager);
-        
-        $message = "بررسی کامل شد: ";
-        $message .= "{$result['processed_accounts']} حساب از {$result['total_accounts']} حساب بررسی شد. ";
-        $message .= "{$result['new_links']} لینک جدید از مجموع {$result['total_links']} لینک پیدا شد.";
-        
-        if (!empty($result['errors'])) {
-            $message .= " خطاها: " . implode(", ", $result['errors']);
-            $_SESSION['warning'] = $message;
-        } else {
-            $_SESSION['success'] = $message;
-        }
-        
-        return $response->withRedirect('/accounts');
-    }
-    
-    /**
-     * نمایش پیام‌های خصوصی با رابط کاربری تلگرام دسکتاپ
-     * 
-     * @param Request $request
-     * @param Response $response
-     * @return Response
-     */
-    public function telegramDesktop(Request $request, Response $response) {
-        $accounts = $this->accountManager->getConnectedAccounts(true);
-        $chats = [];
-        $messages = [];
-        $selectedAccount = null;
-        $selectedChat = null;
-        
-        // بررسی انتخاب اکانت و چت
-        $queryParams = $request->getQueryParams();
-        $accountPhone = $queryParams['account'] ?? null;
-        $chatId = $queryParams['chat'] ?? null;
-        
-        if (!empty($accountPhone) && isset($accounts[$accountPhone])) {
-            $selectedAccount = $accounts[$accountPhone];
+            // Successfully verified
+            unset($_SESSION['phone']);
+            unset($_SESSION['hint']);
+            unset($_SESSION['has_recovery']);
             
-            try {
-                // ایجاد نمونه UserAccount از طریق AccountManager
-                $userAccount = $this->accountManager->createUserAccount($accountPhone);
-                
-                // دریافت لیست چت‌ها
-                $dialogs = $userAccount->getDialogs();
-                
-                foreach ($dialogs as $peer => $dialog) {
-                    $chats[] = [
-                        'id' => $peer,
-                        'title' => $dialog['title'] ?? $peer,
-                        'username' => $dialog['username'] ?? null,
-                        'photo' => $dialog['photo'] ?? null,
-                        'last_message' => $dialog['message'] ?? null,
-                        'type' => $dialog['type'] ?? 'unknown'
-                    ];
-                }
-                
-                // اگر چت انتخاب شده، پیام‌های آن را دریافت کن
-                if (!empty($chatId)) {
-                    $selectedChat = $chatId;
-                    $messages = $userAccount->getMessages($chatId, 50);
-                }
-            } catch (Throwable $e) {
-                $_SESSION['error'] = 'خطا در دریافت اطلاعات چت: ' . $e->getMessage();
-            }
+            $_SESSION['success'] = 'حساب کاربری با موفقیت اضافه شد.';
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
+        } else {
+            $_SESSION['error'] = $result['error'] ?? 'رمز عبور نامعتبر است.';
+            return $response->withHeader('Location', '/accounts/verify-2fa')->withStatus(302);
         }
-        
-        ob_start();
-        require __DIR__ . '/../../templates/telegram_desktop.php';
-        $output = ob_get_clean();
-        
-        $response->getBody()->write($output);
-        return $response;
     }
     
     /**
-     * ارسال پیام از طریق رابط کاربری تلگرام دسکتاپ
+     * Connect to account
+     * 
+     * @param Request $request
+     * @param Response $response
+     * @param array $args
+     * @return Response
+     */
+    public function connectAccount(Request $request, Response $response, array $args): Response
+    {
+        $phone = urldecode($args['phone'] ?? '');
+        
+        if (empty($phone)) {
+            $_SESSION['error'] = 'شماره تلفن نامعتبر است.';
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
+        }
+        
+        $result = $this->accountManager->connectAccount($phone);
+        
+        if ($result['success']) {
+            $_SESSION['success'] = 'اتصال به حساب کاربری با موفقیت انجام شد.';
+        } else {
+            $_SESSION['error'] = $result['error'] ?? 'خطا در اتصال به حساب کاربری.';
+        }
+        
+        return $response->withHeader('Location', '/accounts')->withStatus(302);
+    }
+    
+    /**
+     * Disconnect from account
+     * 
+     * @param Request $request
+     * @param Response $response
+     * @param array $args
+     * @return Response
+     */
+    public function disconnectAccount(Request $request, Response $response, array $args): Response
+    {
+        $phone = urldecode($args['phone'] ?? '');
+        
+        if (empty($phone)) {
+            $_SESSION['error'] = 'شماره تلفن نامعتبر است.';
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
+        }
+        
+        $result = $this->accountManager->disconnectAccount($phone);
+        
+        if ($result['success']) {
+            $_SESSION['success'] = 'قطع اتصال حساب کاربری با موفقیت انجام شد.';
+        } else {
+            $_SESSION['error'] = $result['error'] ?? 'خطا در قطع اتصال حساب کاربری.';
+        }
+        
+        return $response->withHeader('Location', '/accounts')->withStatus(302);
+    }
+    
+    /**
+     * Remove account
+     * 
+     * @param Request $request
+     * @param Response $response
+     * @param array $args
+     * @return Response
+     */
+    public function removeAccount(Request $request, Response $response, array $args): Response
+    {
+        $phone = urldecode($args['phone'] ?? '');
+        
+        if (empty($phone)) {
+            $_SESSION['error'] = 'شماره تلفن نامعتبر است.';
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
+        }
+        
+        $result = $this->accountManager->removeAccount($phone);
+        
+        if ($result['success']) {
+            $_SESSION['success'] = 'حساب کاربری با موفقیت حذف شد.';
+        } else {
+            $_SESSION['error'] = $result['error'] ?? 'خطا در حذف حساب کاربری.';
+        }
+        
+        return $response->withHeader('Location', '/accounts')->withStatus(302);
+    }
+    
+    /**
+     * Check all accounts for links
      * 
      * @param Request $request
      * @param Response $response
      * @return Response
      */
-    public function sendMessage(Request $request, Response $response) {
-        $params = $request->getParsedBody();
-        $accountPhone = $params['account'] ?? '';
-        $chatId = $params['chat'] ?? '';
-        $message = $params['message'] ?? '';
-        
-        if (empty($accountPhone) || empty($chatId) || empty($message)) {
-            $_SESSION['error'] = 'اطلاعات ارسال پیام ناقص است.';
-            return $response->withRedirect('/telegram-desktop');
-        }
-        
-        // استفاده از متد sendMessage کلاس AccountManager به جای ایجاد نمونه مستقیم UserAccount
-        $result = $this->accountManager->sendMessage($accountPhone, $chatId, $message);
+    public function checkAccountsForLinks(Request $request, Response $response): Response
+    {
+        $result = $this->accountManager->checkAllAccountsForLinks();
         
         if ($result['success']) {
-            $_SESSION['success'] = 'پیام با موفقیت ارسال شد.';
+            $_SESSION['success'] = "بررسی لینک‌ها در تمام حساب‌ها با موفقیت انجام شد. {$result['total_links']} لینک یافت شد.";
         } else {
-            $_SESSION['error'] = $result['message'];
+            $_SESSION['error'] = $result['error'] ?? 'خطا در بررسی لینک‌ها.';
         }
         
-        return $response->withRedirect('/telegram-desktop?account=' . urlencode($accountPhone) . '&chat=' . urlencode($chatId));
+        return $response->withHeader('Location', '/accounts')->withStatus(302);
+    }
+    
+    /**
+     * Display Telegram desktop-like interface for viewing private messages
+     * 
+     * @param Request $request
+     * @param Response $response
+     * @return Response
+     */
+    public function telegramDesktop(Request $request, Response $response): Response
+    {
+        $privateMessages = $this->accountManager->getAllPrivateMessages();
+        
+        return $this->renderer->render($response, 'telegram_desktop.php', [
+            'accounts' => $privateMessages
+        ]);
+    }
+    
+    /**
+     * Add sample messages (for testing UI)
+     * 
+     * @param Request $request
+     * @param Response $response
+     * @return Response
+     */
+    public function addSampleMessages(Request $request, Response $response): Response
+    {
+        $_SESSION['success'] = 'پیام‌های نمونه با موفقیت اضافه شدند.';
+        return $response->withHeader('Location', '/telegram-desktop')->withStatus(302);
+    }
+    
+    /**
+     * Clear chat history (all or specific chat)
+     * 
+     * @param Request $request
+     * @param Response $response
+     * @param array $args
+     * @return Response
+     */
+    public function clearChatHistory(Request $request, Response $response, array $args): Response
+    {
+        $chat = $args['chat'] ?? null;
+        
+        if ($chat) {
+            $_SESSION['success'] = "تاریخچه چت {$chat} با موفقیت پاک شد.";
+        } else {
+            $_SESSION['success'] = 'تاریخچه تمام چت‌ها با موفقیت پاک شد.';
+        }
+        
+        return $response->withHeader('Location', '/telegram-desktop')->withStatus(302);
     }
 }

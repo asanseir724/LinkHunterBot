@@ -3,1102 +3,683 @@
 namespace App\Services;
 
 use danog\MadelineProto\API;
+use danog\MadelineProto\APIWrapper;
 use danog\MadelineProto\Settings;
 use danog\MadelineProto\Settings\AppInfo;
-use danog\MadelineProto\Settings\Database\Mysql;
-use danog\MadelineProto\Settings\Database\Memory;
-use danog\MadelineProto\Settings\Database\Postgres;
-use danog\MadelineProto\Settings\Database\Redis;
-use danog\MadelineProto\ParseMode;
-use danog\MadelineProto\Logger;
 use danog\MadelineProto\Exception;
 use danog\MadelineProto\RPCErrorException;
-use danog\MadelineProto\TON\APIFactory as TONAPIFactory;
-use Throwable;
+use Psr\Log\LoggerInterface;
 
 /**
- * کلاس مدیریت حساب‌های کاربری تلگرام با استفاده از MadelineProto
+ * Class UserAccount
+ * Handles Telegram user account functionality using MadelineProto
  */
 class UserAccount
 {
-    /**
-     * مسیر ذخیره‌سازی جلسه‌ها
-     */
-    const SESSION_PATH = 'sessions';
+    private $phone;
+    private $name;
+    private $session_path;
+    private $madelineProto;
+    private $logger;
+    private $connected = false;
+    private $last_check_time = null;
+    private $user_info = null;
 
     /**
-     * شماره تلفن حساب کاربری (با فرمت بین‌المللی)
-     */
-    private string $phone;
-
-    /**
-     * آیا حساب متصل است؟
-     */
-    private bool $connected = false;
-
-    /**
-     * اطلاعات حساب کاربری
-     */
-    private array $accountInfo = [];
-
-    /**
-     * نمونه API مدلاین پروتو
-     */
-    private ?API $madelineProto = null;
-
-    /**
-     * API ID برای MadelineProto
-     */
-    private int $apiId;
-
-    /**
-     * API Hash برای MadelineProto
-     */
-    private string $apiHash;
-
-    /**
-     * سازنده کلاس
+     * UserAccount constructor
      * 
-     * @param string $phone شماره تلفن با فرمت بین‌المللی (مثال: 989123456789)
-     * @param array $accountInfo اطلاعات اضافی حساب کاربری (اختیاری)
-     * @param int|null $apiId API ID تلگرام (اختیاری، از متغیرهای محیطی استفاده می‌کند)
-     * @param string|null $apiHash API Hash تلگرام (اختیاری، از متغیرهای محیطی استفاده می‌کند)
-     * 
-     * @throws \Exception در صورت بروز خطا هنگام ایجاد پوشه جلسه
+     * @param string $phone Phone number in international format
+     * @param string|null $name Optional name for this account
+     * @param LoggerInterface|null $logger Logger instance
      */
-    public function __construct(
-        string $phone,
-        array $accountInfo = [],
-        ?int $apiId = null,
-        ?string $apiHash = null
-    ) {
-        // اطمینان از وجود پوشه session
-        if (!is_dir(self::SESSION_PATH)) {
-            if (!mkdir(self::SESSION_PATH, 0777, true)) {
-                throw new \Exception('خطا در ایجاد پوشه جلسه: ' . self::SESSION_PATH);
-            }
-        }
-
-        // تنظیم شماره تلفن (حذف "+" از ابتدای شماره اگر وجود داشته باشد)
-        $this->phone = ltrim($phone, '+');
-
-        // تنظیم API ID و API Hash
-        $this->apiId = $apiId ?? (int)($_ENV['TELEGRAM_API_ID'] ?? 0);
-        $this->apiHash = $apiHash ?? ($_ENV['TELEGRAM_API_HASH'] ?? '');
-
-        // اگر API ID یا API Hash مقداردهی نشده باشند
-        if (empty($this->apiId) || empty($this->apiHash)) {
-            throw new \Exception('API ID و API Hash تلگرام باید مقداردهی شوند. لطفاً این مقادیر را در فایل .env تنظیم کنید.');
-        }
-
-        // ذخیره اطلاعات حساب
-        $this->accountInfo = $accountInfo;
-
-        // اگر اطلاعات وضعیت اتصال موجود باشد، آن را تنظیم کنید
-        if (isset($accountInfo['connected'])) {
-            $this->connected = (bool)$accountInfo['connected'];
-        }
+    public function __construct(string $phone, ?string $name = null, ?LoggerInterface $logger = null)
+    {
+        $this->phone = $phone;
+        $this->name = $name ?: $phone;
+        $this->logger = $logger;
+        $this->session_path = $this->getSessionPath();
+        
+        $this->log('info', "Creating UserAccount instance for {$this->phone}");
     }
 
     /**
-     * ایجاد تنظیمات پیش‌فرض برای MadelineProto
+     * Get the path to the session file for this account
      * 
-     * @return Settings تنظیمات MadelineProto
+     * @return string Session file path
      */
-    private function createSettings(): Settings
+    public function getSessionPath(): string
     {
-        $settings = new Settings;
-
-        // تنظیمات اپلیکیشن
-        $settings->setAppInfo((new AppInfo)
-            ->setApiId($this->apiId)
-            ->setApiHash($this->apiHash)
-            ->setLangCode('fa')
-            ->setAppVersion('1.0.0')
-            ->setDeviceModel('Web Server')
-            ->setSystemVersion('PHP ' . PHP_VERSION)
-        );
-
-        // تنظیمات پیشرفته
-        $settings->getConnection()
-            ->setMaxMediaSocketCount(30)        // تعداد سوکت‌های همزمان برای آپلود/دانلود مدیا
-            ->setMaxFileSize(40 * 1024 * 1024); // حداکثر اندازه فایل: 40 مگابایت
+        // Normalize phone number by removing + and spaces
+        $normalized = preg_replace('/[^0-9]/', '', $this->phone);
+        $storage_path = __DIR__ . '/../../storage/sessions';
         
-        // تنظیمات لاگ
-        $settings->getLogger()
-            ->setLevel(Logger::LEVEL_WARNING)   // سطح لاگ: فقط هشدارها و خطاها
-            ->setMaxSize(5 * 1024 * 1024);      // حداکثر اندازه فایل لاگ: 5 مگابایت
-
-        // تنظیم پایگاه داده (استفاده از حافظه برای سادگی)
-        $settings->setDb((new Memory));
-
-        // تنظیمات پیشرفته بیشتر
-        $settings->getPeer()
-            ->setCacheAllPeersOnStartup(false)  // عدم کش‌کردن تمام مخاطبین در شروع (برای عملکرد بهتر)
-            ->setFullFetch(false);              // عدم دریافت اطلاعات کامل همه مخاطبین
-
-        return $settings;
-    }
-
-    /**
-     * ایجاد نمونه MadelineProto API یا بازیابی آن اگر قبلاً ایجاد شده است
-     * 
-     * @return API نمونه MadelineProto API
-     * @throws \Exception در صورت بروز خطا هنگام ایجاد نمونه MadelineProto
-     */
-    public function getMadelineInstance(): API
-    {
-        if ($this->madelineProto === null) {
-            $sessionFile = $this->getSessionPath();
-            $settings = $this->createSettings();
-            
-            try {
-                // ایجاد یا بازیابی نمونه MadelineProto
-                $this->madelineProto = new API($sessionFile, $settings);
-                
-                // تنظیم حالت پیش‌فرض برای تجزیه پیام
-                $this->madelineProto->setParseMode(ParseMode::HTML);
-                
-                return $this->madelineProto;
-            } catch (Throwable $e) {
-                throw new \Exception('خطا در ایجاد یا بازیابی نمونه MadelineProto: ' . $e->getMessage(), 0, $e);
-            }
+        // Create storage directory if it doesn't exist
+        if (!is_dir($storage_path)) {
+            mkdir($storage_path, 0755, true);
         }
         
+        return $storage_path . '/user_' . $normalized . '.madeline';
+    }
+    
+    /**
+     * Get the MadelineProto instance
+     * 
+     * @return API|null MadelineProto instance or null if not initialized
+     */
+    public function getMadelineProto(): ?API
+    {
         return $this->madelineProto;
     }
 
     /**
-     * آغاز فرآیند ورود به حساب کاربری تلگرام
+     * Initialize MadelineProto client
      * 
-     * @return array نتیجه عملیات
+     * @return bool True if successful, false otherwise
      */
-    public function startLogin(): array
+    public function init(): bool
     {
         try {
-            $MadelineProto = $this->getMadelineInstance();
+            $settings = new Settings;
             
-            // بررسی وضعیت ورود فعلی
-            if ($MadelineProto->getAuthorization() === API::LOGGED_IN) {
-                $this->connected = true;
-                $this->updateAccountInfo();
-                
-                return [
-                    'success' => true,
-                    'status' => 'connected',
-                    'message' => 'حساب کاربری در حال حاضر متصل است.'
-                ];
-            }
-            
-            // ارسال کد تأیید به شماره تلفن
-            $sentCode = $MadelineProto->phoneLogin($this->phone);
-            
-            return [
-                'success' => false,
-                'status' => 'code_needed',
-                'phone_code_hash' => $sentCode['phone_code_hash'],
-                'message' => 'کد تأیید به تلفن شما ارسال شد. لطفاً آن را وارد کنید.',
-                'type' => $sentCode['type']['_'],
-                'timeout' => $sentCode['timeout'] ?? 60
-            ];
-            
-        } catch (RPCErrorException $e) {
-            return $this->handleRPCException($e);
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'status' => 'error',
-                'message' => 'خطا در شروع فرآیند ورود: ' . $e->getMessage()
-            ];
+            // MadelineProto has default app credentials, no need to provide API ID and Hash
+            $this->madelineProto = new API($this->session_path, $settings);
+            $this->log('info', "Initialized MadelineProto for {$this->phone}");
+            return true;
+        } catch (\Throwable $e) {
+            $this->log('error', "Failed to initialize MadelineProto: " . $e->getMessage());
+            return false;
         }
     }
-
+    
     /**
-     * تأیید کد احراز هویت
+     * Start phone login process
      * 
-     * @param string $code کد تأیید دریافتی
-     * @param string $phoneCodeHash هش کد تلفن
-     * @return array نتیجه عملیات
+     * @return array Login status
      */
-    public function submitCode(string $code, string $phoneCodeHash): array
+    public function startPhoneLogin(): array
     {
-        try {
-            $MadelineProto = $this->getMadelineInstance();
-            
-            // ارسال کد تأیید به سرور تلگرام
-            $result = $MadelineProto->completePhoneLogin($code);
-            
-            // بررسی نتیجه
-            if ($result['_'] === 'auth.authorization') {
-                $this->connected = true;
-                $this->updateAccountInfo();
-                
-                return [
-                    'success' => true,
-                    'status' => 'connected',
-                    'message' => 'ورود با موفقیت انجام شد.'
-                ];
-            } elseif ($result['_'] === 'account.password') {
-                // نیاز به رمز عبور دو مرحله‌ای
+        if (!$this->madelineProto) {
+            if (!$this->init()) {
                 return [
                     'success' => false,
-                    'status' => '2fa_needed',
-                    'message' => 'این حساب دارای احراز هویت دو مرحله‌ای است. لطفاً رمز عبور خود را وارد کنید.',
-                    'hint' => $result['hint'] ?? '',
-                    'has_recovery' => $result['has_recovery'] ?? false
-                ];
-            } elseif ($result['_'] === 'account.needSignup') {
-                // نیاز به ثبت‌نام (برای شماره‌هایی که قبلاً در تلگرام ثبت‌نام نکرده‌اند)
-                return [
-                    'success' => false,
-                    'status' => 'signup_needed',
-                    'message' => 'این شماره تلفن در تلگرام ثبت‌نام نشده است. لطفاً ابتدا در تلگرام ثبت‌نام کنید.'
+                    'error' => 'Failed to initialize MadelineProto'
                 ];
             }
-            
-            // حالت غیرمنتظره
-            return [
-                'success' => false,
-                'status' => 'unknown',
-                'message' => 'خطای ناشناخته در تأیید کد.',
-                'result' => $result
-            ];
-            
-        } catch (RPCErrorException $e) {
-            return $this->handleRPCException($e);
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'status' => 'error',
-                'message' => 'خطا در تأیید کد: ' . $e->getMessage()
-            ];
         }
-    }
-
-    /**
-     * تأیید رمز عبور دو مرحله‌ای
-     * 
-     * @param string $password رمز عبور
-     * @return array نتیجه عملیات
-     */
-    public function submit2FA(string $password): array
-    {
+        
         try {
-            $MadelineProto = $this->getMadelineInstance();
-            
-            // ارسال رمز عبور به سرور تلگرام
-            $result = $MadelineProto->complete2faLogin($password);
-            
-            if ($result['_'] === 'auth.authorization') {
-                $this->connected = true;
-                $this->updateAccountInfo();
-                
-                return [
-                    'success' => true,
-                    'status' => 'connected',
-                    'message' => 'ورود با موفقیت انجام شد.'
-                ];
-            }
-            
-            // حالت غیرمنتظره
-            return [
-                'success' => false,
-                'status' => 'unknown',
-                'message' => 'خطای ناشناخته در تأیید رمز عبور دو مرحله‌ای.',
-                'result' => $result
-            ];
-            
-        } catch (RPCErrorException $e) {
-            return $this->handleRPCException($e);
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'status' => 'error',
-                'message' => 'خطا در تأیید رمز عبور دو مرحله‌ای: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * درخواست بازیابی حساب کاربری از طریق ایمیل
-     * 
-     * @param string $emailPattern الگوی ایمیل بازیابی (اختیاری)
-     * @return array نتیجه عملیات
-     */
-    public function requestRecovery(string $emailPattern = ''): array
-    {
-        try {
-            $MadelineProto = $this->getMadelineInstance();
-            
-            // درخواست بازیابی از طریق ایمیل
-            $result = $MadelineProto->requestRecovery([
-                'email_pattern' => $emailPattern
-            ]);
-            
-            if (isset($result['email_pattern'])) {
-                return [
-                    'success' => true,
-                    'status' => 'recovery_email_sent',
-                    'message' => 'ایمیل بازیابی به آدرس ' . $result['email_pattern'] . ' ارسال شد.',
-                    'email_pattern' => $result['email_pattern']
-                ];
-            }
-            
-            return [
-                'success' => false,
-                'status' => 'unknown',
-                'message' => 'خطای ناشناخته در درخواست بازیابی.',
-                'result' => $result
-            ];
-            
-        } catch (RPCErrorException $e) {
-            return $this->handleRPCException($e);
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'status' => 'error',
-                'message' => 'خطا در درخواست بازیابی: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * بازیابی حساب با کد ارسال شده به ایمیل
-     * 
-     * @param string $code کد دریافتی از ایمیل
-     * @param string $newPassword رمز عبور جدید برای 2FA
-     * @return array نتیجه عملیات
-     */
-    public function recoverAccount(string $code, string $newPassword = ''): array
-    {
-        try {
-            $MadelineProto = $this->getMadelineInstance();
-            
-            // بازیابی حساب با کد
-            $result = $MadelineProto->recoverPassword([
-                'code' => $code,
-                'new_settings' => [
-                    'new_password' => $newPassword,
-                    'email' => '', // ایمیل جدید (اختیاری)
-                    'hint' => 'راهنما برای رمز عبور جدید'
-                ]
-            ]);
-            
-            if ($result['_'] === 'auth.authorization') {
-                $this->connected = true;
-                $this->updateAccountInfo();
-                
-                return [
-                    'success' => true,
-                    'status' => 'connected',
-                    'message' => 'بازیابی حساب با موفقیت انجام شد.'
-                ];
-            }
-            
-            return [
-                'success' => false,
-                'status' => 'unknown',
-                'message' => 'خطای ناشناخته در بازیابی حساب.',
-                'result' => $result
-            ];
-            
-        } catch (RPCErrorException $e) {
-            return $this->handleRPCException($e);
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'status' => 'error',
-                'message' => 'خطا در بازیابی حساب: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * خروج از حساب کاربری
-     * 
-     * @param bool $deleteSession آیا فایل جلسه باید حذف شود؟
-     * @return array نتیجه عملیات
-     */
-    public function logout(bool $deleteSession = true): array
-    {
-        try {
-            if ($this->madelineProto !== null) {
-                try {
-                    // تلاش برای خروج از سرور تلگرام
-                    $this->madelineProto->logout();
-                } catch (Throwable $e) {
-                    // ممکن است خروج با خطا مواجه شود، اما ما همچنان می‌خواهیم جلسه محلی را حذف کنیم
-                }
-            }
-            
-            // پاک کردن جلسه محلی
-            if ($deleteSession) {
-                $sessionFile = $this->getSessionPath();
-                if (file_exists($sessionFile)) {
-                    unlink($sessionFile);
-                }
-            }
-            
-            $this->connected = false;
-            $this->madelineProto = null;
+            $this->log('info', "Starting phone login for {$this->phone}");
+            $sentCode = $this->madelineProto->phoneLogin($this->phone);
             
             return [
                 'success' => true,
-                'status' => 'logged_out',
-                'message' => 'خروج از حساب کاربری با موفقیت انجام شد.'
+                'phone_code_hash' => $sentCode['phone_code_hash'],
+                'type' => $sentCode['type'],
+                'next_type' => $sentCode['next_type'] ?? null,
+                'timeout' => $sentCode['timeout'] ?? 60
             ];
-            
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
+            $this->log('error', "Failed to start phone login: " . $e->getMessage());
             return [
                 'success' => false,
-                'status' => 'error',
-                'message' => 'خطا در خروج از حساب کاربری: ' . $e->getMessage()
+                'error' => $e->getMessage()
             ];
         }
     }
-
+    
     /**
-     * بررسی وضعیت اتصال حساب کاربری
+     * Verify received phone code
      * 
-     * @return bool آیا حساب متصل است؟
+     * @param string $code Verification code
+     * @param string $phoneCodeHash Phone code hash received from startPhoneLogin
+     * @return array Verification result
+     */
+    public function verifyCode(string $code, string $phoneCodeHash): array
+    {
+        if (!$this->madelineProto) {
+            if (!$this->init()) {
+                return [
+                    'success' => false,
+                    'error' => 'Failed to initialize MadelineProto'
+                ];
+            }
+        }
+        
+        try {
+            $this->log('info', "Verifying code for {$this->phone}");
+            $result = $this->madelineProto->completePhoneLogin($code);
+            
+            if ($result['_'] === 'account.password') {
+                // 2FA is enabled
+                return [
+                    'success' => true,
+                    'requires_2fa' => true,
+                    'hint' => $result['hint'] ?? '',
+                    'has_recovery' => !empty($result['has_recovery'])
+                ];
+            }
+            
+            // Login completed successfully
+            $this->connected = true;
+            $this->getUserInfo();
+            $this->updateLastCheckTime();
+            
+            return [
+                'success' => true,
+                'requires_2fa' => false
+            ];
+        } catch (\Throwable $e) {
+            $this->log('error', "Code verification failed: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Complete 2FA verification with password
+     * 
+     * @param string $password Two-factor authentication password
+     * @return array Verification result
+     */
+    public function verify2FA(string $password): array
+    {
+        if (!$this->madelineProto) {
+            if (!$this->init()) {
+                return [
+                    'success' => false,
+                    'error' => 'Failed to initialize MadelineProto'
+                ];
+            }
+        }
+        
+        try {
+            $this->log('info', "Verifying 2FA for {$this->phone}");
+            $this->madelineProto->complete2faLogin($password);
+            
+            // Login completed successfully
+            $this->connected = true;
+            $this->getUserInfo();
+            $this->updateLastCheckTime();
+            
+            return [
+                'success' => true
+            ];
+        } catch (RPCErrorException $e) {
+            if (strpos($e->getMessage(), 'PASSWORD_HASH_INVALID') !== false) {
+                return [
+                    'success' => false,
+                    'error' => 'رمز عبور نادرست است. لطفاً مجدداً تلاش کنید.'
+                ];
+            }
+            
+            $this->log('error', "2FA verification failed: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        } catch (\Throwable $e) {
+            $this->log('error', "2FA verification failed: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Check if the account is connected
+     * 
+     * @return bool True if connected
      */
     public function isConnected(): bool
     {
-        try {
-            // بررسی وجود فایل جلسه
-            $sessionFile = $this->getSessionPath();
-            if (!file_exists($sessionFile)) {
-                $this->connected = false;
+        if (!$this->madelineProto) {
+            if (!$this->init()) {
                 return false;
             }
-            
-            // بررسی وضعیت اتصال
-            $MadelineProto = $this->getMadelineInstance();
-            $authState = $MadelineProto->getAuthorization();
-            
-            $this->connected = ($authState === API::LOGGED_IN);
-            
-            if ($this->connected) {
-                // تلاش برای دریافت اطلاعات کاربر برای تأیید نهایی
-                $this->updateAccountInfo();
-            }
-            
-            return $this->connected;
-            
-        } catch (Throwable $e) {
-            // در صورت بروز هر خطایی، فرض می‌کنیم اتصال برقرار نیست
-            $this->connected = false;
-            return false;
-        }
-    }
-
-    /**
-     * به‌روزرسانی اطلاعات حساب کاربری
-     * 
-     * @return bool آیا به‌روزرسانی موفقیت‌آمیز بود؟
-     */
-    public function updateAccountInfo(): bool
-    {
-        // اگر متصل نیستیم، نمی‌توانیم اطلاعات را به‌روز کنیم
-        if (!$this->isConnected()) {
-            return false;
         }
         
         try {
-            $MadelineProto = $this->getMadelineInstance();
-            
-            // دریافت اطلاعات کاربر فعلی
-            $user = $MadelineProto->getSelf();
-            
-            if ($user) {
-                // ذخیره اطلاعات کاربر
-                $this->accountInfo['user_id'] = $user['id'] ?? '';
-                $this->accountInfo['first_name'] = $user['first_name'] ?? '';
-                $this->accountInfo['last_name'] = $user['last_name'] ?? '';
-                $this->accountInfo['username'] = $user['username'] ?? '';
-                $this->accountInfo['phone'] = $user['phone'] ?? $this->phone;
-                $this->accountInfo['connected'] = true;
-                $this->accountInfo['last_check_time'] = time();
-                $this->accountInfo['photos'] = $user['photos'] ?? [];
-                $this->accountInfo['status'] = $user['status'] ?? [];
-                
+            $this->connected = $this->madelineProto->getAuthorization() === 3;
+            return $this->connected;
+        } catch (\Throwable $e) {
+            $this->log('warning', "Failed to check connection status: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Reconnect to Telegram
+     * 
+     * @return bool True if successful
+     */
+    public function connect(): bool
+    {
+        if (!$this->madelineProto) {
+            if (!$this->init()) {
+                return false;
+            }
+        }
+        
+        try {
+            if ($this->isConnected()) {
+                $this->log('info', "Already connected for {$this->phone}");
                 return true;
             }
             
-        } catch (Throwable $e) {
-            // اگر خطایی رخ داد، اطلاعات را به‌روز نمی‌کنیم
-        }
-        
-        return false;
-    }
-
-    /**
-     * دریافت اطلاعات حساب کاربری
-     * 
-     * @return array اطلاعات حساب کاربری
-     */
-    public function getAccountInfo(): array
-    {
-        // اگر متصل هستیم و اطلاعات ناقص است، ابتدا به‌روزرسانی کنیم
-        if ($this->isConnected() && 
-            (empty($this->accountInfo['username']) || empty($this->accountInfo['first_name']))) {
-            $this->updateAccountInfo();
-        }
-        
-        // مطمئن شویم که حداقل اطلاعات پایه‌ای وجود دارد
-        $info = $this->accountInfo;
-        $info['phone'] = $this->phone;
-        $info['connected'] = $this->connected;
-        
-        return $info;
-    }
-
-    /**
-     * دریافت لیست چت‌ها (دیالوگ‌ها)
-     * 
-     * @param int $limit حداکثر تعداد چت‌ها
-     * @param int $offsetDate تاریخ شروع جستجو (تاریخ یونیکس)
-     * @param int $offsetId شناسه پیام شروع جستجو
-     * @param array $offsetPeer کاربر یا گروه شروع جستجو
-     * @param bool $excludePinned حذف چت‌های پین شده
-     * @param bool $folderId شناسه پوشه
-     * @return array لیست چت‌ها
-     */
-    public function getDialogs(
-        int $limit = 100,
-        int $offsetDate = 0,
-        int $offsetId = 0,
-        array $offsetPeer = [],
-        bool $excludePinned = false,
-        int $folderId = 0
-    ): array {
-        if (!$this->isConnected()) {
-            return [];
-        }
-        
-        try {
-            $MadelineProto = $this->getMadelineInstance();
+            $this->madelineProto->start();
+            $this->connected = $this->madelineProto->getAuthorization() === 3;
             
-            // دریافت لیست چت‌ها با پارامترهای پیشرفته
-            $dialogs = $MadelineProto->getDialogs([
-                'limit' => $limit,
-                'offset_date' => $offsetDate,
-                'offset_id' => $offsetId,
-                'offset_peer' => $offsetPeer,
-                'exclude_pinned' => $excludePinned,
-                'folder_id' => $folderId
-            ]);
-            
-            // پیش‌پردازش و غنی‌سازی داده‌ها
-            $result = [];
-            foreach ($dialogs as $peer => $dialog) {
-                // اضافه کردن اطلاعات اضافی مفید
-                $dialog['id'] = $peer;
-                $dialog['title'] = $dialog['title'] ?? $peer;
-                
-                // اضافه کردن نوع چت (کاربر، گروه، کانال)
-                if (isset($dialog['peer_type'])) {
-                    $dialog['type'] = $dialog['peer_type'];
-                } elseif (isset($dialog['_'])) {
-                    $dialog['type'] = strtolower(str_replace('peer', '', $dialog['_']));
-                } else {
-                    $dialog['type'] = 'unknown';
-                }
-                
-                $result[$peer] = $dialog;
+            if ($this->connected) {
+                $this->getUserInfo();
+                $this->log('info', "Successfully connected account {$this->phone}");
             }
             
-            return $result;
-            
-        } catch (Throwable $e) {
-            // در صورت بروز خطا، آرایه خالی برمی‌گردانیم
-            return [];
+            return $this->connected;
+        } catch (\Throwable $e) {
+            $this->log('error', "Failed to connect: " . $e->getMessage());
+            return false;
         }
     }
-
+    
     /**
-     * دریافت پیام‌های یک چت
+     * Disconnect from Telegram
      * 
-     * @param string|int $peer شناسه یا نام کاربری چت
-     * @param int $limit حداکثر تعداد پیام‌ها
-     * @param int $offsetId شناسه پیام شروع جستجو
-     * @param int $offsetDate تاریخ شروع جستجو (تاریخ یونیکس)
-     * @param int $addOffset تعداد پیام‌های قبل از offsetId که باید نادیده گرفته شوند
-     * @param int $maxId حداکثر شناسه پیام
-     * @param int $minId حداقل شناسه پیام
-     * @param array $reply_to فیلتر برای پیام‌های پاسخ
-     * @return array لیست پیام‌ها
+     * @return bool True if successful
      */
-    public function getMessages(
-        $peer,
-        int $limit = 100,
-        int $offsetId = 0,
-        int $offsetDate = 0,
-        int $addOffset = 0,
-        int $maxId = 0,
-        int $minId = 0,
-        array $reply_to = []
-    ): array {
-        if (!$this->isConnected()) {
-            return [];
+    public function disconnect(): bool
+    {
+        if (!$this->madelineProto) {
+            return true; // Already disconnected
         }
         
         try {
-            $MadelineProto = $this->getMadelineInstance();
-            
-            // دریافت تاریخچه پیام‌ها
-            $messages = $MadelineProto->messages->getHistory([
-                'peer' => $peer,
-                'limit' => $limit,
-                'offset_id' => $offsetId,
-                'offset_date' => $offsetDate,
-                'add_offset' => $addOffset,
-                'max_id' => $maxId,
-                'min_id' => $minId,
-                'hash' => 0,
-                'reply_to' => $reply_to
-            ]);
-            
-            // بازگرداندن پیام‌ها
-            return $messages['messages'] ?? [];
-            
-        } catch (RPCErrorException $e) {
-            // مدیریت خطاهای خاص RPC
-            // می‌توان برخی خطاها را با متد خاص مدیریت کرد
-            return [];
-        } catch (Throwable $e) {
-            // در صورت بروز خطای عمومی، آرایه خالی برمی‌گردانیم
-            return [];
+            $this->log('info', "Disconnecting account {$this->phone}");
+            $this->madelineProto->logout();
+            $this->connected = false;
+            return true;
+        } catch (\Throwable $e) {
+            $this->log('error', "Failed to disconnect: " . $e->getMessage());
+            return false;
         }
     }
-
+    
     /**
-     * ارسال پیام به یک چت
+     * Get user information
      * 
-     * @param string|int $peer شناسه یا نام کاربری چت
-     * @param string $message متن پیام
-     * @param array $replyTo پاسخ به پیام خاص
-     * @return array نتیجه عملیات
+     * @return array|null User information or null if failed
      */
-    public function sendMessage($peer, string $message, array $replyTo = []): array
+    public function getUserInfo(): ?array
+    {
+        if (!$this->isConnected()) {
+            return null;
+        }
+        
+        try {
+            $this->user_info = $this->madelineProto->getSelf();
+            return $this->user_info;
+        } catch (\Throwable $e) {
+            $this->log('error', "Failed to get user info: " . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Join a chat using an invite link
+     * 
+     * @param string $link Invite link
+     * @return array Join result
+     */
+    public function joinChat(string $link): array
     {
         if (!$this->isConnected()) {
             return [
                 'success' => false,
-                'status' => 'not_connected',
-                'message' => 'حساب کاربری متصل نیست.'
+                'error' => 'Account not connected'
             ];
         }
         
         try {
-            $MadelineProto = $this->getMadelineInstance();
-            
-            // ساخت پارامترهای ارسال پیام
-            $params = [
-                'peer' => $peer,
-                'message' => $message,
-                'random_id' => random_int(0, PHP_INT_MAX),
-            ];
-            
-            // اضافه کردن پاسخ به پیام خاص اگر موجود باشد
-            if (!empty($replyTo)) {
-                $params['reply_to'] = $replyTo;
-            }
-            
-            // ارسال پیام
-            $result = $MadelineProto->messages->sendMessage($params);
+            $this->log('info', "Joining chat with link {$link}");
+            $result = $this->madelineProto->joinChannelByLink($link);
             
             return [
                 'success' => true,
-                'status' => 'sent',
-                'message' => 'پیام با موفقیت ارسال شد.',
-                'result' => $result
+                'chat_info' => $result
             ];
-            
         } catch (RPCErrorException $e) {
-            return $this->handleRPCException($e, 'ارسال پیام');
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'status' => 'error',
-                'message' => 'خطا در ارسال پیام: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * ارسال پیام با امکانات پیشرفته (مثل دکمه‌ها، فرمت‌بندی و غیره)
-     * 
-     * @param string|int $peer شناسه یا نام کاربری چت
-     * @param string $message متن پیام
-     * @param array $options گزینه‌های اضافی
-     * @return array نتیجه عملیات
-     */
-    public function sendAdvancedMessage($peer, string $message, array $options = []): array
-    {
-        if (!$this->isConnected()) {
-            return [
-                'success' => false,
-                'status' => 'not_connected',
-                'message' => 'حساب کاربری متصل نیست.'
-            ];
-        }
-        
-        try {
-            $MadelineProto = $this->getMadelineInstance();
-            
-            // ساخت پارامترهای پایه
-            $params = [
-                'peer' => $peer,
-                'message' => $message,
-                'random_id' => random_int(0, PHP_INT_MAX),
-            ];
-            
-            // افزودن گزینه‌های اضافی
-            foreach ($options as $key => $value) {
-                $params[$key] = $value;
-            }
-            
-            // ارسال پیام
-            $result = $MadelineProto->messages->sendMessage($params);
-            
-            return [
-                'success' => true,
-                'status' => 'sent',
-                'message' => 'پیام پیشرفته با موفقیت ارسال شد.',
-                'result' => $result
-            ];
-            
-        } catch (RPCErrorException $e) {
-            return $this->handleRPCException($e, 'ارسال پیام پیشرفته');
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'status' => 'error',
-                'message' => 'خطا در ارسال پیام پیشرفته: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * استخراج لینک‌های تلگرام از پیام‌های یک چت
-     * 
-     * @param string|int $peer شناسه یا نام کاربری چت
-     * @param int $limit حداکثر تعداد پیام‌ها
-     * @param int $offsetId شناسه پیام شروع جستجو
-     * @return array لیست لینک‌ها با اطلاعات اضافی
-     */
-    public function extractLinks($peer, int $limit = 100, int $offsetId = 0): array
-    {
-        // دریافت پیام‌ها
-        $messages = $this->getMessages($peer, $limit, $offsetId);
-        
-        // آرایه نتیجه با ساختار غنی‌تر
-        $result = [];
-        
-        // متدهای استخراج لینک
-        $extractMethods = [
-            'extractTelegramInviteLinks',
-            'extractTelegramChannelLinks',
-            'extractWebsiteLinks'
-        ];
-        
-        // پردازش هر پیام
-        foreach ($messages as $message) {
-            // اطمینان از اینکه پیام متن دارد
-            $text = $message['message'] ?? '';
-            if (empty($text) || !is_string($text)) {
-                continue;
-            }
-            
-            // اجرای هر متد استخراج
-            foreach ($extractMethods as $method) {
-                $links = $this->$method($text);
-                
-                foreach ($links as $link) {
-                    $linkKey = md5($link); // کلید یکتا برای هر لینک
-                    
-                    // اگر لینک قبلاً استخراج نشده، آن را اضافه می‌کنیم
-                    if (!isset($result[$linkKey])) {
-                        $result[$linkKey] = [
-                            'url' => $link,
-                            'source' => [
-                                'peer' => $peer,
-                                'message_id' => $message['id'] ?? 0,
-                                'date' => $message['date'] ?? 0,
-                            ],
-                            'context' => substr($text, 0, 150) . (strlen($text) > 150 ? '...' : ''),
-                            'type' => $this->getLinkType($link)
-                        ];
-                    }
-                }
-            }
-        }
-        
-        // تبدیل به آرایه ساده
-        return array_values($result);
-    }
-
-    /**
-     * استخراج لینک‌های دعوت تلگرام (t.me/joinchat, t.me/+)
-     * 
-     * @param string $text متن حاوی لینک‌ها
-     * @return array لیست لینک‌های دعوت
-     */
-    private function extractTelegramInviteLinks(string $text): array
-    {
-        $links = [];
-        
-        // الگوهای لینک دعوت
-        $patterns = [
-            '/https?:\/\/t\.me\/joinchat\/([a-zA-Z0-9_-]+)/i',
-            '/https?:\/\/telegram\.me\/joinchat\/([a-zA-Z0-9_-]+)/i',
-            '/https?:\/\/t\.me\/\+([a-zA-Z0-9_-]+)/i',
-            '/https?:\/\/telegram\.me\/\+([a-zA-Z0-9_-]+)/i'
-        ];
-        
-        foreach ($patterns as $pattern) {
-            if (preg_match_all($pattern, $text, $matches)) {
-                foreach ($matches[0] as $match) {
-                    $links[] = $match;
-                }
-            }
-        }
-        
-        return $links;
-    }
-
-    /**
-     * استخراج لینک‌های کانال و گروه تلگرام (t.me/username)
-     * 
-     * @param string $text متن حاوی لینک‌ها
-     * @return array لیست لینک‌های کانال/گروه
-     */
-    private function extractTelegramChannelLinks(string $text): array
-    {
-        $links = [];
-        
-        // الگوهای لینک کانال/گروه
-        $patterns = [
-            '/https?:\/\/t\.me\/([a-zA-Z0-9_]{5,})/i',  // حداقل 5 کاراکتر برای نام کاربری معتبر
-            '/https?:\/\/telegram\.me\/([a-zA-Z0-9_]{5,})/i'
-        ];
-        
-        foreach ($patterns as $pattern) {
-            if (preg_match_all($pattern, $text, $matches)) {
-                foreach ($matches[0] as $match) {
-                    // حذف لینک‌های سیستمی تلگرام
-                    if (!preg_match('/(joinchat|addstickers|addemoji|share|confirmphone)/', $match)) {
-                        $links[] = $match;
-                    }
-                }
-            }
-        }
-        
-        return $links;
-    }
-
-    /**
-     * استخراج لینک‌های وب‌سایت عمومی
-     * 
-     * @param string $text متن حاوی لینک‌ها
-     * @return array لیست لینک‌های وب‌سایت
-     */
-    private function extractWebsiteLinks(string $text): array
-    {
-        $links = [];
-        
-        // الگوی لینک‌های وب‌سایت
-        $pattern = '/https?:\/\/(?!t\.me|telegram\.me)([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.)+[a-zA-Z]{2,}(?:\/[^\s()<>]+|\([^\s()<>]+\))*/i';
-        
-        if (preg_match_all($pattern, $text, $matches)) {
-            foreach ($matches[0] as $match) {
-                $links[] = $match;
-            }
-        }
-        
-        return $links;
-    }
-
-    /**
-     * تعیین نوع لینک (کانال، گروه خصوصی، وب‌سایت)
-     * 
-     * @param string $link لینک مورد بررسی
-     * @return string نوع لینک
-     */
-    private function getLinkType(string $link): string
-    {
-        if (stripos($link, 'joinchat') !== false || stripos($link, 't.me/+') !== false) {
-            return 'private_group';
-        } elseif (stripos($link, 't.me/') !== false || stripos($link, 'telegram.me/') !== false) {
-            return 'channel_or_public_group';
-        } else {
-            return 'website';
-        }
-    }
-
-    /**
-     * پیوستن به یک کانال یا گروه با استفاده از لینک
-     * 
-     * @param string $link لینک کانال یا گروه
-     * @return array نتیجه عملیات
-     */
-    public function joinByLink(string $link): array
-    {
-        if (!$this->isConnected()) {
-            return [
-                'success' => false,
-                'status' => 'not_connected',
-                'message' => 'حساب کاربری متصل نیست.'
-            ];
-        }
-        
-        try {
-            $MadelineProto = $this->getMadelineInstance();
-            
-            // استخراج کد دعوت یا نام کاربری از لینک
-            if (preg_match('/(?:joinchat\/|t\.me\/\+)([a-zA-Z0-9_-]+)/i', $link, $matches)) {
-                // لینک خصوصی
-                $hash = $matches[1];
-                $result = $MadelineProto->messages->importChatInvite(['hash' => $hash]);
-            } elseif (preg_match('/(?:t\.me\/|telegram\.me\/)([a-zA-Z0-9_]+)/i', $link, $matches)) {
-                // لینک عمومی
-                $username = $matches[1];
-                $resolved = $MadelineProto->contacts->resolveUsername(['username' => $username]);
-                $peer = [
-                    '_' => $resolved['_'],
-                    'access_hash' => $resolved['access_hash'],
-                    'id' => $resolved['id']
+            // Handle common errors
+            if (strpos($e->getMessage(), 'INVITE_REQUEST_SENT') !== false) {
+                return [
+                    'success' => true,
+                    'pending' => true,
+                    'message' => 'درخواست عضویت ارسال شد. منتظر تأیید ادمین هستید.'
                 ];
-                $result = $MadelineProto->channels->joinChannel(['channel' => $peer]);
-            } else {
+            } elseif (strpos($e->getMessage(), 'FLOOD_WAIT_') !== false) {
+                preg_match('/FLOOD_WAIT_(\d+)/', $e->getMessage(), $matches);
+                $wait_time = $matches[1] ?? 3600;
+                
                 return [
                     'success' => false,
-                    'status' => 'invalid_link',
-                    'message' => 'فرمت لینک نامعتبر است.'
+                    'error' => "محدودیت زمانی تلگرام. لطفاً {$wait_time} ثانیه صبر کنید.",
+                    'flood_wait' => (int)$wait_time
+                ];
+            } elseif (strpos($e->getMessage(), 'CHANNELS_TOO_MUCH') !== false) {
+                return [
+                    'success' => false,
+                    'error' => 'شما در تعداد زیادی کانال عضو هستید. لطفاً ابتدا از برخی کانال‌ها خارج شوید.'
+                ];
+            } elseif (strpos($e->getMessage(), 'USER_ALREADY_PARTICIPANT') !== false) {
+                return [
+                    'success' => true,
+                    'already_joined' => true,
+                    'message' => 'شما قبلاً در این چت عضو شده‌اید.'
                 ];
             }
             
-            return [
-                'success' => true,
-                'status' => 'joined',
-                'message' => 'با موفقیت به کانال/گروه پیوستید.',
-                'result' => $result
-            ];
-            
-        } catch (RPCErrorException $e) {
-            return $this->handleRPCException($e, 'پیوستن به کانال/گروه');
-        } catch (Throwable $e) {
+            $this->log('error', "Failed to join chat: " . $e->getMessage());
             return [
                 'success' => false,
-                'status' => 'error',
-                'message' => 'خطا در پیوستن به کانال/گروه: ' . $e->getMessage()
+                'error' => $e->getMessage()
+            ];
+        } catch (\Throwable $e) {
+            $this->log('error', "Failed to join chat: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
             ];
         }
     }
-
+    
     /**
-     * مدیریت خطاهای RPC تلگرام
+     * Get messages from a chat
      * 
-     * @param RPCErrorException $exception خطای RPC
-     * @param string $operation عملیات در حال انجام (برای پیام خطا)
-     * @return array پاسخ خطا
+     * @param mixed $peer Chat/channel ID or username
+     * @param int $limit Maximum number of messages to retrieve
+     * @return array Messages
      */
-    private function handleRPCException(RPCErrorException $exception, string $operation = ''): array
+    public function getMessages($peer, int $limit = 100): array
     {
-        $message = $exception->getMessage();
-        $code = $exception->getCode();
-        
-        // خطاهای مرتبط با شماره تلفن
-        if (stripos($message, 'PHONE_NUMBER_INVALID') !== false) {
+        if (!$this->isConnected()) {
             return [
                 'success' => false,
-                'status' => 'invalid_phone',
-                'message' => 'شماره تلفن نامعتبر است. لطفاً با فرمت صحیح وارد کنید (مثال: 989123456789).'
+                'error' => 'Account not connected'
             ];
         }
         
-        // خطاهای مرتبط با کد تأیید
-        if (stripos($message, 'PHONE_CODE_INVALID') !== false) {
-            return [
-                'success' => false,
-                'status' => 'invalid_code',
-                'message' => 'کد تأیید نامعتبر است. لطفاً دوباره تلاش کنید.'
-            ];
-        }
-        if (stripos($message, 'PHONE_CODE_EXPIRED') !== false) {
-            return [
-                'success' => false,
-                'status' => 'code_expired',
-                'message' => 'کد تأیید منقضی شده است. لطفاً کد جدیدی درخواست کنید.'
-            ];
-        }
-        
-        // خطاهای مرتبط با رمز عبور دو مرحله‌ای
-        if (stripos($message, 'PASSWORD_HASH_INVALID') !== false) {
-            return [
-                'success' => false,
-                'status' => 'invalid_password',
-                'message' => 'رمز عبور دو مرحله‌ای نادرست است. لطفاً دوباره تلاش کنید.'
-            ];
-        }
-        
-        // خطاهای محدودیت (FLOOD)
-        if (stripos($message, 'FLOOD_WAIT_') !== false) {
-            preg_match('/FLOOD_WAIT_(\d+)/', $message, $matches);
-            $waitTime = isset($matches[1]) ? (int)$matches[1] : 60;
+        try {
+            $messages = $this->madelineProto->messages->getHistory([
+                'peer' => $peer, 
+                'limit' => $limit,
+                'offset_id' => 0,
+                'offset_date' => 0,
+                'add_offset' => 0,
+                'max_id' => 0,
+                'min_id' => 0,
+                'hash' => 0
+            ]);
             
             return [
+                'success' => true,
+                'messages' => $messages
+            ];
+        } catch (\Throwable $e) {
+            $this->log('error', "Failed to get messages: " . $e->getMessage());
+            return [
                 'success' => false,
-                'status' => 'flood_wait',
-                'message' => "محدودیت درخواست. لطفاً {$waitTime} ثانیه صبر کنید و دوباره تلاش کنید.",
-                'wait_time' => $waitTime
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Get private chat messages (dialogs)
+     * 
+     * @param int $limit Maximum number of chats to retrieve
+     * @return array Chats with their last messages
+     */
+    public function getDialogs(int $limit = 100): array
+    {
+        if (!$this->isConnected()) {
+            return [
+                'success' => false,
+                'error' => 'Account not connected'
             ];
         }
         
-        // خطای پیوستن به کانال/گروه
-        if (stripos($message, 'INVITE_HASH_EXPIRED') !== false) {
-            return [
-                'success' => false,
-                'status' => 'invite_expired',
-                'message' => 'لینک دعوت منقضی شده است.'
-            ];
-        }
-        if (stripos($message, 'CHANNELS_TOO_MUCH') !== false) {
-            return [
-                'success' => false,
-                'status' => 'too_many_channels',
-                'message' => 'شما به حداکثر تعداد کانال‌/گروه‌های مجاز پیوسته‌اید.'
-            ];
-        }
-        if (stripos($message, 'INVITE_REQUEST_SENT') !== false) {
+        try {
+            $dialogs = $this->madelineProto->getDialogs($limit);
+            
             return [
                 'success' => true,
-                'status' => 'join_requested',
-                'message' => 'درخواست پیوستن به گروه ارسال شد و در انتظار تأیید ادمین است.'
+                'dialogs' => $dialogs
+            ];
+        } catch (\Throwable $e) {
+            $this->log('error', "Failed to get dialogs: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Extract links from messages in chats/channels
+     * 
+     * @param int $limit Maximum number of messages to check
+     * @return array Found links
+     */
+    public function extractLinks(int $limit = 1000): array
+    {
+        if (!$this->isConnected()) {
+            return [
+                'success' => false,
+                'error' => 'Account not connected'
             ];
         }
         
-        // خطای عمومی
-        $operationText = $operation ? " در {$operation}" : '';
+        try {
+            $this->log('info', "Extracting links from chats for {$this->phone}");
+            $dialogs = $this->madelineProto->getDialogs();
+            $links = [];
+            
+            foreach ($dialogs as $peer => $dialog) {
+                try {
+                    $peerInfo = $this->madelineProto->getInfo($peer);
+                    $peerType = $peerInfo['type'];
+                    
+                    // Skip non-channels and non-chats
+                    if (!in_array($peerType, ['channel', 'chat', 'supergroup'])) {
+                        continue;
+                    }
+                    
+                    $peerName = $peerInfo['Chat']['title'] ?? ($peerInfo['User']['username'] ?? 'Unknown');
+                    $this->log('info', "Checking messages in {$peerType} {$peerName}");
+                    
+                    $messages = $this->madelineProto->messages->getHistory([
+                        'peer' => $peer, 
+                        'limit' => $limit,
+                        'offset_id' => 0,
+                        'offset_date' => 0,
+                        'add_offset' => 0,
+                        'max_id' => 0,
+                        'min_id' => 0,
+                        'hash' => 0
+                    ]);
+                    
+                    foreach ($messages['messages'] as $message) {
+                        if (isset($message['message'])) {
+                            $text = $message['message'];
+                            
+                            // Find Telegram links using regex
+                            preg_match_all('/(https?:\/\/)?t(elegram)?\.me\/([^\s]+)/i', $text, $matches);
+                            
+                            if (!empty($matches[0])) {
+                                foreach ($matches[0] as $link) {
+                                    $links[] = [
+                                        'link' => $link,
+                                        'source' => $peerName,
+                                        'source_type' => $peerType,
+                                        'text' => $text
+                                    ];
+                                }
+                            }
+                            
+                            // Find joinchat links
+                            preg_match_all('/(https?:\/\/)?t(elegram)?\.me\/joinchat\/([^\s]+)/i', $text, $matches);
+                            
+                            if (!empty($matches[0])) {
+                                foreach ($matches[0] as $link) {
+                                    $links[] = [
+                                        'link' => $link,
+                                        'source' => $peerName,
+                                        'source_type' => $peerType,
+                                        'text' => $text
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    $this->log('warning', "Failed to process peer: " . $e->getMessage());
+                    continue;
+                }
+            }
+            
+            // Update last check time
+            $this->updateLastCheckTime();
+            
+            return [
+                'success' => true,
+                'links' => $links
+            ];
+        } catch (\Throwable $e) {
+            $this->log('error', "Failed to extract links: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Send a message to a user/chat
+     * 
+     * @param mixed $peer Recipient ID or username
+     * @param string $text Message text
+     * @return array Send result
+     */
+    public function sendMessage($peer, string $text): array
+    {
+        if (!$this->isConnected()) {
+            return [
+                'success' => false,
+                'error' => 'Account not connected'
+            ];
+        }
+        
+        try {
+            $result = $this->madelineProto->messages->sendMessage([
+                'peer' => $peer,
+                'message' => $text,
+                'parse_mode' => 'HTML'
+            ]);
+            
+            return [
+                'success' => true,
+                'message_id' => $result
+            ];
+        } catch (\Throwable $e) {
+            $this->log('error', "Failed to send message: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Update the last check time
+     */
+    public function updateLastCheckTime(): void
+    {
+        $this->last_check_time = time();
+    }
+    
+    /**
+     * Get phone number
+     * 
+     * @return string
+     */
+    public function getPhone(): string
+    {
+        return $this->phone;
+    }
+    
+    /**
+     * Get account name
+     * 
+     * @return string
+     */
+    public function getName(): string
+    {
+        return $this->name;
+    }
+    
+    /**
+     * Set account name
+     * 
+     * @param string $name
+     */
+    public function setName(string $name): void
+    {
+        $this->name = $name;
+    }
+    
+    /**
+     * Get last check time
+     * 
+     * @return int|null
+     */
+    public function getLastCheckTime(): ?int
+    {
+        return $this->last_check_time;
+    }
+    
+    /**
+     * Convert account to array for storage
+     * 
+     * @return array
+     */
+    public function toArray(): array
+    {
+        $user_info = $this->getUserInfo();
+        
         return [
-            'success' => false,
-            'status' => 'rpc_error',
-            'message' => "خطای تلگرام{$operationText}: {$message}",
-            'code' => $code,
-            'original_message' => $message
+            'phone' => $this->phone,
+            'name' => $this->name,
+            'connected' => $this->isConnected(),
+            'last_check_time' => $this->last_check_time,
+            'first_name' => $user_info['first_name'] ?? null,
+            'last_name' => $user_info['last_name'] ?? null,
+            'username' => $user_info['username'] ?? null,
+            'photo' => null, // Photo processing would be added separately
+            'session_path' => $this->session_path
         ];
     }
-
+    
     /**
-     * دریافت مسیر فایل جلسه
+     * Log a message
      * 
-     * @return string مسیر کامل فایل جلسه
+     * @param string $level Log level
+     * @param string $message Message to log
      */
-    private function getSessionPath(): string
+    private function log(string $level, string $message): void
     {
-        // تبدیل شماره تلفن به یک نام فایل ایمن
-        $safePhone = preg_replace('/[^0-9]/', '', $this->phone);
-        return self::SESSION_PATH . '/account_' . $safePhone . '.madeline';
+        if ($this->logger) {
+            $this->logger->$level("[UserAccount] {$message}");
+        }
     }
 }
