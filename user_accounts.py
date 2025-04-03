@@ -196,18 +196,31 @@ class UserAccount:
             # Ensure sessions directory exists
             os.makedirs("sessions", exist_ok=True)
             
+            logging.critical(f"[CONNECT_DEEP_DEBUG] Starting connection for account {self.phone}")
+            session_path = f"{self.session_file}.session"
+            
+            if os.path.exists(session_path):
+                logging.critical(f"[CONNECT_DEEP_DEBUG] Session file EXISTS at {session_path}")
+                file_size = os.path.getsize(session_path)
+                logging.critical(f"[CONNECT_DEEP_DEBUG] Session file size: {file_size} bytes")
+            else:
+                logging.critical(f"[CONNECT_DEEP_DEBUG] Session file DOES NOT EXIST at {session_path}")
+            
             # Create the client
+            logging.critical(f"[CONNECT_DEEP_DEBUG] Creating TelegramClient with api_id={self.api_id}, session_file={self.session_file}")
             self.client = TelegramClient(self.session_file, self.api_id, self.api_hash)
             
             # تست برای ارتباط بهتر
             self.client.flood_sleep_threshold = 60
             
             # تنظیمات حیاتی برای اتصال در محیط Replit
+            logging.critical(f"[CONNECT_DEEP_DEBUG] Setting connection=ConnectionTcpIntermediate, proxy=None")
             self.client.connection = ConnectionTcpIntermediate
             self.client.proxy = None  # اطمینان از عدم استفاده از پروکسی
             self.client.session.save_entities = False  # برای جلوگیری از خطاهای احتمالی
             
             # Register message handler for private messages
+            logging.critical(f"[CONNECT_DEEP_DEBUG] Registering event handler for {self.phone}")
             @self.client.on(events.NewMessage(incoming=True, func=lambda e: e.is_private))
             async def handle_private_message(event):
                 """Handle incoming private messages with AI integration"""
@@ -217,7 +230,9 @@ class UserAccount:
             logging.critical(f"[CONNECT_DEBUG] Registered event handler for NewMessage events for account {self.phone}")
             
             # Connect and check if already authorized
+            logging.critical(f"[CONNECT_DEEP_DEBUG] Calling client.connect() for {self.phone}")
             await self.client.connect()
+            logging.critical(f"[CONNECT_DEEP_DEBUG] client.connect() completed for {self.phone}")
             
             if await self.client.is_user_authorized():
                 self.status = "active"
@@ -271,46 +286,65 @@ class UserAccount:
     
     async def sign_in_with_code(self, code, password=None):
         """Sign in with the received authentication code"""
+        import logging
         try:
             if not self.client:
+                logging.critical(f"[SIGN_IN_DEBUG] Client not initialized for account {self.phone}")
                 return False, "Client not initialized"
+            
+            logging.critical(f"[SIGN_IN_DEBUG] Signing in with code for {self.phone}, password provided: {bool(password)}")
             
             try:
                 # If password is provided alongside the code, attempt to use it for 2FA
                 if password:
                     try:
                         # First sign in with the phone code
+                        logging.critical(f"[SIGN_IN_DEBUG] Attempting first-stage sign in with code for {self.phone}")
                         await self.client.sign_in(self.phone, code)
+                        logging.critical(f"[SIGN_IN_DEBUG] First-stage sign in succeeded, but no 2FA was needed for {self.phone}")
                     except SessionPasswordNeededError:
                         # Now use the password for two-factor authentication
+                        logging.critical(f"[SIGN_IN_DEBUG] 2FA needed as expected, using password for {self.phone}")
                         await self.client.sign_in(password=password)
+                        logging.critical(f"[SIGN_IN_DEBUG] 2FA sign in succeeded for {self.phone}")
                     
                     self.status = "active"
                     self.connected = True 
                     self.error = None
+                    logging.critical(f"[SIGN_IN_DEBUG] Successfully signed in with 2FA for {self.phone}")
                     return True, "Successfully signed in with 2FA"
                 else:
                     # Regular sign in without 2FA
+                    logging.critical(f"[SIGN_IN_DEBUG] Attempting regular sign in without 2FA for {self.phone}")
                     await self.client.sign_in(self.phone, code)
                     self.status = "active"
                     self.connected = True
                     self.error = None
+                    logging.critical(f"[SIGN_IN_DEBUG] Successfully signed in without 2FA for {self.phone}")
                     return True, "Successfully signed in"
                     
             except SessionPasswordNeededError:
                 # Two-factor authentication is enabled but no password was provided
+                logging.critical(f"[SIGN_IN_DEBUG] 2FA required but no password provided for {self.phone}")
                 self.status = "2fa_required"
                 return False, "Two-factor authentication required"
             except FloodWaitError as e:
+                logging.critical(f"[SIGN_IN_DEBUG] FloodWaitError for {self.phone}: {e.seconds} seconds")
                 self.status = "flood_wait"
                 self.error = f"Too many attempts. Try again in {e.seconds} seconds."
                 return False, self.error
             except Exception as e:
+                logging.critical(f"[SIGN_IN_DEBUG] Error signing in for {self.phone}: {str(e)}")
+                import traceback
+                logging.critical(f"[SIGN_IN_DEBUG] Traceback: {traceback.format_exc()}")
                 self.status = "error"
                 self.error = str(e)
                 return False, f"Error signing in: {str(e)}"
                 
         except Exception as e:
+            logging.critical(f"[SIGN_IN_DEBUG] Outer exception for {self.phone}: {str(e)}")
+            import traceback
+            logging.critical(f"[SIGN_IN_DEBUG] Traceback: {traceback.format_exc()}")
             self.status = "error"
             self.error = str(e)
             return False, f"Sign in error: {str(e)}"
