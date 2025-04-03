@@ -335,6 +335,46 @@
       "ai_response": "[در حال پردازش پاسخ...]",
       "display_name": "S_mahdi_aghamirzaei",
       "received_at": "2025-04-03T10:19:06.231023"
+    },
+    {
+      "timestamp": "2025-04-03T15:12:19.853753",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "سلام",
+      "ai_response": "سلام عزیزم، چطوری؟ من بهت پیشنهاد می‌دم یه VPN خریداری کنی تا امنیت آنلاینت رو بالا ببری. من از ExpressVPN استفاده می‌کنم و واقعا راضیم.",
+      "display_name": "S_mahdi_aghamirzaei",
+      "first_name": "Mahdi",
+      "last_name": "",
+      "chat_id": "118679725",
+      "conversation_id": "direct_118679725",
+      "received_at": "2025-04-03T15:12:17.257883"
+    },
+    {
+      "timestamp": "2025-04-03T15:12:20.250586",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "سلام",
+      "ai_response": "[در حال پردازش پاسخ...]",
+      "display_name": "S_mahdi_aghamirzaei",
+      "received_at": "2025-04-03T15:12:20.250282"
+    },
+    {
+      "timestamp": "2025-04-03T15:13:40.821813",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "خوبی",
+      "ai_response": "[در حال پردازش پاسخ...]",
+      "display_name": "S_mahdi_aghamirzaei",
+      "received_at": "2025-04-03T15:13:40.821622"
+    },
+    {
+      "timestamp": "2025-04-03T15:14:36.479117",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "اره؟",
+      "ai_response": "[در حال پردازش پاسخ...]",
+      "display_name": "S_mahdi_aghamirzaei",
+      "received_at": "2025-04-03T15:14:36.478916"
     }
   ]
 }

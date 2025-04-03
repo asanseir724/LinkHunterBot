@@ -8,8 +8,9 @@ It allows sending user messages to the AI service and receiving responses.
 import os
 import json
 import logging
-import datetime
+import time
 import requests
+from datetime import datetime, timedelta
 from logger import get_logger
 
 # Setup logging
@@ -30,6 +31,9 @@ class AvalaiAPI:
         self.base_url = base_url
         self.settings_file = "avalai_settings.json"
         self.settings = self._load_settings()
+        
+        # Rate limiting management
+        self._last_rate_limit_error = None
         
     def _load_settings(self):
         """Load settings from JSON file"""
@@ -158,6 +162,16 @@ class AvalaiAPI:
                 "error": "Message is not a question"
             }
         
+        # Check for recent rate limit errors and implement backoff
+        now = datetime.now()
+        if hasattr(self, '_last_rate_limit_error') and self._last_rate_limit_error:
+            # If we had a rate limit error within the last 60 seconds, delay the request
+            time_since_error = (now - self._last_rate_limit_error).total_seconds()
+            if time_since_error < 60:  # Wait at least 60 seconds after a rate limit error
+                logger.warning(f"Rate limiting in effect. Waiting {60 - time_since_error:.1f} more seconds before making another request")
+                wait_time = min(60, 60 - time_since_error)  # Cap at 60 seconds
+                time.sleep(wait_time)
+        
         # Prepare the request
         headers = {
             "Content-Type": "application/json",
@@ -231,6 +245,13 @@ class AvalaiAPI:
             else:
                 error_msg = f"API request failed with status code {response.status_code}: {response.text}"
                 logger.error(error_msg)
+                
+                # Check if this is a rate limit error
+                if response.status_code == 429:
+                    # Store the timestamp of the rate limit error
+                    self._last_rate_limit_error = datetime.now()
+                    logger.warning(f"Rate limit reached! Implementing backoff. Next request will be delayed.")
+                
                 return {
                     "success": False,
                     "response": None,
@@ -298,7 +319,7 @@ class AvalaiAPI:
         """
         # Create a new chat entry
         chat_entry = {
-            "timestamp": datetime.datetime.now().isoformat(),
+            "timestamp": datetime.now().isoformat(),
             "user_id": user_id or "unknown",
             "username": username,
             "user_message": user_message,
@@ -451,8 +472,8 @@ class AvalaiAPI:
                 days_ago = random.randint(0, 7)
                 hours_ago = random.randint(0, 23)
                 minutes_ago = random.randint(0, 59)
-                timestamp = (datetime.datetime.now() - 
-                           datetime.timedelta(days=days_ago, hours=hours_ago, minutes=minutes_ago)).isoformat()
+                timestamp = (datetime.now() - 
+                           timedelta(days=days_ago, hours=hours_ago, minutes=minutes_ago)).isoformat()
                 
                 chat_entry = {
                     "timestamp": timestamp,
