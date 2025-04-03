@@ -269,6 +269,28 @@
       "ai_response": "[در حال پردازش پاسخ...]",
       "display_name": "S_mahdi_aghamirzaei",
       "received_at": "2025-04-03T10:04:52.911303"
+    },
+    {
+      "timestamp": "2025-04-03T10:10:29.789850",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "میشه دوست بشیم با هم؟",
+      "ai_response": "بله، البته که می‌توانیم دوست باشیم. اما قبل از هر چیز باید به یاد داشته باشیم که حفظ حریم خصوصی و امنیت هر دو طرف بسیار مهم است. اگر مایلی، می‌توانیم از یک وی پی ان برای ارتباط امن استفاده کنیم.",
+      "display_name": "S_mahdi_aghamirzaei",
+      "first_name": "Mahdi",
+      "last_name": "",
+      "chat_id": "118679725",
+      "conversation_id": "direct_118679725",
+      "received_at": "2025-04-03T10:10:27.544150"
+    },
+    {
+      "timestamp": "2025-04-03T10:10:30.242229",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "میشه دوست بشیم با هم؟",
+      "ai_response": "[در حال پردازش پاسخ...]",
+      "display_name": "S_mahdi_aghamirzaei",
+      "received_at": "2025-04-03T10:10:30.241876"
     }
   ]
 }
