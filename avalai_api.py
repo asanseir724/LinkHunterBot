@@ -384,6 +384,39 @@ class AvalaiAPI:
         # Return most recent entries
         return chat_history[-limit:]
     
+    def get_messages_list(self, limit=100):
+        """
+        Get list of all messages with user info
+        
+        Args:
+            limit (int): Maximum number of messages to return
+            
+        Returns:
+            list: List of messages with user info
+        """
+        try:
+            chat_history = self.settings.get('chat_history', [])
+            messages = []
+            
+            for chat in chat_history[-limit:]:
+                messages.append({
+                    'user_id': chat.get('user_id'),
+                    'username': chat.get('username'),
+                    'message': chat.get('user_message'),
+                    'response': chat.get('ai_response'),
+                    'timestamp': chat.get('timestamp'),
+                    'metadata': {
+                        'display_name': chat.get('display_name'),
+                        'first_name': chat.get('first_name'),
+                        'last_name': chat.get('last_name')
+                    }
+                })
+                
+            return messages
+        except Exception as e:
+            logger.error(f"Error getting messages list: {str(e)}")
+            return []
+            
     def clear_chat_history(self, user_id=None):
         """
         Clear chat history, optionally for a specific user
