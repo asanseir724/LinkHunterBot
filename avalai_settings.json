@@ -5,5 +5,28 @@
   "max_tokens": 50,
   "temperature": 1.0,
   "respond_to_all_messages": true,
-  "chat_history": []
+  "chat_history": [
+    {
+      "timestamp": "2025-04-03T09:56:27.635121",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "سلام",
+      "ai_response": "[خطا در دریافت پاسخ: API request failed with status code 400: {\n  \"error\": {\n    \"message\": \"Unrecognized request arguments supplied: conversation_id, username\",\n    \"type\": \"invalid_request\",\n    \"param\": null,\n    \"code\": \"invalid_request\"\n  }\n}]",
+      "display_name": "S_mahdi_aghamirzaei",
+      "first_name": "Mahdi",
+      "last_name": "",
+      "chat_id": "118679725",
+      "conversation_id": "direct_118679725",
+      "received_at": "2025-04-03T09:56:26.902062"
+    },
+    {
+      "timestamp": "2025-04-03T09:56:27.637091",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "سلام",
+      "ai_response": "[در حال پردازش پاسخ...]",
+      "display_name": "S_mahdi_aghamirzaei",
+      "received_at": "2025-04-03T09:56:27.636828"
+    }
+  ]
 }
