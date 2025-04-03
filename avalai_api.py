@@ -420,6 +420,29 @@ class AvalaiAPI:
     def clear_chat_history(self, user_id=None):
         """
         Clear chat history, optionally for a specific user
+        """
+        try:
+            settings = self.settings.copy()
+            
+            if user_id:
+                # Remove only entries for this user
+                if 'chat_history' in settings:
+                    settings['chat_history'] = [
+                        chat for chat in settings['chat_history'] 
+                        if chat.get('user_id') != user_id
+                    ]
+            else:
+                # Clear all history
+                settings['chat_history'] = []
+            
+            # Save the updated settings
+            success = self._save_settings(settings)
+            if success:
+                self.settings = settings
+            return success
+        except Exception as e:
+            logger.error(f"Error clearing chat history: {str(e)}")
+            return False
 
     def add_test_messages(self):
         """Add some test messages to see how the system works"""
