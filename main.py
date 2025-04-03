@@ -1051,8 +1051,35 @@ if __name__ == "__main__":
             if bot_instance:
                 bot_status = "Running"
                 
-                # Start polling for direct messages
+                # Start Direct API for private messages and connect accounts
                 logger.critical("[DIRECT_API_DEBUG] Starting direct API polling for private messages")
+                
+                # تلاش برای اتصال اتوماتیک تمام اکانت‌ها
+                try:
+                    from account_routes import account_manager, safe_run_coroutine
+                    
+                    logger.critical("[DIRECT_API_DEBUG] Auto-connecting all accounts on startup")
+                    all_accounts = account_manager.get_all_accounts()
+                    logger.critical(f"[DIRECT_API_DEBUG] Found {len(all_accounts)} total accounts")
+                    
+                    for account in all_accounts:
+                        logger.critical(f"[DIRECT_API_DEBUG] Auto-connecting account {account.phone}")
+                        connect_result = safe_run_coroutine(account.connect(), (False, "Error connecting"))
+                        logger.critical(f"[DIRECT_API_DEBUG] Connect result for {account.phone}: {connect_result}, connected={account.connected}, status={account.status}")
+                        
+                    # ذخیره وضعیت اکانت‌ها
+                    account_manager.save_accounts()
+                    logger.critical("[DIRECT_API_DEBUG] Saved account states after auto-connect")
+                    
+                    # نتیجه اتصال
+                    active_accounts = account_manager.get_active_accounts()
+                    logger.critical(f"[DIRECT_API_DEBUG] {len(active_accounts)} accounts active after auto-connect")
+                except Exception as e:
+                    logger.critical(f"[DIRECT_API_DEBUG] Error auto-connecting accounts: {str(e)}")
+                    import traceback
+                    logger.critical(f"[DIRECT_API_DEBUG] Traceback: {traceback.format_exc()}")
+                
+                # Start bot polling
                 bot_instance.start_polling()
                 logger.critical("[DIRECT_API_DEBUG] Direct API polling started successfully")
                 

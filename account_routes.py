@@ -383,10 +383,24 @@ def account_messages(phone):
             flash("اکانت مورد نظر یافت نشد", "danger")
             return redirect(url_for('accounts.telegram_desktop'))
             
-        # Check if account is connected
+        # برقراری اتصال اتوماتیک اگر اکانت متصل نیست
         if not account.connected or account.status != "active":
-            flash("اکانت مورد نظر متصل نیست. لطفا ابتدا آن را متصل کنید", "danger")
-            return redirect(url_for('accounts.telegram_desktop'))
+            # قبل از redirect، یک بار تلاش می‌کنیم اکانت را متصل کنیم
+            from logger import get_logger
+            logger = get_logger("account_routes")
+            logger.critical(f"[DEBUG] Attempting to auto-connect account {phone} with status {account.status} and connected={account.connected}")
+            
+            # تلاش خودکار برای اتصال
+            connect_result = safe_run_coroutine(account.connect(), (False, "Error auto-connecting"))
+            logger.critical(f"[DEBUG] Auto-connect result for {phone}: {connect_result}")
+            
+            # ذخیره وضعیت اکانت‌ها بعد از اتصال خودکار
+            account_manager.save_accounts()
+            
+            # بررسی دوباره وضعیت اتصال
+            if not account.connected or account.status != "active":
+                flash("اکانت مورد نظر متصل نیست. تلاش خودکار برای اتصال نیز ناموفق بود.", "danger")
+                return redirect(url_for('accounts.telegram_desktop'))
             
         # Get messages from this account (latest 30 private chats)
         result = safe_run_coroutine(
