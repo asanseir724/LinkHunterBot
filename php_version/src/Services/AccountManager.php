@@ -2,246 +2,489 @@
 
 namespace App\Services;
 
-class AccountManager
-{
-    private string $accountsDataFile;
-    private array $accounts = [];
-    private LinkManager $linkManager;
+use Exception;
+
+/**
+ * Class AccountManager
+ * 
+ * این کلاس برای مدیریت چندین حساب کاربری تلگرام استفاده می‌شود.
+ */
+class AccountManager {
+    /**
+     * مسیر فایل داده
+     */
+    private $dataFile;
     
-    public function __construct(LinkManager $linkManager)
-    {
-        $this->accountsDataFile = __DIR__ . '/../../accounts_data.json';
-        $this->linkManager = $linkManager;
-        $this->loadAccounts();
+    /**
+     * لیست حساب‌های کاربری
+     */
+    private $accounts = [];
+    
+    /**
+     * سازنده کلاس
+     * 
+     * @param string $dataFile مسیر فایل داده
+     */
+    public function __construct($dataFile = 'accounts_data.json') {
+        $this->dataFile = $dataFile;
+        $this->loadData();
     }
     
-    private function loadAccounts(): void
-    {
-        if (file_exists($this->accountsDataFile)) {
-            $accountsData = json_decode(file_get_contents($this->accountsDataFile), true) ?: [];
+    /**
+     * بارگذاری داده‌ها از فایل
+     */
+    public function loadData() {
+        if (file_exists($this->dataFile)) {
+            $data = file_get_contents($this->dataFile);
+            $accounts = json_decode($data, true);
             
-            // Create UserAccount objects for each account
-            foreach ($accountsData as $accountData) {
-                $phone = $accountData['phone'] ?? '';
-                if ($phone) {
-                    $this->accounts[$phone] = new UserAccount($phone, $this->linkManager);
-                }
+            if (is_array($accounts)) {
+                $this->accounts = $accounts;
             }
-        } else {
-            file_put_contents($this->accountsDataFile, json_encode([], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         }
     }
     
     /**
-     * Add a new account
+     * ذخیره داده‌ها در فایل
+     * 
+     * @return bool آیا عملیات موفقیت‌آمیز بود؟
      */
-    public function addAccount(string $phone): array
-    {
-        // Normalize phone number
-        $phone = preg_replace('/[^\d+]/', '', $phone);
+    public function saveData() {
+        $data = json_encode($this->accounts, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        return file_put_contents($this->dataFile, $data) !== false;
+    }
+    
+    /**
+     * افزودن حساب کاربری جدید
+     * 
+     * @param string $phone شماره تلفن
+     * @return array نتیجه عملیات
+     */
+    public function addAccount($phone) {
+        // اطمینان از فرمت صحیح شماره تلفن
+        $phone = $this->normalizePhone($phone);
         
-        // Check if account already exists
-        if (isset($this->accounts[$phone])) {
+        if (empty($phone)) {
             return [
                 'success' => false,
-                'message' => 'Account already exists',
-                'phone' => $phone
+                'message' => 'شماره تلفن نامعتبر است.'
             ];
         }
         
-        // Create a new account
-        $account = new UserAccount($phone, $this->linkManager);
-        $this->accounts[$phone] = $account;
+        // بررسی تکراری نبودن حساب
+        if ($this->accountExists($phone)) {
+            return [
+                'success' => false,
+                'message' => 'این حساب کاربری قبلاً اضافه شده است.'
+            ];
+        }
+        
+        // ایجاد حساب کاربری جدید
+        $accountInfo = [
+            'phone' => $phone,
+            'first_name' => '',
+            'last_name' => '',
+            'username' => '',
+            'connected' => false,
+            'added_time' => time(),
+            'last_check_time' => null
+        ];
+        
+        // ذخیره حساب در آرایه
+        $this->accounts[$phone] = $accountInfo;
+        
+        // ذخیره در فایل
+        if ($this->saveData()) {
+            return [
+                'success' => true,
+                'message' => 'حساب کاربری با موفقیت اضافه شد.',
+                'account' => $accountInfo
+            ];
+        }
         
         return [
-            'success' => true,
-            'message' => 'Account added',
-            'phone' => $phone
+            'success' => false,
+            'message' => 'خطا در ذخیره اطلاعات حساب کاربری.'
         ];
     }
     
     /**
-     * Remove an account
+     * حذف حساب کاربری
+     * 
+     * @param string $phone شماره تلفن
+     * @return array نتیجه عملیات
      */
-    public function removeAccount(string $phone): bool
-    {
-        if (isset($this->accounts[$phone])) {
-            // Disconnect the account first
-            $this->accounts[$phone]->disconnect();
-            
-            // Remove from accounts list
-            unset($this->accounts[$phone]);
-            
-            // Update accounts data file
-            $this->saveAccountsData();
-            
-            return true;
+    public function removeAccount($phone) {
+        $phone = $this->normalizePhone($phone);
+        
+        if (!$this->accountExists($phone)) {
+            return [
+                'success' => false,
+                'message' => 'این حساب کاربری وجود ندارد.'
+            ];
         }
         
-        return false;
+        // قطع اتصال حساب کاربری قبل از حذف
+        if ($this->isConnected($phone)) {
+            $userAccount = $this->getUserAccount($phone);
+            $userAccount->disconnect();
+        }
+        
+        // حذف از آرایه
+        unset($this->accounts[$phone]);
+        
+        // ذخیره در فایل
+        if ($this->saveData()) {
+            return [
+                'success' => true,
+                'message' => 'حساب کاربری با موفقیت حذف شد.'
+            ];
+        }
+        
+        return [
+            'success' => false,
+            'message' => 'خطا در حذف حساب کاربری.'
+        ];
     }
     
     /**
-     * Get all accounts
+     * اتصال به حساب کاربری
+     * 
+     * @param string $phone شماره تلفن
+     * @return array نتیجه عملیات
      */
-    public function getAccounts(): array
-    {
-        $accountsData = [];
+    public function connectAccount($phone) {
+        $phone = $this->normalizePhone($phone);
+        
+        if (!$this->accountExists($phone)) {
+            return [
+                'success' => false,
+                'message' => 'این حساب کاربری وجود ندارد.'
+            ];
+        }
+        
+        // ایجاد نمونه حساب کاربری
+        $userAccount = $this->getUserAccount($phone);
+        
+        // بررسی وضعیت اتصال فعلی
+        if ($userAccount->isConnected()) {
+            return [
+                'success' => true,
+                'message' => 'این حساب کاربری در حال حاضر متصل است.'
+            ];
+        }
+        
+        // تلاش برای اتصال
+        $result = $userAccount->connect();
+        
+        // به‌روزرسانی وضعیت اتصال در دیتابیس
+        if ($result['success'] || $result['status'] === 'code_needed' || $result['status'] === '2fa_needed') {
+            $this->accounts[$phone]['connected'] = $result['success'];
+            $this->saveData();
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * تأیید کد احراز هویت
+     * 
+     * @param string $phone شماره تلفن
+     * @param string $code کد تأیید
+     * @return array نتیجه عملیات
+     */
+    public function verifyCode($phone, $code) {
+        $phone = $this->normalizePhone($phone);
+        
+        if (!$this->accountExists($phone)) {
+            return [
+                'success' => false,
+                'message' => 'این حساب کاربری وجود ندارد.'
+            ];
+        }
+        
+        // ایجاد نمونه حساب کاربری
+        $userAccount = $this->getUserAccount($phone);
+        
+        // تلاش برای تأیید کد
+        $result = $userAccount->verifyCode($code, '');
+        
+        // به‌روزرسانی وضعیت اتصال و اطلاعات در دیتابیس
+        if ($result['success']) {
+            $accountInfo = $userAccount->getAccountInfo();
+            $this->accounts[$phone] = array_merge($this->accounts[$phone], $accountInfo);
+            $this->saveData();
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * تأیید رمز عبور دو مرحله‌ای
+     * 
+     * @param string $phone شماره تلفن
+     * @param string $password رمز عبور
+     * @return array نتیجه عملیات
+     */
+    public function verify2FA($phone, $password) {
+        $phone = $this->normalizePhone($phone);
+        
+        if (!$this->accountExists($phone)) {
+            return [
+                'success' => false,
+                'message' => 'این حساب کاربری وجود ندارد.'
+            ];
+        }
+        
+        // ایجاد نمونه حساب کاربری
+        $userAccount = $this->getUserAccount($phone);
+        
+        // تلاش برای تأیید رمز عبور
+        $result = $userAccount->verify2FA($password);
+        
+        // به‌روزرسانی وضعیت اتصال و اطلاعات در دیتابیس
+        if ($result['success']) {
+            $accountInfo = $userAccount->getAccountInfo();
+            $this->accounts[$phone] = array_merge($this->accounts[$phone], $accountInfo);
+            $this->saveData();
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * قطع اتصال حساب کاربری
+     * 
+     * @param string $phone شماره تلفن
+     * @return array نتیجه عملیات
+     */
+    public function disconnectAccount($phone) {
+        $phone = $this->normalizePhone($phone);
+        
+        if (!$this->accountExists($phone)) {
+            return [
+                'success' => false,
+                'message' => 'این حساب کاربری وجود ندارد.'
+            ];
+        }
+        
+        // ایجاد نمونه حساب کاربری
+        $userAccount = $this->getUserAccount($phone);
+        
+        // تلاش برای قطع اتصال
+        $result = $userAccount->disconnect();
+        
+        // به‌روزرسانی وضعیت اتصال در دیتابیس
+        if ($result['success']) {
+            $this->accounts[$phone]['connected'] = false;
+            $this->saveData();
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * بررسی وجود حساب کاربری
+     * 
+     * @param string $phone شماره تلفن
+     * @return bool آیا حساب وجود دارد؟
+     */
+    public function accountExists($phone) {
+        $phone = $this->normalizePhone($phone);
+        return isset($this->accounts[$phone]);
+    }
+    
+    /**
+     * بررسی وضعیت اتصال حساب کاربری
+     * 
+     * @param string $phone شماره تلفن
+     * @return bool آیا حساب متصل است؟
+     */
+    public function isConnected($phone) {
+        $phone = $this->normalizePhone($phone);
+        
+        if (!$this->accountExists($phone)) {
+            return false;
+        }
+        
+        // بررسی وضعیت اتصال واقعی
+        $userAccount = $this->getUserAccount($phone);
+        $connected = $userAccount->isConnected();
+        
+        // به‌روزرسانی وضعیت در دیتابیس اگر تغییر کرده باشد
+        if ($connected !== $this->accounts[$phone]['connected']) {
+            $this->accounts[$phone]['connected'] = $connected;
+            $this->saveData();
+        }
+        
+        return $connected;
+    }
+    
+    /**
+     * دریافت اطلاعات یک حساب کاربری
+     * 
+     * @param string $phone شماره تلفن
+     * @return array|null اطلاعات حساب یا null
+     */
+    public function getAccount($phone) {
+        $phone = $this->normalizePhone($phone);
+        
+        if (!$this->accountExists($phone)) {
+            return null;
+        }
+        
+        return $this->accounts[$phone];
+    }
+    
+    /**
+     * دریافت لیست تمام حساب‌های کاربری
+     * 
+     * @return array لیست حساب‌ها
+     */
+    public function getAllAccounts() {
+        return $this->accounts;
+    }
+    
+    /**
+     * دریافت لیست حساب‌های متصل
+     * 
+     * @param bool $checkRealStatus بررسی وضعیت واقعی اتصال
+     * @return array لیست حساب‌های متصل
+     */
+    public function getConnectedAccounts($checkRealStatus = false) {
+        $connectedAccounts = [];
         
         foreach ($this->accounts as $phone => $account) {
-            $accountsData[] = $account->getAccountData();
-        }
-        
-        return $accountsData;
-    }
-    
-    /**
-     * Get a specific account
-     */
-    public function getAccount(string $phone): ?UserAccount
-    {
-        return $this->accounts[$phone] ?? null;
-    }
-    
-    /**
-     * Connect an account
-     */
-    public function connectAccount(string $phone): array
-    {
-        if (isset($this->accounts[$phone])) {
-            return $this->accounts[$phone]->connect();
-        }
-        
-        return [
-            'success' => false,
-            'message' => 'Account not found',
-            'status' => 'error'
-        ];
-    }
-    
-    /**
-     * Disconnect an account
-     */
-    public function disconnectAccount(string $phone): bool
-    {
-        if (isset($this->accounts[$phone])) {
-            return $this->accounts[$phone]->disconnect();
-        }
-        
-        return false;
-    }
-    
-    /**
-     * Verify code for an account
-     */
-    public function verifyCode(string $phone, string $code, string $phoneCodeHash): array
-    {
-        if (isset($this->accounts[$phone])) {
-            return $this->accounts[$phone]->verifyCode($code, $phoneCodeHash);
-        }
-        
-        return [
-            'success' => false,
-            'message' => 'Account not found',
-            'status' => 'error'
-        ];
-    }
-    
-    /**
-     * Verify 2FA for an account
-     */
-    public function verify2FA(string $phone, string $password): array
-    {
-        if (isset($this->accounts[$phone])) {
-            return $this->accounts[$phone]->verify2FA($password);
-        }
-        
-        return [
-            'success' => false,
-            'message' => 'Account not found',
-            'status' => 'error'
-        ];
-    }
-    
-    /**
-     * Check all connected accounts for links
-     */
-    public function checkAllAccountsForLinks(): array
-    {
-        $results = [];
-        $totalNewLinks = 0;
-        
-        foreach ($this->accounts as $phone => $account) {
-            if ($account->isConnected()) {
-                $result = $account->checkForLinks();
-                $results[$phone] = $result;
+            $connected = $account['connected'];
+            
+            if ($checkRealStatus) {
+                // بررسی وضعیت واقعی اتصال
+                $userAccount = $this->getUserAccount($phone);
+                $connected = $userAccount->isConnected();
                 
-                if ($result['success']) {
-                    $totalNewLinks += $result['new_links'];
+                // به‌روزرسانی وضعیت در دیتابیس اگر تغییر کرده باشد
+                if ($connected !== $account['connected']) {
+                    $this->accounts[$phone]['connected'] = $connected;
+                    $this->saveData();
                 }
+            }
+            
+            if ($connected) {
+                $connectedAccounts[$phone] = $account;
             }
         }
         
-        return [
-            'success' => true,
-            'message' => "Found $totalNewLinks new links from " . count($results) . " account(s)",
-            'results' => $results,
-            'total_new_links' => $totalNewLinks
-        ];
+        return $connectedAccounts;
     }
     
     /**
-     * Get private messages from all connected accounts
+     * به‌روزرسانی زمان آخرین بررسی حساب کاربری
+     * 
+     * @param string $phone شماره تلفن
+     * @return bool آیا به‌روزرسانی موفقیت‌آمیز بود؟
      */
-    public function getAllPrivateMessages(int $limit = 50): array
-    {
-        $allMessages = [];
+    public function updateLastCheckTime($phone) {
+        $phone = $this->normalizePhone($phone);
         
-        foreach ($this->accounts as $phone => $account) {
-            if ($account->isConnected()) {
-                $result = $account->getPrivateMessages($limit);
+        if (!$this->accountExists($phone)) {
+            return false;
+        }
+        
+        $this->accounts[$phone]['last_check_time'] = time();
+        return $this->saveData();
+    }
+    
+    /**
+     * استخراج لینک‌ها از چت‌های حساب‌های کاربری متصل
+     * 
+     * @param LinkManager $linkManager مدیریت کننده لینک‌ها
+     * @param int $limit حداکثر تعداد پیام‌ها در هر چت
+     * @return array آمار استخراج لینک‌ها
+     */
+    public function extractLinksFromAccounts($linkManager, $limit = 100) {
+        $stats = [
+            'total_accounts' => 0,
+            'processed_accounts' => 0,
+            'total_links' => 0,
+            'new_links' => 0,
+            'errors' => []
+        ];
+        
+        // دریافت حساب‌های متصل
+        $connectedAccounts = $this->getConnectedAccounts(true);
+        $stats['total_accounts'] = count($connectedAccounts);
+        
+        foreach ($connectedAccounts as $phone => $account) {
+            try {
+                // ایجاد نمونه حساب کاربری
+                $userAccount = $this->getUserAccount($phone);
                 
-                if ($result['success']) {
-                    $accountData = $account->getAccountData();
-                    $allMessages[$phone] = [
-                        'account' => [
-                            'phone' => $phone,
-                            'username' => $accountData['username'] ?? '',
-                            'first_name' => $accountData['first_name'] ?? '',
-                            'last_name' => $accountData['last_name'] ?? ''
-                        ],
-                        'chats' => $result['messages']
-                    ];
+                // دریافت لیست چت‌ها
+                $dialogs = $userAccount->getDialogs();
+                
+                foreach ($dialogs as $peer => $dialog) {
+                    // استخراج لینک‌ها از چت
+                    $links = $userAccount->extractLinksFromChat($peer, $limit);
+                    
+                    // افزودن لینک‌ها به مدیریت کننده لینک‌ها
+                    foreach ($links as $link) {
+                        $isNew = $linkManager->addLink($link, "اکانت: {$phone}", "استخراج شده از چت");
+                        
+                        if ($isNew) {
+                            $stats['new_links']++;
+                        }
+                        
+                        $stats['total_links']++;
+                    }
                 }
+                
+                // به‌روزرسانی زمان آخرین بررسی
+                $this->updateLastCheckTime($phone);
+                $stats['processed_accounts']++;
+            } catch (Exception $e) {
+                $stats['errors'][] = "خطا در بررسی حساب {$phone}: " . $e->getMessage();
             }
         }
         
-        return $allMessages;
+        return $stats;
     }
     
     /**
-     * Send a message to a user from a specific account
+     * دریافت نمونه حساب کاربری
+     * 
+     * @param string $phone شماره تلفن
+     * @return UserAccount نمونه حساب کاربری
      */
-    public function sendMessage(string $phone, string $userId, string $text): bool
-    {
-        if (isset($this->accounts[$phone])) {
-            return $this->accounts[$phone]->sendMessage($userId, $text);
+    private function getUserAccount($phone) {
+        $phone = $this->normalizePhone($phone);
+        
+        if (!$this->accountExists($phone)) {
+            throw new Exception("حساب کاربری با شماره {$phone} وجود ندارد.");
         }
         
-        return false;
+        return new UserAccount($phone, $this->accounts[$phone]);
     }
     
     /**
-     * Save accounts data to file
+     * نرمال‌سازی شماره تلفن
+     * 
+     * @param string $phone شماره تلفن
+     * @return string شماره تلفن نرمال شده
      */
-    private function saveAccountsData(): void
-    {
-        $accountsData = [];
+    private function normalizePhone($phone) {
+        // حذف فاصله‌ها و کاراکترهای اضافی
+        $phone = preg_replace('/\s+/', '', $phone);
         
-        foreach ($this->accounts as $phone => $account) {
-            $accountsData[] = $account->getAccountData();
+        // حذف + از ابتدای شماره
+        if (substr($phone, 0, 1) === '+') {
+            $phone = substr($phone, 1);
         }
         
-        file_put_contents($this->accountsDataFile, json_encode($accountsData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        // بررسی معتبر بودن شماره
+        if (!preg_match('/^\d{10,15}$/', $phone)) {
+            return '';
+        }
+        
+        return $phone;
     }
 }
