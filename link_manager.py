@@ -6,10 +6,13 @@ from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 from logger import get_logger
 
+# Import pandas for Excel export feature
 try:
     import pandas as pd
 except ImportError:
     pd = None
+    logger = get_logger("link_manager")
+    logger.warning("Pandas not available. Excel export will not work.")
 
 # Get module logger
 logger = get_logger(__name__)
@@ -284,28 +287,43 @@ class LinkManager:
         Add a channel to monitor with a specific category
         
         Args:
-            channel (str): The channel name or URL
+            channel (str): The channel name or URL (supports multiple formats)
             category (str, optional): The category for this channel. Defaults to "عمومی".
         
         Returns:
             bool: True if added successfully, False if already exists or invalid
         """
+        if not channel:
+            logger.warning("Empty channel name provided")
+            return False
+            
         # Normalize channel name
+        original_channel = channel
+        channel = channel.strip()
+        
         # Remove @ if present
         if channel.startswith('@'):
             channel = channel[1:]
+            logger.debug(f"Removed @ from channel name: {original_channel} -> {channel}")
         
-        # Remove https://t.me/ or http://t.me/ if present
+        # Remove https://t.me/ or http://t.me/ or t.me/ if present
         if channel.startswith('https://t.me/'):
             channel = channel[13:]  # Remove 'https://t.me/'
+            logger.debug(f"Removed https://t.me/ from URL: {original_channel} -> {channel}")
         elif channel.startswith('http://t.me/'):
             channel = channel[12:]  # Remove 'http://t.me/'
+            logger.debug(f"Removed http://t.me/ from URL: {original_channel} -> {channel}")
         elif channel.startswith('t.me/'):
             channel = channel[5:]   # Remove 't.me/'
+            logger.debug(f"Removed t.me/ from URL: {original_channel} -> {channel}")
+        # Handle joinchat or + links - convert to standard format
+        elif 'joinchat' in channel or '+' in channel:
+            # For joinchat links we'll keep the full format as they can't be simplified
+            logger.debug(f"Private group/channel link detected: {channel}")
             
         # Make sure channel name is valid
         if not channel or '/' in channel:
-            logger.warning(f"Invalid channel name: {channel}")
+            logger.warning(f"Invalid channel name or URL: {original_channel}")
             return False
         
         if channel in self.channels:
@@ -316,26 +334,43 @@ class LinkManager:
         # Add channel category
         self.channel_categories[channel] = category
         self.save_data()
-        logger.info(f"Added channel: {channel} with category: {category}")
+        
+        # Log the normalization if it happened
+        if original_channel != channel:
+            logger.info(f"Added normalized channel: {original_channel} -> {channel} with category: {category}")
+        else:
+            logger.info(f"Added channel: {channel} with category: {category}")
+            
         return True
     
     def remove_channel(self, channel):
         """Remove a channel from monitoring"""
+        if not channel:
+            logger.warning("Empty channel name provided for removal")
+            return False
+            
         # Normalize channel name
+        original_channel = channel
+        channel = channel.strip()
+        
         # Remove @ if present
         if channel.startswith('@'):
             channel = channel[1:]
+            logger.debug(f"Removed @ from channel name for removal: {original_channel} -> {channel}")
         
-        # Remove https://t.me/ or http://t.me/ if present
+        # Remove https://t.me/ or http://t.me/ or t.me/ if present
         if channel.startswith('https://t.me/'):
             channel = channel[13:]  # Remove 'https://t.me/'
+            logger.debug(f"Removed https://t.me/ from URL for removal: {original_channel} -> {channel}")
         elif channel.startswith('http://t.me/'):
             channel = channel[12:]  # Remove 'http://t.me/'
+            logger.debug(f"Removed http://t.me/ from URL for removal: {original_channel} -> {channel}")
         elif channel.startswith('t.me/'):
             channel = channel[5:]   # Remove 't.me/'
+            logger.debug(f"Removed t.me/ from URL for removal: {original_channel} -> {channel}")
         
         if channel not in self.channels:
-            logger.info(f"Channel {channel} not found")
+            logger.info(f"Channel {channel} not found for removal")
             return False
         
         self.channels.remove(channel)
@@ -343,7 +378,13 @@ class LinkManager:
         if channel in self.channel_categories:
             del self.channel_categories[channel]
         self.save_data()
-        logger.info(f"Removed channel: {channel}")
+        
+        # Log the normalization if it happened
+        if original_channel != channel:
+            logger.info(f"Removed normalized channel: {original_channel} -> {channel}")
+        else:
+            logger.info(f"Removed channel: {channel}")
+            
         return True
     
     def remove_all_channels(self):
@@ -840,6 +881,11 @@ class LinkManager:
         Returns:
             str: Filename of saved Excel file, or None if export failed
         """
+        # Check if pandas is available
+        if pd is None:
+            logger.error("Cannot export to Excel: pandas module not available")
+            return None
+            
         try:
             if category and category in self.links_by_category:
                 # Export links for specific category
@@ -850,52 +896,89 @@ class LinkManager:
                 links_to_export = self.links
                 sheet_name = "All Links"
             
-            # Create a DataFrame for links
-            df = pd.DataFrame(links_to_export, columns=["Link URL"])
+            # Create 'exports' directory if it doesn't exist
+            os.makedirs('static/exports', exist_ok=True)
             
             # Get the timestamp for the filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             category_suffix = f"_{category}" if category else ""
             filename_with_timestamp = f"{filename.split('.')[0]}{category_suffix}_{timestamp}.xlsx"
-            
-            # Create 'exports' directory if it doesn't exist
-            os.makedirs('static/exports', exist_ok=True)
-            
-            # Save to Excel file
             full_path = os.path.join('static/exports', filename_with_timestamp)
-            df.to_excel(full_path, index=False, sheet_name=sheet_name)
             
-            logger.info(f"Exported {len(links_to_export)} links to Excel: {full_path}")
+            # Fallback to CSV if pandas fails
+            try:
+                # Create a DataFrame for links and export to Excel
+                df = pd.DataFrame({"Link URL": links_to_export})
+                df.to_excel(full_path, index=False, sheet_name=sheet_name)
+                logger.info(f"Exported {len(links_to_export)} links to Excel: {full_path}")
+            except Exception as excel_error:
+                # If Excel export fails, try CSV instead
+                logger.warning(f"Excel export failed: {excel_error}, trying CSV format")
+                csv_path = full_path.replace('.xlsx', '.csv')
+                
+                with open(csv_path, 'w', encoding='utf-8') as f:
+                    f.write("Link URL\n")  # Header
+                    for link in links_to_export:
+                        f.write(f"{link}\n")
+                
+                logger.info(f"Exported {len(links_to_export)} links to CSV: {csv_path}")
+                return os.path.basename(csv_path)
+            
             return filename_with_timestamp
             
         except Exception as e:
-            logger.error(f"Error exporting links to Excel: {e}")
+            logger.error(f"Error exporting links: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
             return None
             
     def export_new_links_to_excel(self, filename="new_links.xlsx"):
-        """Export new links to Excel file"""
+        """
+        Export new links to Excel file
+        
+        Args:
+            filename (str, optional): Output filename. Defaults to "new_links.xlsx".
+            
+        Returns:
+            str: Filename of saved Excel file, or None if export failed
+        """
+        # Check if pandas is available
+        if pd is None:
+            logger.error("Cannot export to Excel: pandas module not available")
+            return None
+            
         try:
-            # Create a DataFrame for new links
-            df = pd.DataFrame(self.new_links, columns=["Link URL"])
+            # Create 'exports' directory if it doesn't exist
+            os.makedirs('static/exports', exist_ok=True)
             
             # Get the timestamp for the filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename_with_timestamp = f"{filename.split('.')[0]}_{timestamp}.xlsx"
-            
-            # Create 'exports' directory if it doesn't exist
-            os.makedirs('static/exports', exist_ok=True)
-            
-            # Save to Excel file
             full_path = os.path.join('static/exports', filename_with_timestamp)
-            df.to_excel(full_path, index=False, sheet_name="New Links")
             
-            logger.info(f"Exported new links ({len(self.new_links)}) to Excel: {full_path}")
+            # Fallback to CSV if pandas fails
+            try:
+                # Create a DataFrame for links and export to Excel
+                df = pd.DataFrame({"Link URL": self.new_links})
+                df.to_excel(full_path, index=False, sheet_name="New Links")
+                logger.info(f"Exported {len(self.new_links)} new links to Excel: {full_path}")
+            except Exception as excel_error:
+                # If Excel export fails, try CSV instead
+                logger.warning(f"Excel export failed: {excel_error}, trying CSV format")
+                csv_path = full_path.replace('.xlsx', '.csv')
+                
+                with open(csv_path, 'w', encoding='utf-8') as f:
+                    f.write("Link URL\n")  # Header
+                    for link in self.new_links:
+                        f.write(f"{link}\n")
+                
+                logger.info(f"Exported {len(self.new_links)} new links to CSV: {csv_path}")
+                return os.path.basename(csv_path)
+            
             return filename_with_timestamp
             
         except Exception as e:
-            logger.error(f"Error exporting new links to Excel: {e}")
+            logger.error(f"Error exporting new links: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
             return None

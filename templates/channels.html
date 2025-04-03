@@ -32,8 +32,7 @@
             <div class="tab-pane fade show active" id="single-channel" role="tabpanel" aria-labelledby="single-channel-tab">
                 <form action="{{ url_for('channels') }}" method="post">
                     <div class="input-group">
-                        <span class="input-group-text">@</span>
-                        <input type="text" class="form-control" name="channel" placeholder="Channel username (without @)" required>
+                        <input type="text" class="form-control" name="channel" placeholder="Channel username or full URL" required>
                         
                         <select class="form-select" name="category" style="max-width: 200px;">
                             {% for category in categories %}
@@ -46,7 +45,7 @@
                             <i class="fas fa-plus"></i> Add Channel
                         </button>
                     </div>
-                    <small class="text-muted">Enter channel username without the @ symbol and select a category</small>
+                    <small class="text-muted">Enter channel username (with or without @) or full URL (e.g., t.me/channel_name)</small>
                 </form>
             </div>
             
@@ -55,14 +54,14 @@
                 <form action="{{ url_for('add_bulk_channels') }}" method="post">
                     <div class="form-group">
                         <textarea class="form-control" name="bulk_channels" rows="5" 
-                                 placeholder="Enter multiple channel usernames, one per line or separated by commas (without @ symbol)" required></textarea>
+                                 placeholder="Enter multiple channels, one per line or separated by commas" required></textarea>
                     </div>
                     <div class="mt-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-plus-square"></i> Add All Channels
                         </button>
                     </div>
-                    <small class="text-muted">Example: channel1, channel2, channel3 or one channel per line</small>
+                    <small class="text-muted">Example: channel1, @channel2, https://t.me/channel3, or one channel per line. Any format is accepted.</small>
                 </form>
             </div>
         </div>
@@ -123,16 +122,21 @@
         <h5>Single Channel</h5>
         <ol>
             <li>Find the channel you want to monitor</li>
-            <li>Copy the username (the part after "t.me/" in the channel link)</li>
-            <li>Paste it in the form above (without the @ symbol)</li>
+            <li>Enter the channel in any of these formats:
+                <ul>
+                    <li>Username (e.g., <code>channel_name</code>)</li>
+                    <li>With @ symbol (e.g., <code>@channel_name</code>)</li>
+                    <li>Full URL (e.g., <code>https://t.me/channel_name</code>)</li>
+                </ul>
+            </li>
             <li>Click "Add Channel"</li>
         </ol>
         
         <h5 class="mt-3">Multiple Channels</h5>
         <ol>
-            <li>Collect usernames of multiple channels you want to monitor</li>
+            <li>Collect channels you want to monitor</li>
             <li>Enter them in the text area, separated by commas or one per line</li>
-            <li>Make sure to remove the @ symbol from all usernames</li>
+            <li>You can use any format for each channel: username, @username, or full URL</li>
             <li>Click "Add All Channels"</li>
         </ol>
         
