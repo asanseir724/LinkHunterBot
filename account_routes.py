@@ -305,6 +305,28 @@ def telegram_desktop():
     except Exception as e:
         flash(f"خطا در بارگیری پیام‌های خصوصی: {str(e)}", "danger")
         return redirect(url_for('index'))
+        
+@accounts_bp.route('/add_sample_messages', methods=['POST'])
+def add_sample_messages():
+    """Add sample messages for testing the UI"""
+    try:
+        count = int(request.form.get('count', 10))
+        if count < 1:
+            count = 10
+        elif count > 50:
+            count = 50  # Limit max to 50
+            
+        success = avalai_client.add_sample_messages(count)
+        
+        if success:
+            flash(f"{count} پیام نمونه با موفقیت اضافه شد", "success")
+        else:
+            flash("خطا در اضافه کردن پیام‌های نمونه", "danger")
+            
+        return redirect(url_for('accounts.telegram_desktop'))
+    except Exception as e:
+        flash(f"خطا در اضافه کردن پیام‌های نمونه: {str(e)}", "danger")
+        return redirect(url_for('accounts.telegram_desktop'))
 
 @accounts_bp.route('/clear_chat_history', methods=['POST'])
 def clear_chat_history():

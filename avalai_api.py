@@ -393,5 +393,85 @@ class AvalaiAPI:
             logger.error(f"Error clearing chat history: {str(e)}")
             return False
 
+    # Method to add sample messages for testing
+    def add_sample_messages(self, count=5):
+        """
+        Add sample messages to the chat history for testing the UI
+        
+        Args:
+            count (int): Number of sample messages to add
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            sample_users = [
+                {"user_id": "123456789", "username": "کاربر تست ۱"},
+                {"user_id": "987654321", "username": "کاربر تست ۲"},
+                {"user_id": "555555555", "username": "کاربر تست ۳"},
+            ]
+            
+            sample_messages = [
+                "سلام، چطور می‌توانم به گروه‌های بیشتری دسترسی پیدا کنم؟",
+                "لینک‌هایی که ارسال کردید کار نمی‌کنند. لطفاً لینک‌های جدید بفرستید.",
+                "آیا می‌توانم از این ربات برای مدیریت کانال تلگرامم استفاده کنم؟",
+                "سلام، من دنبال گروه‌های آموزشی هستم. می‌توانید کمکم کنید؟",
+                "چطور می‌توانم اشتراک وی‌پی‌ان تهیه کنم؟",
+                "سلام. لینک‌های کانال‌های فیلم و سریال دارید؟",
+                "آیا این ربات رایگان است یا باید هزینه پرداخت کنم؟",
+                "چطور می‌توانم به شما اعتماد کنم؟",
+                "لینک‌های گروه‌های علمی و آموزشی می‌خواهم. ممنون.",
+                "سلام، من چند روز پیش پیام دادم ولی جواب نگرفتم!",
+            ]
+            
+            sample_responses = [
+                "سلام دوست عزیزم! برای دسترسی به گروه‌های بیشتر، می‌توانی از بخش لینک‌ها در سایت ما استفاده کنی. همچنین برای بهترین تجربه، پیشنهاد می‌کنم اشتراک وی‌پی‌ان ما را تهیه کنی. دوستت دارم! اگر سوال دیگه‌ای داری، بپرس عزیزم.",
+                "عزیزدلم، متاسفم که لینک‌ها کار نمی‌کنند. لینک‌های جدید را برایت ارسال می‌کنم. لطفا برای بهترین تجربه، اشتراک وی‌پی‌ان ما را تهیه کن. دوستت دارم!",
+                "سلام عشقم! بله می‌توانی از این ربات برای مدیریت کانال تلگرامت استفاده کنی. برای عملکرد بهتر، پیشنهاد می‌کنم اشتراک وی‌پی‌ان ما را تهیه کنی. دوستت دارم!",
+                "سلام عزیز دلم! برای گروه‌های آموزشی لینک‌های زیادی داریم. برای دسترسی بهتر، پیشنهاد می‌کنم اشتراک وی‌پی‌ان ما را تهیه کنی. دوستت دارم!",
+                "سلام قربونت برم! برای تهیه اشتراک وی‌پی‌ان کافیست به وبسایت ما مراجعه کنی و از بخش خرید اشتراک، سرویس مورد نظرت رو انتخاب کنی. دوستت دارم!",
+            ]
+            
+            import random
+            import datetime
+            
+            settings = self.settings.copy()
+            if 'chat_history' not in settings:
+                settings['chat_history'] = []
+            
+            for i in range(count):
+                user = random.choice(sample_users)
+                message = random.choice(sample_messages)
+                response = random.choice(sample_responses)
+                
+                # Create random timestamps within the last week
+                days_ago = random.randint(0, 7)
+                hours_ago = random.randint(0, 23)
+                minutes_ago = random.randint(0, 59)
+                timestamp = (datetime.datetime.now() - 
+                           datetime.timedelta(days=days_ago, hours=hours_ago, minutes=minutes_ago)).isoformat()
+                
+                chat_entry = {
+                    "timestamp": timestamp,
+                    "user_id": user["user_id"],
+                    "username": user["username"],
+                    "user_message": message,
+                    "ai_response": response
+                }
+                
+                settings['chat_history'].append(chat_entry)
+            
+            # Save settings
+            success = self._save_settings(settings)
+            if success:
+                self.settings = settings
+                logger.info(f"Added {count} sample messages to chat history")
+            return success
+            
+        except Exception as e:
+            logger.error(f"Error adding sample messages: {str(e)}")
+            return False
+
+
 # Create a singleton instance
 avalai_client = AvalaiAPI()
