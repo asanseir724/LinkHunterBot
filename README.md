@@ -157,6 +157,39 @@ To monitor private channels, you can add user accounts:
 This project is open source software licensed under the MIT license.
 این پروژه نرم‌افزار متن‌باز تحت مجوز MIT است.
 
+## Repository Mirroring (همگام‌سازی مخزن)
+
+This project supports mirroring between GitHub and GitLab repositories:
+
+- GitHub: Main repository for public access and contributions
+- GitLab: Alternative mirror for additional backup and CI/CD options
+
+See the `gitlab_setup.md` file for detailed instructions on setting up GitLab mirroring.
+
+این پروژه از همگام‌سازی بین مخازن GitHub و GitLab پشتیبانی می‌کند:
+
+- GitHub: مخزن اصلی برای دسترسی عمومی و مشارکت‌ها
+- GitLab: آینه جایگزین برای پشتیبان‌گیری اضافی و گزینه‌های CI/CD
+
+برای دستورالعمل‌های دقیق در مورد راه‌اندازی آینه GitLab، فایل `gitlab_setup.md` را ببینید.
+
+## Repository Mirroring (همگام‌سازی مخزن)
+
+This project supports mirroring between GitHub and GitLab repositories:
+
+- GitHub: Main repository for public access and contributions
+- GitLab: Alternative mirror for additional backup and CI/CD options
+
+See the `gitlab_setup.md` file for detailed instructions on setting up GitLab mirroring.
+
+این پروژه از همگام‌سازی بین مخازن GitHub و GitLab پشتیبانی می‌کند:
+
+- GitHub: مخزن اصلی برای دسترسی عمومی و مشارکت‌ها
+- GitLab: آینه جایگزین برای پشتیبان‌گیری اضافی و گزینه‌های CI/CD
+
+برای دستورالعمل‌های دقیق در مورد راه‌اندازی آینه GitLab، فایل `gitlab_setup.md` را ببینید.
+
+
 ## Support (پشتیبانی)
 
 For questions, issues, or contributions, please open an issue on GitHub or contact the repository owner.
