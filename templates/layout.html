@@ -46,6 +46,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/private_messages' %}active{% endif %}" href="{{ url_for('accounts.private_messages') }}">
+                            <i class="fas fa-comments"></i> Private Messages
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('links') %}active{% endif %}" href="{{ url_for('links') }}">
                             <i class="fas fa-link"></i> Links
                         </a>

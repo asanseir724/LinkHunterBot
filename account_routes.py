@@ -5,6 +5,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from user_accounts import AccountManager, UserAccount
 from async_helper import run_async, safe_run_coroutine
+from avalai_api import avalai_client
 
 # Create blueprint
 accounts_bp = Blueprint('accounts', __name__)
@@ -240,6 +241,52 @@ def check_accounts_for_links():
             "accounts_with_links": 0,
             "account_results": {}
         })
+
+@accounts_bp.route('/private_messages')
+def private_messages():
+    """View private messages received by Telegram user accounts"""
+    try:
+        # Get chat history from Avalai client
+        chat_history = avalai_client.get_chat_history(limit=500)
+        
+        # Sort by timestamp in descending order (newest first)
+        chat_history.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        
+        # Get active accounts for display in sidebar
+        accounts = account_manager.get_all_accounts()
+        active_accounts = len(account_manager.get_active_accounts())
+        
+        # Get Avalai settings
+        avalai_settings = avalai_client.get_settings()
+        
+        return render_template('private_messages.html',
+                               chat_history=chat_history,
+                               accounts=accounts,
+                               active_accounts=active_accounts,
+                               avalai_settings=avalai_settings,
+                               avalai_enabled=avalai_client.is_enabled())
+    except Exception as e:
+        flash(f"خطا در بارگیری پیام‌های خصوصی: {str(e)}", "danger")
+        return redirect(url_for('accounts.accounts'))
+
+@accounts_bp.route('/clear_chat_history', methods=['POST'])
+def clear_chat_history():
+    """Clear chat history for all or specific user"""
+    try:
+        user_id = request.form.get('user_id')
+        
+        # Clear chat history using Avalai client
+        success = avalai_client.clear_chat_history(user_id)
+        
+        if success:
+            flash("تاریخچه چت با موفقیت پاک شد", "success")
+        else:
+            flash("خطا در پاک کردن تاریخچه چت", "danger")
+            
+        return redirect(url_for('accounts.private_messages'))
+    except Exception as e:
+        flash(f"خطا در پاک کردن تاریخچه چت: {str(e)}", "danger")
+        return redirect(url_for('accounts.private_messages'))
 
 # Add a scheduled task to check accounts periodically
 def setup_account_scheduler(scheduler):

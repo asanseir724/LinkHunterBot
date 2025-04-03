@@ -1,0 +1,137 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="card mt-3 mb-4">
+        <div class="card-header">
+            <h3>پیام‌های خصوصی دریافتی</h3>
+        </div>
+        <div class="card-body">
+            {% if not avalai_enabled %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>توجه:</strong> هوش مصنوعی آوالای فعال نیست. برای پاسخگویی خودکار به پیام‌های خصوصی، ابتدا در قسمت تنظیمات آوالای، API Key را وارد کرده و سیستم را فعال کنید.
+                </div>
+            {% endif %}
+            
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                تمام پیام‌های خصوصی دریافتی توسط اکانت‌های متصل شده به سیستم در این صفحه نمایش داده می‌شوند. سیستم به طور خودکار با استفاده از هوش مصنوعی آوالای به این پیام‌ها پاسخ می‌دهد.
+            </div>
+            
+            {% if chat_history %}
+                <!-- Chat History Controls -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-comments me-2"></i> تاریخچه چت ({{ chat_history|length }} پیام)</h5>
+                        <form action="{{ url_for('accounts.clear_chat_history') }}" method="post" onsubmit="return confirm('آیا از پاک کردن تاریخچه چت اطمینان دارید؟');">
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                <i class="fas fa-trash-alt me-1"></i> پاک کردن تاریخچه
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Messages Container -->
+                <div class="chat-history-container">
+                    {% for chat in chat_history %}
+                        <div class="card mb-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>کاربر:</strong> {{ chat.username or 'کاربر ' + chat.user_id }}
+                                    <span class="badge bg-secondary ms-2">{{ chat.user_id }}</span>
+                                </div>
+                                <small class="text-muted">{{ chat.timestamp }}</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <h6><i class="fas fa-question-circle text-primary me-2"></i> پیام کاربر:</h6>
+                                    <div class="user-message p-3 border rounded bg-light">
+                                        {{ chat.user_message }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <h6><i class="fas fa-robot text-success me-2"></i> پاسخ هوش مصنوعی:</h6>
+                                    <div class="ai-response p-3 border rounded">
+                                        {{ chat.ai_response }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer d-flex justify-content-end">
+                                <form action="{{ url_for('accounts.clear_chat_history') }}" method="post" onsubmit="return confirm('آیا از حذف این پیام اطمینان دارید؟');">
+                                    <input type="hidden" name="user_id" value="{{ chat.user_id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash-alt me-1"></i> حذف پیام
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-light text-center py-5">
+                    <i class="fas fa-comment-slash fa-3x mb-3 text-muted"></i>
+                    <p class="mb-0">هنوز هیچ پیام خصوصی دریافت نشده است.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Avalai Settings Card -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>تنظیمات هوش مصنوعی آوالای</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <h5>وضعیت:</h5>
+                        {% if avalai_enabled %}
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle me-2"></i> هوش مصنوعی آوالای فعال است
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i> هوش مصنوعی آوالای غیرفعال است
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <h5>پرامپت پیش‌فرض:</h5>
+                        <div class="p-3 border rounded">
+                            {{ avalai_settings.default_prompt or 'پرامپت پیش‌فرض تنظیم نشده است' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-light">
+                <p>برای تغییر تنظیمات هوش مصنوعی آوالای به <a href="{{ url_for('settings') }}">صفحه تنظیمات</a> بروید.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .chat-history-container {
+        max-height: 800px;
+        overflow-y: auto;
+    }
+    
+    .user-message {
+        background-color: var(--bs-light);
+        border-radius: 0.25rem;
+    }
+    
+    .ai-response {
+        background-color: var(--bs-dark);
+        color: var(--bs-light);
+        border-radius: 0.25rem;
+    }
+</style>
+{% endblock %}

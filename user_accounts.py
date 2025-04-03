@@ -44,39 +44,99 @@ class UserAccount:
             user_id = event.sender_id
             message_text = event.text
             
+            if not message_text:
+                logger.info(f"Account {self.phone} received empty message from user {user_id}, ignoring")
+                return
+                
             logger.info(f"Account {self.phone} received private message from user {user_id}")
             logger.debug(f"Message content: {message_text}")
             
+            # Get detailed sender information
+            try:
+                sender = await event.get_sender()
+                username = sender.username or ""
+                first_name = sender.first_name or ""
+                last_name = sender.last_name or ""
+                display_name = username or f"{first_name} {last_name}".strip() or f"کاربر {user_id}"
+            except Exception as e:
+                logger.warning(f"Error getting sender info: {str(e)}")
+                username = ""
+                first_name = ""
+                last_name = ""
+                display_name = f"کاربر {user_id}"
+            
+            # Get chat information
+            try:
+                chat = await event.get_chat()
+                chat_id = chat.id
+                chat_title = getattr(chat, 'title', None)
+            except Exception as e:
+                logger.warning(f"Error getting chat info: {str(e)}")
+                chat_id = user_id
+                chat_title = None
+            
+            # Always log the message in chat history even if we don't respond
+            # This ensures we capture all private messages for the admin panel
+            conversation_id = f"{self.phone}_{user_id}"
+            
+            # Prepare metadata for better logging and context
+            message_metadata = {
+                "user_id": str(user_id),
+                "username": username,
+                "first_name": first_name,
+                "last_name": last_name,
+                "display_name": display_name,
+                "chat_id": str(chat_id),
+                "chat_title": chat_title,
+                "account_phone": self.phone,
+                "received_at": datetime.now().isoformat(),
+                "conversation_id": conversation_id
+            }
+            
             # Check if Avalai API integration is enabled
             if not avalai_client.is_enabled():
-                logger.info("Avalai API integration is not enabled, ignoring private message")
+                logger.info("Avalai API integration is not enabled, logging message but not responding")
+                # Still log the message even without a response
+                avalai_client._log_chat(
+                    user_message=message_text,
+                    ai_response="[پاسخی ارسال نشد - هوش مصنوعی آوالای فعال نیست]",
+                    user_id=str(user_id),
+                    username=display_name,
+                    metadata=message_metadata
+                )
                 return
                 
             # Check if we should respond to all messages based on settings
             settings = avalai_client.get_settings()
             respond_to_all = settings.get("respond_to_all_messages", False)
             
-            # Only respond to messages that are questions or when respond_to_all is enabled
-            is_question = "?" in message_text or any(word in message_text.lower() for word in ["چیست", "چیه", "چگونه", "چطور", "کدام", "کی", "چرا", "آیا", "کجا"])
+            # Check if this is a question
+            is_question = "?" in message_text or "؟" in message_text or any(word in message_text.lower() for word in 
+                          ["چیست", "چیه", "چگونه", "چطور", "کدام", "کی", "چرا", "آیا", "کجا", 
+                           "چند", "کجاست", "چه کسی", "چه زمانی", "چه وقت", "کدوم", 
+                           "کی", "میشه", "میتونی", "می‌توانی", "می‌شود", "می‌توان"])
             
             if not is_question and not respond_to_all:
-                logger.info(f"Message from user {user_id} is not a question, not responding")
+                logger.info(f"Message from user {user_id} is not a question and respond_to_all is disabled, not responding")
+                # Still log the message without a response
+                avalai_client._log_chat(
+                    user_message=message_text,
+                    ai_response="[پاسخی ارسال نشد - متن پرسشی نیست]",
+                    user_id=str(user_id),
+                    username=display_name,
+                    metadata=message_metadata
+                )
                 return
-                
-            # Get sender information for personalization
-            try:
-                sender = await event.get_sender()
-                username = sender.username or f"{sender.first_name} {sender.last_name or ''}"
-            except:
-                username = f"کاربر {user_id}"
-                
-            logger.info(f"Generating AI response for {username}")
+            
+            logger.info(f"Generating AI response for {display_name}")
             
             # Request AI response
             response_data = avalai_client.generate_response(
                 user_message=message_text,
                 user_id=str(user_id),
-                username=username
+                username=display_name,
+                conversation_id=conversation_id,
+                metadata=message_metadata
             )
             
             if response_data["success"] and response_data["response"]:
@@ -87,6 +147,14 @@ class UserAccount:
             else:
                 error = response_data.get("error", "دریافت پاسخ با خطا مواجه شد")
                 logger.error(f"Failed to get AI response: {error}")
+                # Still log the message with error response
+                avalai_client._log_chat(
+                    user_message=message_text,
+                    ai_response=f"[خطا در دریافت پاسخ: {error}]",
+                    user_id=str(user_id),
+                    username=display_name,
+                    metadata=message_metadata
+                )
                 
         except Exception as e:
             logger.error(f"Error handling private message: {str(e)}")

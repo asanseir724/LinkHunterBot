@@ -113,7 +113,7 @@ class AvalaiAPI:
         """
         return self.settings.get('enabled', False) and (self.api_key or self.settings.get('api_key'))
     
-    def generate_response(self, user_message, user_id=None, username=None, conversation_id=None):
+    def generate_response(self, user_message, user_id=None, username=None, conversation_id=None, metadata=None):
         """
         Generate a response from Avalai API
         
@@ -122,6 +122,7 @@ class AvalaiAPI:
             user_id (str, optional): The user's ID for conversation tracking
             username (str, optional): The user's username for addressing them
             conversation_id (str, optional): A unique ID for the conversation
+            metadata (dict, optional): Additional metadata about the message/conversation
             
         Returns:
             dict: A dictionary containing the response text and metadata
@@ -210,7 +211,7 @@ class AvalaiAPI:
                     ai_response = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
                     
                     # Log the response in chat history
-                    self._log_chat(user_message, ai_response, user_id, username)
+                    self._log_chat(user_message, ai_response, user_id, username, metadata)
                     
                     return {
                         "success": True,
@@ -281,7 +282,7 @@ class AvalaiAPI:
         
         return False
     
-    def _log_chat(self, user_message, ai_response, user_id=None, username=None):
+    def _log_chat(self, user_message, ai_response, user_id=None, username=None, metadata=None):
         """
         Log a chat interaction in the history
         
@@ -290,6 +291,7 @@ class AvalaiAPI:
             ai_response (str): The AI's response
             user_id (str, optional): The user's ID
             username (str, optional): The user's username
+            metadata (dict, optional): Additional metadata about the message/conversation
         """
         # Create a new chat entry
         chat_entry = {
@@ -299,6 +301,14 @@ class AvalaiAPI:
             "user_message": user_message,
             "ai_response": ai_response
         }
+        
+        # Add metadata if provided
+        if metadata and isinstance(metadata, dict):
+            # Add selected metadata fields that might be useful for displaying
+            for key in ["account_phone", "display_name", "first_name", "last_name", 
+                        "chat_id", "chat_title", "conversation_id", "received_at"]:
+                if key in metadata:
+                    chat_entry[key] = metadata[key]
         
         # Add to chat history
         settings = self.settings.copy()
