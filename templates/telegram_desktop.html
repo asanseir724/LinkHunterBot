@@ -17,6 +17,25 @@
                     </div>
                 </div>
                 
+                <!-- منوی اکانت‌های کاربر -->
+                <div class="user-accounts-menu p-2">
+                    <h6 class="mb-2">اکانت‌های کاربر:</h6>
+                    {% if active_accounts %}
+                        <div class="list-group">
+                            {% for account in active_accounts %}
+                                <a href="{{ url_for('accounts.account_messages', phone=account.phone) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-2">
+                                    <span>{{ account.name or account.phone }}</span>
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center my-2">
+                            <p class="text-muted small">اکانت فعالی وجود ندارد</p>
+                        </div>
+                    {% endif %}
+                </div>
+                
                 {% if not avalai_enabled %}
                 <div class="alert alert-warning m-2 p-2 small">
                     <i class="fas fa-exclamation-triangle me-1"></i>

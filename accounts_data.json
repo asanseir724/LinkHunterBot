@@ -1,12 +1,22 @@
 {
-    "+989900401383": {
-        "phone": "+989900401383",
-        "api_id": "2040",
-        "api_hash": "b18441a1ff607e10a989891a5462e627",
-        "name": "+989900401383",
-        "status": "inactive",
-        "connected": false,
-        "error": null,
-        "last_check": null
-    }
+  "+989900401383": {
+    "phone": "+989900401383",
+    "api_id": 2040,
+    "api_hash": "b18441a1ff607e10a989891a5462e627",
+    "name": "+989900401383",
+    "status": "active",
+    "connected": true,
+    "error": null,
+    "last_check": null
+  },
+  "+989336288875": {
+    "phone": "+989336288875",
+    "api_id": 2040,
+    "api_hash": "b18441a1ff607e10a989891a5462e627",
+    "name": "+989336288875",
+    "status": "active",
+    "connected": true,
+    "error": null,
+    "last_check": null
+  }
 }

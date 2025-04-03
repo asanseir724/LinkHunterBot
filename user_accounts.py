@@ -427,6 +427,101 @@ class UserAccount:
                 "groups_with_links": {}
             }
     
+    async def get_private_messages(self, limit=30):
+        """
+        Get the latest private messages received by this account
+        
+        Args:
+            limit (int): Maximum number of dialogs to fetch
+            
+        Returns:
+            dict: Dictionary with success status, messages list and error (if any)
+        """
+        try:
+            if not self.client or not self.connected:
+                return {
+                    "success": False, 
+                    "error": "اکانت متصل نیست", 
+                    "messages": []
+                }
+                
+            # Get dialogs (conversations)
+            logger.critical(f"[GET_MESSAGES_DEBUG] Getting dialogs for account {self.phone}")
+            dialogs = await self.client.get_dialogs(limit=limit)
+            logger.critical(f"[GET_MESSAGES_DEBUG] Got {len(dialogs)} dialogs for account {self.phone}")
+            
+            # Filter to keep only private chats (with users)
+            private_chats = [d for d in dialogs if isinstance(d.entity, User)]
+            logger.critical(f"[GET_MESSAGES_DEBUG] Filtered to {len(private_chats)} private chats")
+            
+            all_messages = []
+            
+            # For each chat, get the latest messages
+            for chat in private_chats:
+                try:
+                    # Get the latest 10 messages from this chat
+                    chat_messages = await self.client.get_messages(
+                        chat.entity, 
+                        limit=10
+                    )
+                    
+                    # Get more info about the chat partner
+                    user = await self.client.get_entity(chat.entity)
+                    username = user.username or ""
+                    first_name = user.first_name or ""
+                    last_name = user.last_name or ""
+                    display_name = username or f"{first_name} {last_name}".strip() or f"کاربر {user.id}"
+                    user_id = user.id
+                    
+                    logger.critical(f"[GET_MESSAGES_DEBUG] Got {len(chat_messages)} messages with {display_name}")
+                    
+                    # Format each message
+                    for msg in chat_messages:
+                        if not msg.text:
+                            continue  # Skip non-text messages
+                            
+                        # Determine whether this message is from the user or from us
+                        is_outgoing = msg.out
+                        
+                        all_messages.append({
+                            "text": msg.text,
+                            "timestamp": msg.date.isoformat(),
+                            "date": msg.date,
+                            "is_outgoing": is_outgoing,
+                            "chat_id": user_id,
+                            "message_id": msg.id,
+                            "username": username,
+                            "first_name": first_name,
+                            "last_name": last_name,
+                            "display_name": display_name,
+                            "account_phone": self.phone
+                        })
+                except Exception as chat_error:
+                    logger.error(f"Error getting messages from chat {chat.entity.id}: {str(chat_error)}")
+                    continue
+            
+            # Sort all messages by date (newest first)
+            all_messages.sort(key=lambda x: x["date"], reverse=True)
+            
+            return {
+                "success": True,
+                "messages": all_messages,
+                "account": {
+                    "phone": self.phone,
+                    "name": self.name
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting private messages: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return {
+                "success": False,
+                "error": str(e),
+                "messages": []
+            }
+            
     def to_dict(self):
         """Convert account to dictionary for storage"""
         return {

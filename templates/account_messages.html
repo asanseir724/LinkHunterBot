@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}پیام‌های خصوصی اکانت {{ account.phone }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar with account list -->
+        <div class="col-md-3 sidebar p-4">
+            <h4 class="mb-4">اکانت‌های کاربر</h4>
+            <p>{{ active_accounts|length }} اکانت فعال از {{ accounts|length }} اکانت</p>
+            
+            <div class="list-group mb-4">
+                {% for acc in accounts %}
+                    <a href="{{ url_for('accounts.account_messages', phone=acc.phone) }}" 
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {% if acc.phone == account.phone %}active{% endif %}">
+                        <div>
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">{{ acc.name or acc.phone }}</h5>
+                            </div>
+                            <small>{{ acc.phone }}</small>
+                        </div>
+                        <span class="badge {% if acc.connected %}bg-success{% else %}bg-danger{% endif %} rounded-pill">
+                            {% if acc.connected %}متصل{% else %}غیرفعال{% endif %}
+                        </span>
+                    </a>
+                {% endfor %}
+            </div>
+            
+            <div class="mb-4">
+                <a href="{{ url_for('accounts.telegram_desktop') }}" class="btn btn-primary w-100">
+                    بازگشت به رابط تلگرام دسکتاپ
+                </a>
+            </div>
+        </div>
+        
+        <!-- Main content area -->
+        <div class="col-md-9 main-content">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">پیام‌های خصوصی اکانت: {{ account.name or account.phone }}</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if messages %}
+                        <div class="messages-container p-3" style="max-height: 600px; overflow-y: auto;">
+                            {% for message in messages %}
+                                <div class="message-item mb-3 p-3 rounded {% if message.is_outgoing %}text-end bg-light-blue ms-auto{% else %}bg-light{% endif %}" style="max-width: 80%; {% if message.is_outgoing %}margin-left: auto;{% endif %}">
+                                    <div class="message-sender mb-1">
+                                        {% if message.is_outgoing %}
+                                            <small class="text-muted">{{ account.phone }} (خودم)</small>
+                                        {% else %}
+                                            <small class="text-muted">
+                                                {% if message.display_name %}
+                                                    {{ message.display_name }}
+                                                {% else %}
+                                                    {{ message.username or message.first_name + ' ' + message.last_name or 'کاربر ' + message.chat_id|string }}
+                                                {% endif %}
+                                            </small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="message-text">
+                                        {{ message.text }}
+                                    </div>
+                                    <div class="message-time mt-1">
+                                        <small class="text-muted">{{ message.timestamp }}</small>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center p-5">
+                            <p>هیچ پیامی یافت نشد.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .bg-light-blue {
+        background-color: #e3f2fd;
+    }
+    .sidebar {
+        background-color: #f8f9fa;
+        height: calc(100vh - 56px);
+        overflow-y: auto;
+    }
+    .main-content {
+        height: calc(100vh - 56px);
+        overflow-y: auto;
+        padding: 20px;
+    }
+    .messages-container {
+        display: flex;
+        flex-direction: column;
+    }
+    .message-item {
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}

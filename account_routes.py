@@ -271,7 +271,7 @@ def private_messages():
         
         # Get active accounts for display in sidebar
         accounts = account_manager.get_all_accounts()
-        active_accounts = len(account_manager.get_active_accounts())
+        active_accounts = account_manager.get_active_accounts()
         
         # Get Avalai settings
         avalai_settings = avalai_client.get_settings()
@@ -293,6 +293,10 @@ def telegram_desktop():
         # Get the current AI source from session (default to avalai)
         ai_source = session.get('ai_source', 'avalai')
         
+        # Get all connected accounts
+        accounts = account_manager.get_all_accounts()
+        active_accounts = account_manager.get_active_accounts()
+        
         # Get chat history from the selected AI client
         if ai_source == 'perplexity':
             chat_history = perplexity_client.get_chat_history(limit=500)
@@ -308,6 +312,8 @@ def telegram_desktop():
         
         return render_template('telegram_desktop.html',
                                chat_history=chat_history,
+                               accounts=accounts,
+                               active_accounts=active_accounts,
                                avalai_settings=avalai_client.get_settings(),
                                perplexity_settings=perplexity_client.get_settings(),
                                avalai_enabled=avalai_client.is_enabled(),
@@ -367,6 +373,46 @@ def set_ai_source():
         flash(f"خطا در تغییر سرویس هوش مصنوعی: {str(e)}", "danger")
         return redirect(url_for('accounts.telegram_desktop'))
 
+@accounts_bp.route('/account_messages/<phone>')
+def account_messages(phone):
+    """View messages for a specific account with phone number"""
+    try:
+        # Get the account by phone
+        account = account_manager.get_account(phone)
+        if not account:
+            flash("اکانت مورد نظر یافت نشد", "danger")
+            return redirect(url_for('accounts.telegram_desktop'))
+            
+        # Check if account is connected
+        if not account.connected or account.status != "active":
+            flash("اکانت مورد نظر متصل نیست. لطفا ابتدا آن را متصل کنید", "danger")
+            return redirect(url_for('accounts.telegram_desktop'))
+            
+        # Get messages from this account (latest 30 private chats)
+        result = safe_run_coroutine(
+            account.get_private_messages(30),
+            {"success": False, "error": "خطا در دریافت پیام‌ها", "messages": []}
+        )
+        
+        if not result.get("success", False):
+            flash(f"خطا در دریافت پیام‌های خصوصی: {result.get('error', 'خطای نامشخص')}", "danger")
+            return redirect(url_for('accounts.telegram_desktop'))
+            
+        messages = result.get("messages", [])
+        
+        # Get all accounts for sidebar
+        accounts = account_manager.get_all_accounts()
+        active_accounts = account_manager.get_active_accounts()
+        
+        return render_template('account_messages.html',
+                              account=account,
+                              messages=messages,
+                              accounts=accounts,
+                              active_accounts=active_accounts)
+    except Exception as e:
+        flash(f"خطا در دریافت پیام‌های خصوصی: {str(e)}", "danger")
+        return redirect(url_for('accounts.telegram_desktop'))
+        
 @accounts_bp.route('/clear_chat_history', methods=['POST'])
 def clear_chat_history():
     """Clear chat history for all or specific user"""
