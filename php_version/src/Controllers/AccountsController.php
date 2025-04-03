@@ -149,6 +149,38 @@ class AccountsController
     }
     
     /**
+     * Resend verification code
+     * 
+     * @param Request $request
+     * @param Response $response
+     * @return Response
+     */
+    public function resendCode(Request $request, Response $response): Response
+    {
+        $params = $request->getParsedBody();
+        $phone = $params['phone'] ?? $_SESSION['phone'] ?? '';
+        
+        if (empty($phone)) {
+            $_SESSION['error'] = 'شماره تلفن نامعتبر است.';
+            return $response->withHeader('Location', '/accounts')->withStatus(302);
+        }
+        
+        // Re-initiate the login process
+        $result = $this->accountManager->addAccount($phone);
+        
+        if ($result['success']) {
+            $_SESSION['phone'] = $phone;
+            $_SESSION['phone_code_hash'] = $result['phone_code_hash'];
+            $_SESSION['success'] = 'کد تأیید مجدداً ارسال شد.';
+            
+            return $response->withHeader('Location', '/accounts/verify-code')->withStatus(302);
+        } else {
+            $_SESSION['error'] = $result['error'] ?? 'خطا در ارسال مجدد کد. لطفاً پس از چند دقیقه دوباره تلاش کنید.';
+            return $response->withHeader('Location', '/accounts/verify-code')->withStatus(302);
+        }
+    }
+    
+    /**
      * Display 2FA verification page
      * 
      * @param Request $request

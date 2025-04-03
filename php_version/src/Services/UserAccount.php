@@ -118,11 +118,45 @@ class UserAccount
                 'next_type' => $sentCode['next_type'] ?? null,
                 'timeout' => $sentCode['timeout'] ?? 60
             ];
+        } catch (RPCErrorException $e) {
+            $this->log('error', "RPC Error during phone login: " . $e->getMessage());
+            
+            // Handle ResendCodeRequest error specifically
+            if (strpos($e->getMessage(), 'PHONE_CODE_EXPIRED') !== false || 
+                strpos($e->getMessage(), 'ResendCodeRequest') !== false) {
+                // Add delay to avoid rate limiting
+                sleep(2);
+                
+                try {
+                    $this->log('info', "Resending code for {$this->phone}");
+                    $resendResult = $this->madelineProto->resendCode($this->phone, $e->rpc);
+                    
+                    return [
+                        'success' => true,
+                        'phone_code_hash' => $resendResult['phone_code_hash'],
+                        'type' => $resendResult['type'],
+                        'next_type' => $resendResult['next_type'] ?? null,
+                        'timeout' => $resendResult['timeout'] ?? 60,
+                        'resent' => true
+                    ];
+                } catch (\Throwable $resendError) {
+                    $this->log('error', "Failed to resend code: " . $resendError->getMessage());
+                    return [
+                        'success' => false,
+                        'error' => 'کد تأیید منقضی شده است. لطفاً پس از چند دقیقه دوباره تلاش کنید.'
+                    ];
+                }
+            }
+            
+            return [
+                'success' => false,
+                'error' => $this->getFriendlyErrorMessage($e->getMessage())
+            ];
         } catch (\Throwable $e) {
             $this->log('error', "Failed to start phone login: " . $e->getMessage());
             return [
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $this->getFriendlyErrorMessage($e->getMessage())
             ];
         }
     }
@@ -681,5 +715,54 @@ class UserAccount
         if ($this->logger) {
             $this->logger->$level("[UserAccount] {$message}");
         }
+    }
+    
+    /**
+     * Convert technical error messages to user-friendly Persian messages
+     * 
+     * @param string $errorMessage The original error message
+     * @return string A user-friendly error message
+     */
+    private function getFriendlyErrorMessage(string $errorMessage): string
+    {
+        // Common MadelineProto errors
+        if (strpos($errorMessage, 'ResendCodeRequest') !== false) {
+            return 'کد تأیید منقضی شده یا تعداد تلاش‌ها بیش از حد مجاز است. لطفاً پس از چند دقیقه دوباره تلاش کنید.';
+        }
+        
+        if (strpos($errorMessage, 'PHONE_CODE_EXPIRED') !== false) {
+            return 'کد تأیید منقضی شده است. لطفاً مجدداً تلاش کنید.';
+        }
+        
+        if (strpos($errorMessage, 'PHONE_CODE_INVALID') !== false) {
+            return 'کد تأیید وارد شده نادرست است. لطفاً با دقت بیشتری وارد کنید.';
+        }
+        
+        if (strpos($errorMessage, 'PHONE_NUMBER_INVALID') !== false) {
+            return 'شماره تلفن وارد شده نامعتبر است. لطفاً با فرمت صحیح (+98XXXXXXXXXX) وارد کنید.';
+        }
+        
+        if (strpos($errorMessage, 'PHONE_NUMBER_BANNED') !== false) {
+            return 'این شماره تلفن از سوی تلگرام مسدود شده است.';
+        }
+        
+        if (strpos($errorMessage, 'PHONE_NUMBER_UNOCCUPIED') !== false) {
+            return 'این شماره تلفن در تلگرام ثبت نشده است.';
+        }
+        
+        if (strpos($errorMessage, 'FLOOD_WAIT_') !== false) {
+            preg_match('/FLOOD_WAIT_(\d+)/', $errorMessage, $matches);
+            $wait_time = $matches[1] ?? 60;
+            $wait_min = ceil($wait_time / 60);
+            
+            return "محدودیت زمانی تلگرام فعال شده است. لطفاً حدود {$wait_min} دقیقه صبر کنید و سپس مجدداً تلاش کنید.";
+        }
+        
+        if (strpos($errorMessage, 'API_ID_INVALID') !== false) {
+            return 'مشکلی در اعتبارسنجی رخ داده است. لطفاً مجدداً تلاش کنید.';
+        }
+        
+        // Generic error message for any other errors
+        return 'خطایی رخ داده است: ' . $errorMessage;
     }
 }

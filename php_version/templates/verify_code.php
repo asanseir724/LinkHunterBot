@@ -76,8 +76,16 @@
                             </div>
                         </form>
                     </div>
-                    <div class="card-footer text-center text-muted">
-                        <small>در صورت عدم دریافت کد، می‌توانید دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.</small>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <form action="/accounts/resend-code" method="post" class="me-2">
+                                <input type="hidden" name="phone" value="<?php echo $phone; ?>">
+                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-arrow-repeat me-1"></i> ارسال مجدد کد
+                                </button>
+                            </form>
+                            <small class="text-muted">در صورت عدم دریافت کد، می‌توانید درخواست ارسال مجدد کنید.</small>
+                        </div>
                     </div>
                 </div>
             </div>

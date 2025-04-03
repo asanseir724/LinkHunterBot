@@ -75,6 +75,7 @@ $app->get('/accounts', [$accountsController, 'index']);
 $app->post('/accounts/add', [$accountsController, 'addAccount']);
 $app->get('/accounts/verify-code', [$accountsController, 'verifyCodePage']);
 $app->post('/accounts/verify-code', [$accountsController, 'verifyCode']);
+$app->post('/accounts/resend-code', [$accountsController, 'resendCode']);
 $app->get('/accounts/verify-2fa', [$accountsController, 'verify2FAPage']);
 $app->post('/accounts/verify-2fa', [$accountsController, 'verify2FA']);
 $app->get('/accounts/connect/{phone}', [$accountsController, 'connectAccount']);
