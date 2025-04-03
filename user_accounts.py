@@ -197,27 +197,64 @@ class UserAccount:
             os.makedirs("sessions", exist_ok=True)
             
             logging.critical(f"[CONNECT_DEEP_DEBUG] Starting connection for account {self.phone}")
-            session_path = f"{self.session_file}.session"
             
+            # Completely reset any existing client
+            if self.client:
+                logging.critical(f"[CONNECT_DEEP_DEBUG] Disconnecting existing client for {self.phone}")
+                try:
+                    await self.client.disconnect()
+                    self.client = None
+                except Exception as e:
+                    logging.critical(f"[CONNECT_DEEP_DEBUG] Error disconnecting existing client: {str(e)}")
+            
+            # Check if session file exists
+            session_path = f"{self.session_file}.session"
             if os.path.exists(session_path):
                 logging.critical(f"[CONNECT_DEEP_DEBUG] Session file EXISTS at {session_path}")
                 file_size = os.path.getsize(session_path)
                 logging.critical(f"[CONNECT_DEEP_DEBUG] Session file size: {file_size} bytes")
+                # If file size is too small, it might be corrupted
+                if file_size < 100:
+                    logging.critical(f"[CONNECT_DEEP_DEBUG] Session file seems corrupted (size: {file_size} bytes), deleting")
+                    try:
+                        os.remove(session_path)
+                        logging.critical(f"[CONNECT_DEEP_DEBUG] Deleted corrupted session file")
+                    except Exception as e:
+                        logging.critical(f"[CONNECT_DEEP_DEBUG] Error deleting session file: {str(e)}")
             else:
                 logging.critical(f"[CONNECT_DEEP_DEBUG] Session file DOES NOT EXIST at {session_path}")
             
-            # Create the client
+            # Create the client with better settings for Replit environment
             logging.critical(f"[CONNECT_DEEP_DEBUG] Creating TelegramClient with api_id={self.api_id}, session_file={self.session_file}")
-            self.client = TelegramClient(self.session_file, self.api_id, self.api_hash)
+            self.client = TelegramClient(
+                self.session_file,
+                self.api_id,
+                self.api_hash,
+                connection=ConnectionTcpIntermediate,
+                retry_delay=1,
+                connection_retries=10,
+                auto_reconnect=True,
+                device_model="Replit Server",
+                system_version="Linux",
+                app_version="1.0"
+            )
             
             # تست برای ارتباط بهتر
             self.client.flood_sleep_threshold = 60
+            self.client.request_retries = 10
             
             # تنظیمات حیاتی برای اتصال در محیط Replit
-            logging.critical(f"[CONNECT_DEEP_DEBUG] Setting connection=ConnectionTcpIntermediate, proxy=None")
-            self.client.connection = ConnectionTcpIntermediate
+            logging.critical(f"[CONNECT_DEEP_DEBUG] Setting proxy=None")
             self.client.proxy = None  # اطمینان از عدم استفاده از پروکسی
-            self.client.session.save_entities = False  # برای جلوگیری از خطاهای احتمالی
+            
+            try:
+                # پاک کردن هندلرهای قبلی برای جلوگیری از تکرار
+                if hasattr(self.client, '_event_builders'):
+                    old_handlers_count = len(self.client._event_builders)
+                    self.client._event_builders = []
+                    logging.critical(f"[CONNECT_DEEP_DEBUG] Cleared {old_handlers_count} previous handlers")
+            except Exception as e:
+                logging.critical(f"[CONNECT_DEEP_DEBUG] Error clearing handlers: {str(e)}")
             
             # Register message handler for private messages
             logging.critical(f"[CONNECT_DEEP_DEBUG] Registering event handler for {self.phone}")

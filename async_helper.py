@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import logging
+import traceback
 from threading import Lock
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,14 @@ def get_event_loop():
     
     with _loop_lock:
         if _event_loop is None or _event_loop.is_closed():
-            logger.debug("Creating new event loop")
+            logger.critical("[ASYNC_HELPER_DEBUG] Creating new event loop")
+            _event_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(_event_loop)
+            logger.critical(f"[ASYNC_HELPER_DEBUG] Successfully created new event loop: {_event_loop}")
+        
+        # Make sure the loop is still running
+        if _event_loop.is_closed():
+            logger.critical("[ASYNC_HELPER_DEBUG] Event loop was closed! Creating a new one.")
             _event_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(_event_loop)
         
@@ -38,8 +46,14 @@ def run_async(coro_func):
     """
     @functools.wraps(coro_func)
     def wrapper(*args, **kwargs):
-        loop = get_event_loop()
-        return loop.run_until_complete(coro_func(*args, **kwargs))
+        try:
+            loop = get_event_loop()
+            logger.critical(f"[ASYNC_HELPER_DEBUG] Running coroutine function {coro_func.__name__} in loop {loop}")
+            return loop.run_until_complete(coro_func(*args, **kwargs))
+        except Exception as e:
+            logger.critical(f"[ASYNC_HELPER_DEBUG] Error in run_async for {coro_func.__name__}: {str(e)}")
+            logger.critical(f"[ASYNC_HELPER_DEBUG] Traceback: {traceback.format_exc()}")
+            raise
     
     return wrapper
 
@@ -55,8 +69,18 @@ def safe_run_coroutine(coro, default_result=None):
         The result of the coroutine, or the default result if an error occurs
     """
     try:
+        # Get coroutine name if possible for better debugging
+        coro_name = getattr(coro, "__qualname__", str(coro))
+        
+        # Get the event loop
         loop = get_event_loop()
-        return loop.run_until_complete(coro)
+        logger.critical(f"[ASYNC_HELPER_DEBUG] Safely running coroutine {coro_name} in loop {loop}")
+        
+        # Actually run the coroutine
+        result = loop.run_until_complete(coro)
+        logger.critical(f"[ASYNC_HELPER_DEBUG] Coroutine {coro_name} completed successfully")
+        return result
     except Exception as e:
-        logger.error(f"Error running coroutine: {str(e)}")
+        logger.critical(f"[ASYNC_HELPER_DEBUG] Error running coroutine: {str(e)}")
+        logger.critical(f"[ASYNC_HELPER_DEBUG] Traceback: {traceback.format_exc()}")
         return default_result
