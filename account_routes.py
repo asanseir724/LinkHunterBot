@@ -2,10 +2,11 @@ import os
 import json
 import asyncio  # Keep this for now to avoid breaking existing code
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from user_accounts import AccountManager, UserAccount
 from async_helper import run_async, safe_run_coroutine
 from avalai_api import avalai_client
+from perplexity_api import perplexity_client
 
 # Create blueprint
 accounts_bp = Blueprint('accounts', __name__)
@@ -289,19 +290,29 @@ def private_messages():
 def telegram_desktop():
     """View private messages with a Telegram Desktop style interface"""
     try:
-        # Get chat history from Avalai client
-        chat_history = avalai_client.get_chat_history(limit=500)
+        # Get the current AI source from session (default to avalai)
+        ai_source = session.get('ai_source', 'avalai')
+        
+        # Get chat history from the selected AI client
+        if ai_source == 'perplexity':
+            chat_history = perplexity_client.get_chat_history(limit=500)
+            ai_settings = perplexity_client.get_settings()
+            ai_enabled = perplexity_client.is_enabled()
+        else:
+            chat_history = avalai_client.get_chat_history(limit=500)
+            ai_settings = avalai_client.get_settings()
+            ai_enabled = avalai_client.is_enabled()
         
         # Sort by timestamp in descending order (newest first)
         chat_history.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
         
-        # Get Avalai settings
-        avalai_settings = avalai_client.get_settings()
-        
         return render_template('telegram_desktop.html',
-                               chat_history=chat_history, 
-                               avalai_settings=avalai_settings,
-                               avalai_enabled=avalai_client.is_enabled())
+                               chat_history=chat_history,
+                               avalai_settings=avalai_client.get_settings(),
+                               perplexity_settings=perplexity_client.get_settings(),
+                               avalai_enabled=avalai_client.is_enabled(),
+                               perplexity_enabled=perplexity_client.is_enabled(),
+                               ai_source=ai_source)
     except Exception as e:
         flash(f"خطا در بارگیری پیام‌های خصوصی: {str(e)}", "danger")
         return redirect(url_for('index'))
@@ -316,16 +327,44 @@ def add_sample_messages():
         elif count > 50:
             count = 50  # Limit max to 50
             
-        success = avalai_client.add_sample_messages(count)
+        # Get the source from the form or default to 'avalai'
+        source = request.form.get('source', 'avalai')
         
-        if success:
-            flash(f"{count} پیام نمونه با موفقیت اضافه شد", "success")
-        else:
-            flash("خطا در اضافه کردن پیام‌های نمونه", "danger")
+        if source == 'perplexity':
+            success = perplexity_client.add_sample_messages(count)
             
-        return redirect(url_for('accounts.telegram_desktop'))
+            if success:
+                flash(f"{count} پیام نمونه با موفقیت به Perplexity اضافه شد", "success")
+            else:
+                flash("خطا در اضافه کردن پیام‌های نمونه به Perplexity", "danger")
+                
+            return redirect(url_for('perplexity_settings'))
+        else:
+            success = avalai_client.add_sample_messages(count)
+            
+            if success:
+                flash(f"{count} پیام نمونه با موفقیت اضافه شد", "success")
+            else:
+                flash("خطا در اضافه کردن پیام‌های نمونه", "danger")
+                
+            return redirect(url_for('accounts.telegram_desktop'))
     except Exception as e:
         flash(f"خطا در اضافه کردن پیام‌های نمونه: {str(e)}", "danger")
+        return redirect(url_for('accounts.telegram_desktop'))
+
+@accounts_bp.route('/set_ai_source', methods=['POST'])
+def set_ai_source():
+    """Set the AI source for chat responses"""
+    try:
+        ai_source = request.form.get('ai_source', 'avalai')
+        
+        # Save the choice in a session variable
+        session['ai_source'] = ai_source
+        
+        flash(f"سرویس هوش مصنوعی به {ai_source} تغییر یافت", "success")
+        return redirect(url_for('accounts.telegram_desktop'))
+    except Exception as e:
+        flash(f"خطا در تغییر سرویس هوش مصنوعی: {str(e)}", "danger")
         return redirect(url_for('accounts.telegram_desktop'))
 
 @accounts_bp.route('/clear_chat_history', methods=['POST'])
@@ -333,16 +372,35 @@ def clear_chat_history():
     """Clear chat history for all or specific user"""
     try:
         user_id = request.form.get('user_id')
+        source = request.form.get('source', 'avalai')
+        from_settings = request.form.get('from_settings', False)
         
-        # Clear chat history using Avalai client
-        success = avalai_client.clear_chat_history(user_id)
-        
-        if success:
-            flash("تاریخچه چت با موفقیت پاک شد", "success")
-        else:
-            flash("خطا در پاک کردن تاریخچه چت", "danger")
+        if source == 'perplexity':
+            # Clear chat history using Perplexity client
+            success = perplexity_client.clear_chat_history(user_id)
             
-        return redirect(url_for('accounts.telegram_desktop'))
+            if success:
+                flash("تاریخچه چت Perplexity با موفقیت پاک شد", "success")
+            else:
+                flash("خطا در پاک کردن تاریخچه چت Perplexity", "danger")
+                
+            if from_settings:
+                return redirect(url_for('perplexity_settings'))
+            else:
+                return redirect(url_for('accounts.telegram_desktop'))
+        else:
+            # Clear chat history using Avalai client
+            success = avalai_client.clear_chat_history(user_id)
+            
+            if success:
+                flash("تاریخچه چت با موفقیت پاک شد", "success")
+            else:
+                flash("خطا در پاک کردن تاریخچه چت", "danger")
+                
+            if from_settings:
+                return redirect(url_for('avalai_settings'))
+            else:
+                return redirect(url_for('accounts.telegram_desktop'))
     except Exception as e:
         flash(f"خطا در پاک کردن تاریخچه چت: {str(e)}", "danger")
         return redirect(url_for('accounts.telegram_desktop'))

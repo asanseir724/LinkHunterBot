@@ -6,6 +6,7 @@ import threading
 from datetime import datetime
 from logger import get_logger
 from avalai_api import avalai_client
+from perplexity_api import perplexity_client
 
 # Get application logger
 logger = get_logger(__name__)
@@ -106,48 +107,93 @@ class TelegramBot:
             
             logger.critical(f"[BOT_DIRECT_DEBUG] Message metadata: {message_metadata}")
             
-            # Check if Avalai is enabled
-            if not avalai_client.is_enabled():
-                logger.critical("[BOT_DIRECT_DEBUG] Avalai API is not enabled, logging message but not responding")
-                # Still log message without response
-                avalai_client._log_chat(
+            # First check if Perplexity API is enabled - it takes priority if both are enabled
+            if perplexity_client.is_enabled():
+                logger.critical(f"[BOT_DIRECT_DEBUG] Generating Perplexity AI response for {display_name}")
+                
+                # Request AI response from Perplexity
+                response_data = perplexity_client.generate_response(
                     user_message=message_text,
-                    ai_response="[پاسخی ارسال نشد - هوش مصنوعی آوالای فعال نیست]",
                     user_id=str(user_id),
                     username=display_name,
+                    conversation_id=conversation_id,
                     metadata=message_metadata
                 )
-                return
                 
-            # Always respond in debug mode
-            logger.critical(f"[BOT_DIRECT_DEBUG] Generating AI response for {display_name}")
+                if response_data["success"] and response_data["response"]:
+                    # Send AI response
+                    ai_response = response_data["response"]
+                    logger.critical(f"[BOT_DIRECT_DEBUG] Sending Perplexity AI response: {ai_response[:50]}...")
+                    self.send_message(chat_id, ai_response)
+                else:
+                    error = response_data.get("error", "دریافت پاسخ با خطا مواجه شد")
+                    logger.critical(f"[BOT_DIRECT_DEBUG] Failed to get Perplexity AI response: {error}")
+                    
+                    # Log error in Perplexity chat history
+                    perplexity_client._log_chat(
+                        user_message=message_text,
+                        ai_response=f"[خطا در دریافت پاسخ Perplexity: {error}]",
+                        user_id=str(user_id),
+                        username=display_name,
+                        metadata=message_metadata
+                    )
+                
+                # Always log to Avalai history for display in admin panel (if Avalai is enabled)
+                if avalai_client.is_enabled():
+                    avalai_client._log_chat(
+                        user_message=message_text,
+                        ai_response=response_data.get("response", "[پاسخ توسط Perplexity ارسال شد]"),
+                        user_id=str(user_id),
+                        username=display_name,
+                        metadata=message_metadata
+                    )
+                
+                return
             
-            # Request AI response
-            response_data = avalai_client.generate_response(
+            # If Perplexity is not enabled, try Avalai
+            if avalai_client.is_enabled():
+                # Always respond in debug mode
+                logger.critical(f"[BOT_DIRECT_DEBUG] Generating Avalai response for {display_name}")
+                
+                # Request AI response from Avalai
+                response_data = avalai_client.generate_response(
+                    user_message=message_text,
+                    user_id=str(user_id),
+                    username=display_name,
+                    conversation_id=conversation_id,
+                    metadata=message_metadata
+                )
+                
+                if response_data["success"] and response_data["response"]:
+                    # Send AI response
+                    ai_response = response_data["response"]
+                    logger.critical(f"[BOT_DIRECT_DEBUG] Sending Avalai response: {ai_response[:50]}...")
+                    self.send_message(chat_id, ai_response)
+                else:
+                    error = response_data.get("error", "دریافت پاسخ با خطا مواجه شد")
+                    logger.critical(f"[BOT_DIRECT_DEBUG] Failed to get Avalai response: {error}")
+                    
+                    # Log error in chat history
+                    avalai_client._log_chat(
+                        user_message=message_text,
+                        ai_response=f"[خطا در دریافت پاسخ آوالای: {error}]",
+                        user_id=str(user_id),
+                        username=display_name,
+                        metadata=message_metadata
+                    )
+                
+                return
+            
+            # If no AI service is enabled, log without responding
+            logger.critical("[BOT_DIRECT_DEBUG] No AI service is enabled, logging message but not responding")
+            # Still log message in Avalai history without response (for admin panel)
+            avalai_client._log_chat(
                 user_message=message_text,
+                ai_response="[پاسخی ارسال نشد - هیچ سرویس هوش مصنوعی فعال نیست]",
                 user_id=str(user_id),
                 username=display_name,
-                conversation_id=conversation_id,
                 metadata=message_metadata
             )
-            
-            if response_data["success"] and response_data["response"]:
-                # Send AI response
-                ai_response = response_data["response"]
-                logger.critical(f"[BOT_DIRECT_DEBUG] Sending AI response: {ai_response[:50]}...")
-                self.send_message(chat_id, ai_response)
-            else:
-                error = response_data.get("error", "دریافت پاسخ با خطا مواجه شد")
-                logger.critical(f"[BOT_DIRECT_DEBUG] Failed to get AI response: {error}")
-                
-                # Log error in chat history
-                avalai_client._log_chat(
-                    user_message=message_text,
-                    ai_response=f"[خطا در دریافت پاسخ: {error}]",
-                    user_id=str(user_id),
-                    username=display_name,
-                    metadata=message_metadata
-                )
                 
         except Exception as e:
             logger.critical(f"[BOT_DIRECT_DEBUG] Error handling private message: {str(e)}")
@@ -189,9 +235,8 @@ class TelegramBot:
                                     # Handle this private message
                                     self._handle_private_message(update['message'])
                                     
-                                    # Always save message to Avalai history to ensure it appears in the chat
+                                    # Always save message to chat history to ensure it appears in the admin panel
                                     try:
-                                        from avalai_api import avalai_client
                                         message = update['message']
                                         user_id = message.get('from', {}).get('id', 'unknown')
                                         username = message.get('from', {}).get('username', '')
@@ -210,18 +255,33 @@ class TelegramBot:
                                             "bot_username": "@tourbotsbot"
                                         }
                                         
-                                        logger.critical(f"[BOT_DEBUG] Saving message to Avalai history: {message_text[:100]}")
-                                        
-                                        # Force save to chat history
-                                        avalai_client._log_chat(
-                                            user_message=message_text,
-                                            ai_response="[در حال پردازش پاسخ...]",
-                                            user_id=str(user_id),
-                                            username=display_name,
-                                            metadata=message_metadata
-                                        )
+                                        # Try Perplexity first (if enabled), then fallback to Avalai
+                                        if perplexity_client.is_enabled():
+                                            logger.critical(f"[BOT_DEBUG] Saving message to Perplexity history: {message_text[:100]}")
+                                            
+                                            # Force save to chat history
+                                            perplexity_client._log_chat(
+                                                user_message=message_text,
+                                                ai_response="[در حال پردازش پاسخ با Perplexity...]",
+                                                user_id=str(user_id),
+                                                username=display_name,
+                                                metadata=message_metadata
+                                            )
+                                            
+                                        # Always log to Avalai too for the admin panel
+                                        if avalai_client.is_enabled():
+                                            logger.critical(f"[BOT_DEBUG] Saving message to Avalai history: {message_text[:100]}")
+                                            
+                                            # Force save to chat history
+                                            avalai_client._log_chat(
+                                                user_message=message_text,
+                                                ai_response="[در حال پردازش پاسخ...]",
+                                                user_id=str(user_id),
+                                                username=display_name,
+                                                metadata=message_metadata
+                                            )
                                     except Exception as e:
-                                        logger.critical(f"[BOT_DEBUG] Error saving message to Avalai history: {str(e)}")
+                                        logger.critical(f"[BOT_DEBUG] Error saving message to chat history: {str(e)}")
                     
                     # Sleep a bit to avoid hammering the API
                     time.sleep(1)

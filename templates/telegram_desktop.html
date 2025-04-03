@@ -75,7 +75,33 @@
                 </div>
                 
                 <div class="sidebar-footer p-2">
+                    <div class="card mb-2">
+                        <div class="card-body p-2">
+                            <h6 class="mb-2">انتخاب سرویس هوش مصنوعی</h6>
+                            <form action="{{ url_for('accounts.set_ai_source') }}" method="post">
+                                <div class="d-flex">
+                                    <div class="form-check me-3">
+                                        <input class="form-check-input" type="radio" name="ai_source" id="source_avalai" value="avalai" {% if ai_source == 'avalai' %}checked{% endif %}>
+                                        <label class="form-check-label" for="source_avalai">
+                                            Avalai.ir
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="ai_source" id="source_perplexity" value="perplexity" {% if ai_source == 'perplexity' %}checked{% endif %}>
+                                        <label class="form-check-label" for="source_perplexity">
+                                            Perplexity
+                                        </label>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-primary w-100 mt-2">
+                                    <i class="fas fa-save me-1"></i> تغییر سرویس
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
                     <form action="{{ url_for('accounts.clear_chat_history') }}" method="post" onsubmit="return confirm('آیا از پاک کردن تمام تاریخچه چت اطمینان دارید؟');">
+                        <input type="hidden" name="source" value="{{ ai_source }}">
                         <button type="submit" class="btn btn-sm btn-danger w-100">
                             <i class="fas fa-trash-alt me-1"></i> پاک کردن تمام گفتگوها
                         </button>
@@ -187,8 +213,9 @@
     </div>
 </div>
 
-<!-- کارت تنظیمات آوالای -->
+<!-- کارت تنظیمات سرویس‌های هوش مصنوعی -->
 <div class="container mt-4">
+    {% if ai_source == 'avalai' %}
     <div class="card mb-4">
         <div class="card-header">
             <h4>تنظیمات هوش مصنوعی آوالای</h4>
@@ -224,6 +251,63 @@
             </div>
         </div>
     </div>
+    {% else %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>تنظیمات هوش مصنوعی Perplexity</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <h5>وضعیت:</h5>
+                        {% if perplexity_enabled %}
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle me-2"></i> هوش مصنوعی Perplexity فعال است
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i> هوش مصنوعی Perplexity غیرفعال است
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <h5>پرامپت پیش‌فرض:</h5>
+                        <div class="p-3 border rounded bg-dark text-light">
+                            <pre class="mb-0">{{ perplexity_settings.default_prompt or 'پرامپت پیش‌فرض تنظیم نشده است' }}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <h5>مدل انتخاب شده:</h5>
+                        <div class="alert alert-info">
+                            {{ perplexity_settings.model or 'llama-3.1-sonar-small-128k-online' }}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <h5>تنظیمات:</h5>
+                        <ul class="list-group">
+                            <li class="list-group-item">دمای خلاقیت: {{ perplexity_settings.temperature }}</li>
+                            <li class="list-group-item">حداکثر توکن: {{ perplexity_settings.max_tokens }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-light">
+                <p>برای تغییر تنظیمات هوش مصنوعی Perplexity به <a href="{{ url_for('perplexity_settings') }}" class="btn btn-sm btn-primary">صفحه تنظیمات Perplexity</a> بروید.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 

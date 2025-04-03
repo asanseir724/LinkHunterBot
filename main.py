@@ -11,6 +11,7 @@ from logger import get_logger, get_all_logs, clear_logs
 from notification_utils import update_sms_settings, get_sms_settings, should_send_notification
 from send_message import send_notification
 from avalai_api import avalai_client
+from perplexity_api import perplexity_client
 from web_crawler import extract_links_from_websites
 
 # Get application logger
@@ -492,6 +493,69 @@ def clear_avalai_history():
         flash("خطا در پاک کردن تاریخچه گفتگوها", "danger")
     
     return redirect(url_for('avalai_settings'))
+
+@app.route('/perplexity-settings', methods=['GET'])
+def perplexity_settings():
+    """Configure AI settings for Perplexity integration"""
+    settings = perplexity_client.get_settings()
+    return render_template('perplexity_settings.html', settings=settings)
+
+@app.route('/update_perplexity_settings', methods=['POST'])
+def update_perplexity_settings():
+    """Update Perplexity API settings"""
+    # Get form data
+    enabled = request.form.get('enabled') == 'on'
+    api_key = request.form.get('api_key')
+    default_prompt = request.form.get('default_prompt')
+    respond_to_all_messages = request.form.get('respond_to_all_messages') == 'on'
+    model = request.form.get('model', 'llama-3.1-sonar-small-128k-online')
+    
+    # Parse numeric values
+    try:
+        max_tokens = int(request.form.get('max_tokens', 500))
+        temperature = float(request.form.get('temperature', 0.7))
+    except ValueError:
+        max_tokens = 500
+        temperature = 0.7
+    
+    # Validate values
+    if max_tokens < 50:
+        max_tokens = 50
+    elif max_tokens > 4000:
+        max_tokens = 4000
+        
+    if temperature < 0:
+        temperature = 0
+    elif temperature > 1:
+        temperature = 1
+        
+    # Update settings
+    settings = {
+        'enabled': enabled,
+        'api_key': api_key,
+        'default_prompt': default_prompt,
+        'max_tokens': max_tokens,
+        'temperature': temperature,
+        'respond_to_all_messages': respond_to_all_messages,
+        'model': model
+    }
+    
+    if perplexity_client.update_settings(settings):
+        flash("تنظیمات هوش مصنوعی Perplexity با موفقیت به‌روزرسانی شد", "success")
+    else:
+        flash("خطا در به‌روزرسانی تنظیمات هوش مصنوعی Perplexity", "danger")
+    
+    return redirect(url_for('perplexity_settings'))
+
+@app.route('/clear_perplexity_history', methods=['GET'])
+def clear_perplexity_history():
+    """Clear Perplexity chat history"""
+    if perplexity_client.clear_chat_history():
+        flash("تاریخچه گفتگوهای Perplexity با موفقیت پاک شد", "success")
+    else:
+        flash("خطا در پاک کردن تاریخچه گفتگوهای Perplexity", "danger")
+    
+    return redirect(url_for('perplexity_settings'))
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
