@@ -1,0 +1,137 @@
+{% extends "layout.html" %}
+
+{% block title %}تنظیمات هوش مصنوعی آوالای{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">تنظیمات هوش مصنوعی آوالای</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">تنظیمات اتصال</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('update_avalai_settings') }}">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="enabled" name="enabled" {% if settings.enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="enabled">فعال‌سازی هوش مصنوعی</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="api_key" class="form-label">کلید API آوالای</label>
+                        <input type="password" class="form-control" id="api_key" name="api_key" value="{{ settings.api_key or '' }}" placeholder="کلید API خود را وارد کنید">
+                        <div class="form-text">کلید API را از <a href="https://avalai.ir" target="_blank">avalai.ir</a> دریافت کنید</div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="max_tokens" class="form-label">حداکثر طول پاسخ</label>
+                        <input type="number" class="form-control" id="max_tokens" name="max_tokens" value="{{ settings.max_tokens or 500 }}" min="50" max="4000">
+                        <div class="form-text">حداکثر تعداد توکن‌های پاسخ (بین 50 تا 4000)</div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="temperature" class="form-label">دمای پاسخ</label>
+                        <input type="range" class="form-range" id="temperature" name="temperature" min="0" max="1" step="0.1" value="{{ settings.temperature or 0.7 }}">
+                        <div class="d-flex justify-content-between">
+                            <span>دقیق (0)</span>
+                            <span>متعادل (0.5)</span>
+                            <span>خلاقانه (1)</span>
+                        </div>
+                        <div class="form-text">تنظیم میزان خلاقیت در پاسخ‌ها (0: بسیار دقیق، 1: بسیار خلاقانه)</div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label for="default_prompt" class="form-label">پرامپت پیش‌فرض</label>
+                        <textarea class="form-control" id="default_prompt" name="default_prompt" rows="4">{{ settings.default_prompt or 'به عنوان یک دستیار هوشمند، لطفاً به پرسش کاربر پاسخ دهید. سعی کنید پاسخ‌های روشن، دقیق و مفید ارائه دهید.' }}</textarea>
+                        <div class="form-text">دستورالعمل کلی برای هوش مصنوعی که پیش از هر پرسش کاربر اعمال می‌شود</div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="respond_to_all_messages" name="respond_to_all_messages" {% if settings.respond_to_all_messages %}checked{% endif %}>
+                            <label class="form-check-label" for="respond_to_all_messages">پاسخ به تمام پیام‌ها</label>
+                        </div>
+                        <div class="form-text">در صورت عدم انتخاب، فقط به سؤالات پاسخ داده می‌شود</div>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-primary">ذخیره تنظیمات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="card-title mb-0">تاریخچه گفتگوها</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>زمان</th>
+                            <th>کاربر</th>
+                            <th>پیام کاربر</th>
+                            <th>پاسخ هوش مصنوعی</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if settings.chat_history %}
+                            {% for chat in settings.chat_history|reverse %}
+                                <tr>
+                                    <td>{{ chat.timestamp|replace("T", " ")|truncate(19, True, "") }}</td>
+                                    <td>{{ chat.username or chat.user_id }}</td>
+                                    <td>{{ chat.user_message|truncate(50) }}</td>
+                                    <td>{{ chat.ai_response|truncate(50) }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center">تاریخچه‌ای وجود ندارد</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                <a href="{{ url_for('clear_avalai_history') }}" class="btn btn-danger btn-sm" onclick="return confirm('آیا از پاک کردن تاریخچه گفتگوها اطمینان دارید؟');">پاک کردن تاریخچه</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="card-title mb-0">راهنمای استفاده</h5>
+        </div>
+        <div class="card-body">
+            <p>برای استفاده از هوش مصنوعی آوالای با اکانت‌های تلگرام خود، مراحل زیر را دنبال کنید:</p>
+            
+            <ol class="mb-4">
+                <li>ابتدا یک <a href="https://avalai.ir" target="_blank">حساب کاربری آوالای</a> ایجاد کرده و کلید API دریافت کنید.</li>
+                <li>کلید API را در فیلد مربوطه وارد کرده و تنظیمات را ذخیره کنید.</li>
+                <li>گزینه "فعال‌سازی هوش مصنوعی" را انتخاب کنید.</li>
+                <li>یک <a href="{{ url_for('accounts.accounts') }}">اکانت تلگرام</a> به سیستم اضافه کرده و آن را متصل کنید.</li>
+                <li>هنگامی که کاربران به اکانت متصل شده پیام خصوصی می‌فرستند، سیستم به صورت خودکار با استفاده از هوش مصنوعی آوالای پاسخ می‌دهد.</li>
+            </ol>
+            
+            <div class="alert alert-info">
+                <strong>نکته:</strong> از پرامپت پیش‌فرض برای راهنمایی هوش مصنوعی در نحوه پاسخگویی استفاده کنید. می‌توانید دستورالعمل‌های خاص برای سبک پاسخ‌ها، منابع مورد استفاده، یا محدودیت‌ها را در آن قرار دهید.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

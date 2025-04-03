@@ -1,0 +1,9 @@
+{
+  "api_key": null,
+  "enabled": false,
+  "default_prompt": "به عنوان یک دستیار هوشمند، لطفاً به پرسش کاربر پاسخ دهید. سعی کنید پاسخ‌های روشن، دقیق و مفید ارائه دهید.",
+  "max_tokens": 500,
+  "temperature": 0.7,
+  "respond_to_all_messages": false,
+  "chat_history": []
+}

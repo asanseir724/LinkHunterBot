@@ -56,6 +56,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path == url_for('avalai_settings') %}active{% endif %}" href="{{ url_for('avalai_settings') }}">
+                            <i class="fas fa-robot"></i> AI Settings
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('category_keywords') %}active{% endif %}" href="{{ url_for('category_keywords') }}">
                             <i class="fas fa-tags"></i> Keywords
                         </a>

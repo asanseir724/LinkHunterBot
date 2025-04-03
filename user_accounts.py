@@ -4,11 +4,14 @@ import time
 import logging
 import hashlib
 import asyncio
-from telethon import TelegramClient
+from telethon import TelegramClient, events
 from telethon.errors import SessionPasswordNeededError, FloodWaitError
 from telethon.tl.functions.messages import GetDialogsRequest
 from telethon.tl.types import InputPeerEmpty, Channel, Chat, User
 from datetime import datetime
+
+# Import Avalai API client
+from avalai_api import avalai_client
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -33,6 +36,62 @@ class UserAccount:
         """Convert phone number to a safe filename"""
         # Create a safe session filename from the phone number
         return hashlib.md5(phone.encode()).hexdigest()
+        
+    async def _handle_private_message(self, event):
+        """Handle incoming private messages with AI integration"""
+        try:
+            # Get message information
+            user_id = event.sender_id
+            message_text = event.text
+            
+            logger.info(f"Account {self.phone} received private message from user {user_id}")
+            logger.debug(f"Message content: {message_text}")
+            
+            # Check if Avalai API integration is enabled
+            if not avalai_client.is_enabled():
+                logger.info("Avalai API integration is not enabled, ignoring private message")
+                return
+                
+            # Check if we should respond to all messages based on settings
+            settings = avalai_client.get_settings()
+            respond_to_all = settings.get("respond_to_all_messages", False)
+            
+            # Only respond to messages that are questions or when respond_to_all is enabled
+            is_question = "?" in message_text or any(word in message_text.lower() for word in ["چیست", "چیه", "چگونه", "چطور", "کدام", "کی", "چرا", "آیا", "کجا"])
+            
+            if not is_question and not respond_to_all:
+                logger.info(f"Message from user {user_id} is not a question, not responding")
+                return
+                
+            # Get sender information for personalization
+            try:
+                sender = await event.get_sender()
+                username = sender.username or f"{sender.first_name} {sender.last_name or ''}"
+            except:
+                username = f"کاربر {user_id}"
+                
+            logger.info(f"Generating AI response for {username}")
+            
+            # Request AI response
+            response_data = avalai_client.generate_response(
+                user_message=message_text,
+                user_id=str(user_id),
+                username=username
+            )
+            
+            if response_data["success"] and response_data["response"]:
+                # Send the AI response
+                ai_response = response_data["response"]
+                logger.info(f"Sending AI response to user {user_id}")
+                await event.respond(ai_response)
+            else:
+                error = response_data.get("error", "دریافت پاسخ با خطا مواجه شد")
+                logger.error(f"Failed to get AI response: {error}")
+                
+        except Exception as e:
+            logger.error(f"Error handling private message: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     async def connect(self, password=None):
         """Connect to Telegram using this account"""
@@ -43,6 +102,12 @@ class UserAccount:
             # Create the client
             self.client = TelegramClient(self.session_file, self.api_id, self.api_hash)
             
+            # Register message handler for private messages
+            @self.client.on(events.NewMessage(incoming=True, func=lambda e: e.is_private))
+            async def handle_private_message(event):
+                """Handle incoming private messages with AI integration"""
+                await self._handle_private_message(event)
+                
             # Connect and check if already authorized
             await self.client.connect()
             

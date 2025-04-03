@@ -10,6 +10,7 @@ from datetime import datetime
 from logger import get_logger, get_all_logs, clear_logs
 from notification_utils import update_sms_settings, get_sms_settings, should_send_notification
 from send_message import send_notification
+from avalai_api import avalai_client
 from web_crawler import extract_links_from_websites
 
 # Get application logger
@@ -421,6 +422,67 @@ def set_website_category():
             flash(f"Failed to update category for {website}", "danger")
     
     return redirect(url_for('websites'))
+
+@app.route('/avalai-settings', methods=['GET'])
+def avalai_settings():
+    """Configure AI settings for Avalai integration"""
+    settings = avalai_client.get_settings()
+    return render_template('avalai_settings.html', settings=settings)
+
+@app.route('/update_avalai_settings', methods=['POST'])
+def update_avalai_settings():
+    """Update Avalai API settings"""
+    # Get form data
+    enabled = request.form.get('enabled') == 'on'
+    api_key = request.form.get('api_key')
+    default_prompt = request.form.get('default_prompt')
+    respond_to_all_messages = request.form.get('respond_to_all_messages') == 'on'
+    
+    # Parse numeric values
+    try:
+        max_tokens = int(request.form.get('max_tokens', 500))
+        temperature = float(request.form.get('temperature', 0.7))
+    except ValueError:
+        max_tokens = 500
+        temperature = 0.7
+    
+    # Validate values
+    if max_tokens < 50:
+        max_tokens = 50
+    elif max_tokens > 4000:
+        max_tokens = 4000
+        
+    if temperature < 0:
+        temperature = 0
+    elif temperature > 1:
+        temperature = 1
+        
+    # Update settings
+    settings = {
+        'enabled': enabled,
+        'api_key': api_key,
+        'default_prompt': default_prompt,
+        'max_tokens': max_tokens,
+        'temperature': temperature,
+        'respond_to_all_messages': respond_to_all_messages
+    }
+    
+    if avalai_client.update_settings(settings):
+        flash("تنظیمات هوش مصنوعی با موفقیت به‌روزرسانی شد", "success")
+    else:
+        flash("خطا در به‌روزرسانی تنظیمات هوش مصنوعی", "danger")
+    
+    return redirect(url_for('avalai_settings'))
+
+@app.route('/clear_avalai_history', methods=['GET'])
+def clear_avalai_history():
+    """Clear Avalai chat history"""
+    if avalai_client.clear_chat_history():
+        flash("تاریخچه گفتگوها با موفقیت پاک شد", "success")
+    else:
+        flash("خطا در پاک کردن تاریخچه گفتگوها", "danger")
+    
+    return redirect(url_for('avalai_settings'))
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
