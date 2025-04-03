@@ -6,6 +6,7 @@
     <title>مدیریت حساب‌های تلگرام</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/accounts.css">
     <style>
         :root {
             --telegram-primary: #0088cc;
@@ -153,6 +154,13 @@
                         <a class="nav-link" href="/settings"><i class="bi bi-gear me-1"></i> تنظیمات</a>
                     </li>
                 </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a href="#" class="btn btn-sm btn-primary add-account-trigger">
+                            <i class="bi bi-person-plus-fill me-1"></i> افزودن اکانت جدید
+                        </a>
+                    </li>
+                </ul>
             </div>
         </div>
     </nav>
@@ -192,6 +200,10 @@
                                 </svg>
                                 <h4 class="mt-3 text-muted">هیچ حساب تلگرامی پیدا نشد</h4>
                                 <p class="text-muted">برای استفاده از تمام امکانات، حداقل یک حساب تلگرام اضافه کنید.</p>
+                                
+                                <button class="btn btn-primary mt-3 add-account-trigger">
+                                    <i class="bi bi-person-plus-fill me-1"></i> افزودن اکانت تلگرام
+                                </button>
                             </div>
                         <?php else: ?>
                             <?php foreach ($accounts as $phone => $account): ?>
@@ -245,35 +257,19 @@
                         <h5 class="mb-0"><i class="bi bi-person-plus-fill me-2"></i> افزودن حساب جدید</h5>
                     </div>
                     <div class="card-body">
-                        <form action="/accounts/add" method="post">
-                            <div class="mb-3">
-                                <label for="phone" class="form-label">شماره تلفن</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-telephone"></i></span>
-                                    <input type="text" class="form-control" id="phone" name="phone" placeholder="+989123456789" required>
-                                </div>
-                                <div class="form-text text-muted">شماره تلفن را با کد کشور وارد کنید (مثال: ۹۸۹۱۲۳۴۵۶۷۸۹+)</div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="name" class="form-label">نام نمایشی (اختیاری)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-person"></i></span>
-                                    <input type="text" class="form-control" id="name" name="name" placeholder="نام نمایشی">
-                                </div>
-                            </div>
-                            
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle-fill me-2"></i>
-                                <strong>مزیت نسخه جدید:</strong> دیگر نیازی به API ID و API Hash نیست!
-                            </div>
-                            
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-telegram">
-                                    <i class="bi bi-telegram me-2"></i> افزودن حساب
-                                </button>
-                            </div>
-                        </form>
+                        <p class="text-muted mb-4">افزودن حساب تلگرام جدید برای دسترسی به لینک‌های خصوصی و پیام‌های شخصی.</p>
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-telegram add-account-trigger">
+                                <i class="bi bi-telegram me-2"></i> افزودن حساب تلگرام
+                            </button>
+                        </div>
+                        
+                        <div class="alert alert-info mt-3">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            <strong>مزیت نسخه جدید:</strong> دیگر نیازی به API ID و API Hash نیست! 
+                            <div class="mt-1">این نسخه به صورت خودکار از اطلاعات پیش‌فرض استفاده می‌کند.</div>
+                        </div>
                     </div>
                 </div>
                 
@@ -328,5 +324,22 @@
     </footer>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Include Add Account Modal -->
+    <?php include 'add_account_modal.php'; ?>
+    
+    <script>
+        // Show modal when a specific trigger is clicked
+        document.addEventListener('DOMContentLoaded', function() {
+            const addAccountTriggers = document.querySelectorAll('.add-account-trigger');
+            addAccountTriggers.forEach(trigger => {
+                trigger.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const addAccountModal = new bootstrap.Modal(document.getElementById('addAccountModal'));
+                    addAccountModal.show();
+                });
+            });
+        });
+    </script>
 </body>
 </html>
