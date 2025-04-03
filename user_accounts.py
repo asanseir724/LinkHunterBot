@@ -129,12 +129,11 @@ class UserAccount:
             # Also, we'll force the system to respond to all messages
             logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Generating AI response for {display_name}")
             
-            # Request AI response
+            # Request AI response - Fix parameters to match the working API call from bot.py
+            # Remove conversation_id and username from direct API call (they cause error)
             response_data = avalai_client.generate_response(
                 user_message=message_text,
                 user_id=str(user_id),
-                username=display_name,
-                conversation_id=conversation_id,
                 metadata=message_metadata
             )
             
