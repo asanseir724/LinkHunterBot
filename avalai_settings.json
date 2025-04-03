@@ -27,6 +27,50 @@
       "ai_response": "[در حال پردازش پاسخ...]",
       "display_name": "S_mahdi_aghamirzaei",
       "received_at": "2025-04-03T09:56:27.636828"
+    },
+    {
+      "timestamp": "2025-04-03T09:59:04.128953",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "سلام",
+      "ai_response": "[خطا در دریافت پاسخ: API request failed with status code 400: {\n  \"error\": {\n    \"message\": \"Unrecognized request arguments supplied: conversation_id, username\",\n    \"type\": \"invalid_request\",\n    \"param\": null,\n    \"code\": \"invalid_request\"\n  }\n}]",
+      "display_name": "S_mahdi_aghamirzaei",
+      "first_name": "Mahdi",
+      "last_name": "",
+      "chat_id": "118679725",
+      "conversation_id": "direct_118679725",
+      "received_at": "2025-04-03T09:59:03.158931"
+    },
+    {
+      "timestamp": "2025-04-03T09:59:04.131198",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "سلام",
+      "ai_response": "[در حال پردازش پاسخ...]",
+      "display_name": "S_mahdi_aghamirzaei",
+      "received_at": "2025-04-03T09:59:04.130940"
+    },
+    {
+      "timestamp": "2025-04-03T09:59:57.509297",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "/start",
+      "ai_response": "[خطا در دریافت پاسخ: API request failed with status code 400: {\n  \"error\": {\n    \"message\": \"Unrecognized request arguments supplied: conversation_id, username\",\n    \"type\": \"invalid_request\",\n    \"param\": null,\n    \"code\": \"invalid_request\"\n  }\n}]",
+      "display_name": "S_mahdi_aghamirzaei",
+      "first_name": "Mahdi",
+      "last_name": "",
+      "chat_id": "118679725",
+      "conversation_id": "direct_118679725",
+      "received_at": "2025-04-03T09:59:56.771999"
+    },
+    {
+      "timestamp": "2025-04-03T09:59:57.510946",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "/start",
+      "ai_response": "[در حال پردازش پاسخ...]",
+      "display_name": "S_mahdi_aghamirzaei",
+      "received_at": "2025-04-03T09:59:57.510776"
     }
   ]
 }

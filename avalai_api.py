@@ -187,13 +187,16 @@ class AvalaiAPI:
             "temperature": temperature
         }
         
-        # Add metadata if provided
-        if user_id:
-            payload["user_id"] = user_id
-        if username:
-            payload["username"] = username
-        if conversation_id:
-            payload["conversation_id"] = conversation_id
+        # NOTE: Avalai API doesn't support these parameters directly in the payload
+        # We'll store them locally for our own tracking purposes but not send them to the API
+        # We get an error: "Unrecognized request arguments supplied: conversation_id, username"
+        
+        # Create a local copy of this data for logging
+        self._current_request_metadata = {
+            "user_id": user_id,
+            "username": username,
+            "conversation_id": conversation_id
+        }
         
         try:
             # Make the API request to Avalai
