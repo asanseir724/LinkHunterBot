@@ -41,9 +41,40 @@ class UserAccount:
     async def _handle_private_message(self, event):
         """Handle incoming private messages with AI integration"""
         try:
-            # Get message information
+            # Get message information 
             user_id = event.sender_id
             message_text = event.text
+            
+            # Always log message to chat history
+            try:
+                sender = await event.get_sender()
+                username = sender.username or ""
+                first_name = sender.first_name or ""
+                last_name = sender.last_name or "" 
+                display_name = username or f"{first_name} {last_name}".strip() or f"کاربر {user_id}"
+                
+                message_metadata = {
+                    "user_id": str(user_id),
+                    "username": username,
+                    "first_name": first_name, 
+                    "last_name": last_name,
+                    "display_name": display_name,
+                    "received_at": datetime.now().isoformat(),
+                    "via": "userbot_telethon",
+                    "account_phone": self.phone
+                }
+                
+                # Log to Avalai history
+                if avalai_client.is_enabled():
+                    avalai_client._log_chat(
+                        user_message=message_text,
+                        ai_response="[پیام از طریق یوزربات دریافت شد]",
+                        user_id=str(user_id),
+                        username=display_name,
+                        metadata=message_metadata
+                    )
+            except Exception as e:
+                logger.error(f"Error saving message to history: {str(e)}")
             
             if not message_text:
                 logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Account {self.phone} received empty message from user {user_id}, ignoring")
