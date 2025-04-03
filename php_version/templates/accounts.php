@@ -263,6 +263,11 @@
                                 </div>
                             </div>
                             
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle-fill me-2"></i>
+                                <strong>مزیت نسخه جدید:</strong> دیگر نیازی به API ID و API Hash نیست!
+                            </div>
+                            
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-telegram">
                                     <i class="bi bi-telegram me-2"></i> افزودن حساب
