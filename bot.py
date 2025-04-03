@@ -2,7 +2,10 @@ import os
 import re
 import time
 import requests
+import threading
+from datetime import datetime
 from logger import get_logger
+from avalai_api import avalai_client
 
 # Get application logger
 logger = get_logger(__name__)
@@ -13,6 +16,8 @@ class TelegramBot:
     def __init__(self, token):
         self.token = token
         self.api_base_url = f"https://api.telegram.org/bot{token}/"
+        self.last_update_id = 0
+        self.private_message_handlers = []
     
     def make_request(self, method, params=None):
         """Make a request to the Telegram API"""
@@ -53,6 +58,140 @@ class TelegramBot:
         """Send a message to a chat"""
         params = {'chat_id': chat_id, 'text': text}
         return self.make_request('sendMessage', params)
+        
+    def register_private_message_handler(self, handler_function):
+        """Register a handler for private messages
+        
+        Args:
+            handler_function: Function that takes a message object as parameter
+        """
+        self.private_message_handlers.append(handler_function)
+        logger.critical(f"[BOT_DEBUG] Registered new message handler, total: {len(self.private_message_handlers)}")
+        return True
+        
+    def _handle_private_message(self, message):
+        """Internal handler for private messages
+        
+        Calls all registered handlers with the message
+        """
+        try:
+            # Get message details
+            message_text = message.get('text', '')
+            chat_id = message['chat']['id']
+            user_id = message['from']['id']
+            
+            logger.critical(f"[BOT_DIRECT_DEBUG] Received private message from user {user_id}: {message_text[:50]}...")
+            
+            # Extract user information
+            username = message['from'].get('username', '')
+            first_name = message['from'].get('first_name', '')
+            last_name = message['from'].get('last_name', '')
+            display_name = username or f"{first_name} {last_name}".strip() or f"کاربر {user_id}"
+            
+            # Create conversation ID
+            conversation_id = f"direct_{user_id}"
+            
+            # Create metadata for logging
+            message_metadata = {
+                "user_id": str(user_id),
+                "username": username,
+                "first_name": first_name,
+                "last_name": last_name,
+                "display_name": display_name,
+                "chat_id": str(chat_id),
+                "received_at": datetime.now().isoformat(),
+                "conversation_id": conversation_id,
+                "via": "direct_api"
+            }
+            
+            logger.critical(f"[BOT_DIRECT_DEBUG] Message metadata: {message_metadata}")
+            
+            # Check if Avalai is enabled
+            if not avalai_client.is_enabled():
+                logger.critical("[BOT_DIRECT_DEBUG] Avalai API is not enabled, logging message but not responding")
+                # Still log message without response
+                avalai_client._log_chat(
+                    user_message=message_text,
+                    ai_response="[پاسخی ارسال نشد - هوش مصنوعی آوالای فعال نیست]",
+                    user_id=str(user_id),
+                    username=display_name,
+                    metadata=message_metadata
+                )
+                return
+                
+            # Always respond in debug mode
+            logger.critical(f"[BOT_DIRECT_DEBUG] Generating AI response for {display_name}")
+            
+            # Request AI response
+            response_data = avalai_client.generate_response(
+                user_message=message_text,
+                user_id=str(user_id),
+                username=display_name,
+                conversation_id=conversation_id,
+                metadata=message_metadata
+            )
+            
+            if response_data["success"] and response_data["response"]:
+                # Send AI response
+                ai_response = response_data["response"]
+                logger.critical(f"[BOT_DIRECT_DEBUG] Sending AI response: {ai_response[:50]}...")
+                self.send_message(chat_id, ai_response)
+            else:
+                error = response_data.get("error", "دریافت پاسخ با خطا مواجه شد")
+                logger.critical(f"[BOT_DIRECT_DEBUG] Failed to get AI response: {error}")
+                
+                # Log error in chat history
+                avalai_client._log_chat(
+                    user_message=message_text,
+                    ai_response=f"[خطا در دریافت پاسخ: {error}]",
+                    user_id=str(user_id),
+                    username=display_name,
+                    metadata=message_metadata
+                )
+                
+        except Exception as e:
+            logger.critical(f"[BOT_DIRECT_DEBUG] Error handling private message: {str(e)}")
+            import traceback
+            logger.critical(f"[BOT_DIRECT_DEBUG] Traceback: {traceback.format_exc()}")
+            
+    def start_polling(self):
+        """Start polling for updates in background thread"""
+        logger.critical("[BOT_DEBUG] Starting background update polling")
+        
+        def update_worker():
+            while True:
+                try:
+                    # Get updates with offset
+                    updates_result = self.get_updates(offset=self.last_update_id + 1, timeout=30)
+                    
+                    if updates_result.get('ok'):
+                        updates = updates_result.get('result', [])
+                        
+                        if updates:
+                            logger.critical(f"[BOT_DEBUG] Received {len(updates)} updates")
+                            
+                            for update in updates:
+                                # Update the offset
+                                if update['update_id'] > self.last_update_id:
+                                    self.last_update_id = update['update_id']
+                                
+                                # Handle private messages
+                                if 'message' in update and 'chat' in update['message'] and update['message']['chat']['type'] == 'private':
+                                    # Handle this private message
+                                    self._handle_private_message(update['message'])
+                    
+                    # Sleep a bit to avoid hammering the API
+                    time.sleep(1)
+                    
+                except Exception as e:
+                    logger.critical(f"[BOT_DEBUG] Error in update worker: {str(e)}")
+                    # Sleep a bit longer on error
+                    time.sleep(5)
+                    
+        # Start the worker in a background thread
+        thread = threading.Thread(target=update_worker, daemon=True)
+        thread.start()
+        logger.critical("[BOT_DEBUG] Background update thread started")
 
 
 def setup_bot(link_manager):

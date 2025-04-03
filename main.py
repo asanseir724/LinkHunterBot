@@ -36,6 +36,9 @@ bot_status = "Not Running"
 scheduler_thread = None
 scheduler_running = False
 
+# Initialize bot instance
+bot_instance = None
+
 def periodic_check():
     """Run periodic link checking"""
     global scheduler_running, last_check_result
@@ -148,6 +151,12 @@ if os.environ.get("TELEGRAM_BOT_TOKEN"):
         if bot_instance:
             bot_status = "Running"
             logger.info("Bot initialized automatically with saved token")
+            
+            # Start polling for direct messages
+            logger.critical("[DIRECT_API_DEBUG] Starting direct API polling for private messages")
+            bot_instance.start_polling()
+            logger.critical("[DIRECT_API_DEBUG] Direct API polling started successfully")
+            
             # Start the scheduler for automatic checking
             init_scheduler()
     except Exception as e:
@@ -971,7 +980,24 @@ def server_error(e):
 if __name__ == "__main__":
     # Initialize the scheduler if we have a token in the environment
     if os.environ.get("TELEGRAM_BOT_TOKEN"):
-        bot_status = "Running"
-        init_scheduler()
+        try:
+            from bot import setup_bot
+            # Initialize the bot with our link manager
+            bot_instance = setup_bot(link_manager) 
+            if bot_instance:
+                bot_status = "Running"
+                
+                # Start polling for direct messages
+                logger.critical("[DIRECT_API_DEBUG] Starting direct API polling for private messages")
+                bot_instance.start_polling()
+                logger.critical("[DIRECT_API_DEBUG] Direct API polling started successfully")
+                
+                # Initialize the scheduler
+                init_scheduler()
+        except Exception as e:
+            logger.error(f"Failed to auto-initialize bot: {str(e)}")
+            logger.error(f"Exception type: {type(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
         
     app.run(host="0.0.0.0", port=5000, debug=True)
