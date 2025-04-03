@@ -175,16 +175,61 @@ class TelegramBot:
                                 if update['update_id'] > self.last_update_id:
                                     self.last_update_id = update['update_id']
                                 
+                                # Debug log the entire update for inspection
+                                try:
+                                    import json
+                                    logger.critical(f"[BOT_DEBUG] Received update: {json.dumps(update, ensure_ascii=False)[:1000]}")
+                                except Exception as log_err:
+                                    logger.critical(f"[BOT_DEBUG] Error logging update: {str(log_err)}")
+                                
                                 # Handle private messages
                                 if 'message' in update and 'chat' in update['message'] and update['message']['chat']['type'] == 'private':
+                                    logger.critical(f"[BOT_DEBUG] Received private message from user {update['message'].get('from', {}).get('id')}: {update['message'].get('text', '')[:100]}")
+                                    
                                     # Handle this private message
                                     self._handle_private_message(update['message'])
+                                    
+                                    # Always save message to Avalai history to ensure it appears in the chat
+                                    try:
+                                        from avalai_api import avalai_client
+                                        message = update['message']
+                                        user_id = message.get('from', {}).get('id', 'unknown')
+                                        username = message.get('from', {}).get('username', '')
+                                        first_name = message.get('from', {}).get('first_name', '')
+                                        last_name = message.get('from', {}).get('last_name', '')
+                                        display_name = username or f"{first_name} {last_name}".strip() or f"کاربر {user_id}"
+                                        message_text = message.get('text', '')
+                                        
+                                        # Create additional metadata for troubleshooting
+                                        message_metadata = {
+                                            "user_id": str(user_id),
+                                            "username": username, 
+                                            "display_name": display_name,
+                                            "received_at": datetime.now().isoformat(),
+                                            "via": "direct_bot_api",
+                                            "bot_username": "@tourbotsbot"
+                                        }
+                                        
+                                        logger.critical(f"[BOT_DEBUG] Saving message to Avalai history: {message_text[:100]}")
+                                        
+                                        # Force save to chat history
+                                        avalai_client._log_chat(
+                                            user_message=message_text,
+                                            ai_response="[در حال پردازش پاسخ...]",
+                                            user_id=str(user_id),
+                                            username=display_name,
+                                            metadata=message_metadata
+                                        )
+                                    except Exception as e:
+                                        logger.critical(f"[BOT_DEBUG] Error saving message to Avalai history: {str(e)}")
                     
                     # Sleep a bit to avoid hammering the API
                     time.sleep(1)
                     
                 except Exception as e:
                     logger.critical(f"[BOT_DEBUG] Error in update worker: {str(e)}")
+                    import traceback
+                    logger.critical(f"[BOT_DEBUG] Traceback: {traceback.format_exc()}")
                     # Sleep a bit longer on error
                     time.sleep(5)
                     
