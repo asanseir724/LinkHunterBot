@@ -322,7 +322,8 @@ class AvalaiAPI:
         
         # Add the new entry
         settings['chat_history'].append(chat_entry)
-        logger.info(f"Added new chat entry. Chat history now has {len(settings['chat_history'])} entries")
+        logger.critical(f"[CHAT_DEBUG] Added new chat entry: {chat_entry}")
+        logger.critical(f"[CHAT_DEBUG] Chat history now has {len(settings['chat_history'])} entries")
         
         # Limit history to most recent 500 entries to prevent file size bloat
         if len(settings['chat_history']) > 500:
@@ -333,9 +334,9 @@ class AvalaiAPI:
         try:
             self._save_settings(settings)
             self.settings = settings
-            logger.info("Successfully saved updated chat history to settings file")
+            logger.critical("[CHAT_DEBUG] Successfully saved updated chat history to settings file")
         except Exception as e:
-            logger.error(f"Error saving chat history: {str(e)}")
+            logger.critical(f"[CHAT_DEBUG] Error saving chat history: {str(e)}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
     

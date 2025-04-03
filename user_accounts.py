@@ -45,11 +45,11 @@ class UserAccount:
             message_text = event.text
             
             if not message_text:
-                logger.info(f"Account {self.phone} received empty message from user {user_id}, ignoring")
+                logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Account {self.phone} received empty message from user {user_id}, ignoring")
                 return
                 
-            logger.info(f"Account {self.phone} received private message from user {user_id}")
-            logger.debug(f"Message content: {message_text}")
+            logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Account {self.phone} received private message from user {user_id}")
+            logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Message content: {message_text}")
             
             # Get detailed sender information
             try:
@@ -58,8 +58,9 @@ class UserAccount:
                 first_name = sender.first_name or ""
                 last_name = sender.last_name or ""
                 display_name = username or f"{first_name} {last_name}".strip() or f"کاربر {user_id}"
+                logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Sender info obtained: {display_name} (username: {username})")
             except Exception as e:
-                logger.warning(f"Error getting sender info: {str(e)}")
+                logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Error getting sender info: {str(e)}")
                 username = ""
                 first_name = ""
                 last_name = ""
@@ -70,8 +71,9 @@ class UserAccount:
                 chat = await event.get_chat()
                 chat_id = chat.id
                 chat_title = getattr(chat, 'title', None)
+                logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Chat info obtained: ID {chat_id}, Title: {chat_title}")
             except Exception as e:
-                logger.warning(f"Error getting chat info: {str(e)}")
+                logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Error getting chat info: {str(e)}")
                 chat_id = user_id
                 chat_title = None
             
@@ -94,12 +96,12 @@ class UserAccount:
             }
             
             # Enhanced logging for troubleshooting
-            logger.info(f"Received message from {display_name} (ID: {user_id}): {message_text[:50]}...")
-            logger.info(f"Message metadata: {message_metadata}")
+            logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Received message from {display_name} (ID: {user_id}): {message_text[:50]}...")
+            logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Message metadata: {message_metadata}")
             
             # Check if Avalai API integration is enabled
             if not avalai_client.is_enabled():
-                logger.info("Avalai API integration is not enabled, logging message but not responding")
+                logger.critical("[PRIVATE_MESSAGE_DEBUG] Avalai API integration is not enabled, logging message but not responding")
                 # Still log the message even without a response
                 avalai_client._log_chat(
                     user_message=message_text,
@@ -110,29 +112,21 @@ class UserAccount:
                 )
                 return
                 
-            # Check if we should respond to all messages based on settings
+            # Always respond - Skip the question check for debugging
             settings = avalai_client.get_settings()
-            respond_to_all = settings.get("respond_to_all_messages", False)
+            respond_to_all = True  # Force this to True for debugging
+            logger.critical(f"[PRIVATE_MESSAGE_DEBUG] respond_to_all set to {respond_to_all}")
             
-            # Check if this is a question
+            # Check if this is a question (but we'll respond anyway)
             is_question = "?" in message_text or "؟" in message_text or any(word in message_text.lower() for word in 
                           ["چیست", "چیه", "چگونه", "چطور", "کدام", "کی", "چرا", "آیا", "کجا", 
                            "چند", "کجاست", "چه کسی", "چه زمانی", "چه وقت", "کدوم", 
                            "کی", "میشه", "میتونی", "می‌توانی", "می‌شود", "می‌توان"])
+            logger.critical(f"[PRIVATE_MESSAGE_DEBUG] is_question determined as: {is_question}")
             
-            if not is_question and not respond_to_all:
-                logger.info(f"Message from user {user_id} is not a question and respond_to_all is disabled, not responding")
-                # Still log the message without a response
-                avalai_client._log_chat(
-                    user_message=message_text,
-                    ai_response="[پاسخی ارسال نشد - متن پرسشی نیست]",
-                    user_id=str(user_id),
-                    username=display_name,
-                    metadata=message_metadata
-                )
-                return
-            
-            logger.info(f"Generating AI response for {display_name}")
+            # For debugging, we'll always log the message even if it's not a question
+            # Also, we'll force the system to respond to all messages
+            logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Generating AI response for {display_name}")
             
             # Request AI response
             response_data = avalai_client.generate_response(
@@ -146,11 +140,11 @@ class UserAccount:
             if response_data["success"] and response_data["response"]:
                 # Send the AI response
                 ai_response = response_data["response"]
-                logger.info(f"Sending AI response to user {user_id}")
+                logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Sending AI response to user {user_id}: {ai_response[:50]}...")
                 await event.respond(ai_response)
             else:
                 error = response_data.get("error", "دریافت پاسخ با خطا مواجه شد")
-                logger.error(f"Failed to get AI response: {error}")
+                logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Failed to get AI response: {error}")
                 # Still log the message with error response
                 avalai_client._log_chat(
                     user_message=message_text,
@@ -161,9 +155,9 @@ class UserAccount:
                 )
                 
         except Exception as e:
-            logger.error(f"Error handling private message: {str(e)}")
+            logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Error handling private message: {str(e)}")
             import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Traceback: {traceback.format_exc()}")
     
     async def connect(self, password=None):
         """Connect to Telegram using this account"""
@@ -178,6 +172,7 @@ class UserAccount:
             @self.client.on(events.NewMessage(incoming=True, func=lambda e: e.is_private))
             async def handle_private_message(event):
                 """Handle incoming private messages with AI integration"""
+                logging.critical(f"[PRIVATE_MESSAGE_DEBUG] Received private message for account {self.phone}: {event.text}")
                 await self._handle_private_message(event)
                 
             # Connect and check if already authorized
