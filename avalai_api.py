@@ -411,7 +411,7 @@ class AvalaiAPI:
                         'last_name': chat.get('last_name')
                     }
                 })
-                
+            
             return messages
         except Exception as e:
             logger.error(f"Error getting messages list: {str(e)}")
@@ -420,54 +420,6 @@ class AvalaiAPI:
     def clear_chat_history(self, user_id=None):
         """
         Clear chat history, optionally for a specific user
-        """
-        try:
-            settings = self.settings.copy()
-            
-            if user_id:
-                # Remove only entries for this user
-                if 'chat_history' in settings:
-                    settings['chat_history'] = [
-                        chat for chat in settings['chat_history'] 
-                        if chat.get('user_id') != user_id
-                    ]
-            else:
-                # Clear all history
-                settings['chat_history'] = []
-            
-            # Save the updated settings
-            success = self._save_settings(settings)
-            if success:
-                self.settings = settings
-            return success
-        except Exception as e:
-            logger.error(f"Error clearing chat history: {str(e)}")
-            return False
-
-    def add_test_messages(self):
-        """Add some test messages to see how the system works"""
-        test_messages = [
-            {
-                "user_id": "test1",
-                "username": "کاربر تست ۱", 
-                "user_message": "سلام، من یک پیام تستی هستم",
-                "ai_response": "سلام، من هم یک پاسخ تستی هستم",
-                "timestamp": datetime.now().isoformat(),
-                "display_name": "کاربر تست شماره ۱"
-            },
-            {
-                "user_id": "test2",
-                "username": "کاربر تست ۲",
-                "user_message": "آیا سیستم پیام‌رسانی کار می‌کند؟",
-                "ai_response": "بله، سیستم به درستی کار می‌کند",
-                "timestamp": datetime.now().isoformat(),
-                "display_name": "کاربر تست شماره ۲"  
-            }
-        ]
-        
-        self.settings['chat_history'].extend(test_messages)
-        self._save_settings(self.settings)
-        return len(test_messages)
         
         Args:
             user_id (str, optional): Clear history only for this user_id
@@ -498,7 +450,36 @@ class AvalaiAPI:
             logger.error(f"Error clearing chat history: {str(e)}")
             return False
 
-    # Method to add sample messages for testing
+    def add_test_messages(self):
+        """
+        Add some test messages to see how the system works
+        
+        Returns:
+            int: Number of test messages added
+        """
+        test_messages = [
+            {
+                "user_id": "test1",
+                "username": "کاربر تست ۱", 
+                "user_message": "سلام، من یک پیام تستی هستم",
+                "ai_response": "سلام، من هم یک پاسخ تستی هستم",
+                "timestamp": datetime.now().isoformat(),
+                "display_name": "کاربر تست شماره ۱"
+            },
+            {
+                "user_id": "test2",
+                "username": "کاربر تست ۲",
+                "user_message": "آیا سیستم پیام‌رسانی کار می‌کند؟",
+                "ai_response": "بله، سیستم به درستی کار می‌کند",
+                "timestamp": datetime.now().isoformat(),
+                "display_name": "کاربر تست شماره ۲"  
+            }
+        ]
+        
+        self.settings['chat_history'].extend(test_messages)
+        self._save_settings(self.settings)
+        return len(test_messages)
+    
     def add_sample_messages(self, count=5):
         """
         Add sample messages to the chat history for testing the UI
@@ -538,7 +519,6 @@ class AvalaiAPI:
             ]
             
             import random
-            from datetime import datetime, timedelta
             
             settings = self.settings.copy()
             if 'chat_history' not in settings:
