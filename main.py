@@ -994,6 +994,29 @@ if __name__ == "__main__":
                 
                 # Initialize the scheduler
                 init_scheduler()
+                
+                # Initialize the account scheduler for Telegram user accounts
+                # Import the necessary scheduler module and set up
+                try:
+                    from scheduler import SimpleScheduler
+                    import logging
+                    
+                    # Add console handler for immediate output
+                    console_handler = logging.StreamHandler()
+                    console_handler.setLevel(logging.CRITICAL)
+                    logging.getLogger().addHandler(console_handler)
+                    
+                    logging.critical("[MANUAL_DEBUG] Creating account scheduler...")
+                    account_scheduler = SimpleScheduler()
+                    
+                    logging.critical("[MANUAL_DEBUG] Setting up account scheduler...")
+                    setup_account_scheduler(account_scheduler)
+                    
+                    logging.critical("[MANUAL_DEBUG] Account scheduler initialized successfully")
+                except Exception as e:
+                    import traceback
+                    logging.critical(f"[MANUAL_DEBUG] Error initializing account scheduler: {str(e)}")
+                    logging.critical(f"[MANUAL_DEBUG] {traceback.format_exc()}")
         except Exception as e:
             logger.error(f"Failed to auto-initialize bot: {str(e)}")
             logger.error(f"Exception type: {type(e)}")

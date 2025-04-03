@@ -351,8 +351,45 @@ def clear_chat_history():
 def setup_account_scheduler(scheduler):
     """Configure scheduler for automatic account checking"""
     from link_manager import link_manager  # Import here to avoid circular imports
+    import logging
     
-    # Define the check function
+    logger = logging.getLogger("account_scheduler")
+    logger.critical("[ACCOUNT_SCHEDULER_DEBUG] Setting up account scheduler with auto-connect")
+    
+    # First, try to connect all accounts automatically on startup
+    try:
+        active_accounts = account_manager.get_active_accounts()
+        all_accounts = account_manager.get_all_accounts()
+        
+        logger.critical(f"[ACCOUNT_SCHEDULER_DEBUG] Found {len(active_accounts)} active accounts and {len(all_accounts)} total accounts")
+        
+        # If we have any accounts that aren't connected, try to connect them
+        if len(all_accounts) > len(active_accounts):
+            logger.critical("[ACCOUNT_SCHEDULER_DEBUG] Auto-connecting accounts on startup...")
+            
+            # For each account that needs connection
+            for account in all_accounts:
+                if not account.connected and account.status != "active":
+                    logger.critical(f"[ACCOUNT_SCHEDULER_DEBUG] Auto-connecting account: {account.phone}")
+                    
+                    # Try to connect the account
+                    connect_result = safe_run_coroutine(account.connect(), (False, "Error connecting"))
+                    logger.critical(f"[ACCOUNT_SCHEDULER_DEBUG] Connect result for {account.phone}: {connect_result}")
+                    
+                    if account.connected:
+                        # Check for registered event handlers
+                        handlers_result = safe_run_coroutine(account.check_handlers(), {"success": False, "handlers": 0})
+                        logger.critical(f"[ACCOUNT_SCHEDULER_DEBUG] Handlers check for {account.phone}: {handlers_result}")
+            
+            # Save account states
+            account_manager.save_accounts()
+            logger.critical("[ACCOUNT_SCHEDULER_DEBUG] Saved account states after auto-connect")
+    except Exception as e:
+        logger.critical(f"[ACCOUNT_SCHEDULER_DEBUG] Error during auto-connect: {str(e)}")
+        import traceback
+        logger.critical(f"[ACCOUNT_SCHEDULER_DEBUG] Traceback: {traceback.format_exc()}")
+    
+    # Define the check function for periodic checks
     def check_accounts_job():
         """Job function to check all accounts for links"""
         try:

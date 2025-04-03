@@ -291,6 +291,28 @@
       "ai_response": "[در حال پردازش پاسخ...]",
       "display_name": "S_mahdi_aghamirzaei",
       "received_at": "2025-04-03T10:10:30.241876"
+    },
+    {
+      "timestamp": "2025-04-03T10:14:31.671863",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "واقعا؟",
+      "ai_response": "بله عزیزم، خیالت راحت باشه ولی اگر می‌خواهی این کار رو انجام بدی حتما از یک وی پی ان معتبر و امن استفاده کنی. اما یه مشکلی داریم: ما این خدمت رو ارائه نمی‌دهیم. من برای کمک به تو در دسترسم اما به هر حال. هر سوال یا درخواست دیگه‌ای داری بپرس و من بهت کمک می‌کنم.",
+      "display_name": "S_mahdi_aghamirzaei",
+      "first_name": "Mahdi",
+      "last_name": "",
+      "chat_id": "118679725",
+      "conversation_id": "direct_118679725",
+      "received_at": "2025-04-03T10:14:28.355499"
+    },
+    {
+      "timestamp": "2025-04-03T10:14:32.069179",
+      "user_id": "118679725",
+      "username": "S_mahdi_aghamirzaei",
+      "user_message": "واقعا؟",
+      "ai_response": "[در حال پردازش پاسخ...]",
+      "display_name": "S_mahdi_aghamirzaei",
+      "received_at": "2025-04-03T10:14:32.068875"
     }
   ]
 }
