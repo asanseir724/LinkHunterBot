@@ -32,11 +32,15 @@ class UserAccount:
         self.client = None
         self.session_file = f"sessions/{self._get_safe_filename(phone)}"
         self.last_check = None
+        self.last_connection_attempt = None
     
     def _get_safe_filename(self, phone):
         """Convert phone number to a safe filename"""
         # Create a safe session filename from the phone number
-        return hashlib.md5(phone.encode()).hexdigest()
+        # Just use the phone number as the session name, but remove any special characters
+        # This makes it easier to track and debug sessions
+        cleaned_phone = ''.join(char for char in phone if char.isalnum())
+        return f"session_{cleaned_phone}"
         
     async def _handle_private_message(self, event):
         """Handle incoming private messages with AI integration"""
@@ -759,6 +763,70 @@ class AccountManager:
     def get_active_accounts(self):
         """Get only active/connected accounts"""
         return [account for account in self.accounts.values() if account.connected]
+        
+    def connect_all_accounts(self):
+        """Connect all accounts that are not already connected
+        
+        This method will attempt to connect all accounts that are not currently
+        connected or in an error state. It will only try to connect accounts that
+        have already been verified (status = active) in the past.
+        
+        Returns:
+            dict: A dictionary with results of the connection attempts
+        """
+        from logger import get_logger
+        logger = get_logger("account_manager")
+        
+        logger.info("Starting automatic connection of all accounts")
+        
+        results = {
+            "total_accounts": len(self.accounts),
+            "already_connected": 0,
+            "connection_attempts": 0,
+            "connection_success": 0,
+            "connection_failures": 0,
+            "account_status": {}
+        }
+        
+        # First, count how many accounts are already connected
+        for phone, account in self.accounts.items():
+            if account.connected and account.status == "active":
+                results["already_connected"] += 1
+                results["account_status"][phone] = "already_connected"
+            
+        # Now, try to connect accounts that need connection
+        for phone, account in self.accounts.items():
+            # Only try to reconnect accounts that were previously active but are not connected now
+            if account.status == "active" and not account.connected:
+                logger.info(f"Attempting to auto-connect account {phone}")
+                
+                results["connection_attempts"] += 1
+                
+                try:
+                    # Use the safe_run_coroutine helper to run the async connect method
+                    from async_helper import safe_run_coroutine
+                    connect_result = safe_run_coroutine(account.connect())
+                    
+                    logger.info(f"Connect result for {phone}: {connect_result}")
+                    
+                    # Check if the connection was successful
+                    if account.connected and account.status == "active":
+                        results["connection_success"] += 1
+                        results["account_status"][phone] = "connected"
+                    else:
+                        results["connection_failures"] += 1
+                        results["account_status"][phone] = f"failed: {account.error or 'Unknown error'}"
+                
+                except Exception as e:
+                    logger.error(f"Exception connecting account {phone}: {str(e)}")
+                    results["connection_failures"] += 1
+                    results["account_status"][phone] = f"exception: {str(e)}"
+        
+        # Save updated account data
+        self.save_accounts()
+        logger.info(f"Account connection results: {results}")
+        
+        return results
     
     async def connect_all(self):
         """Connect all accounts"""

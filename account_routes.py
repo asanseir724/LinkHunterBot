@@ -190,6 +190,43 @@ def disconnect_account():
     
     except Exception as e:
         return jsonify({"success": False, "message": f"خطا در قطع اکانت: {str(e)}"})
+        
+@accounts_bp.route('/connect-all-accounts', methods=['POST'])
+def connect_all_accounts():
+    """Connect all Telegram user accounts in active status but not connected"""
+    from logger import get_logger
+    logger = get_logger("account_routes")
+    
+    logger.info("Connecting all accounts via web interface")
+    
+    try:
+        # Call the connect_all_accounts method
+        results = account_manager.connect_all_accounts()
+        
+        # Log the results
+        logger.info(f"Connect all accounts results: {results}")
+        
+        # Create a user-friendly message
+        if results["connection_attempts"] == 0:
+            if results["already_connected"] > 0:
+                message = f"همه اکانت‌ها ({results['already_connected']}/{results['total_accounts']}) از قبل متصل هستند."
+                flash(message, 'info')
+            else:
+                flash('هیچ اکانتی برای اتصال وجود ندارد.', 'info')
+        else:
+            message = f"اتصال {results['connection_success']} اکانت از {results['connection_attempts']} انجام شد."
+            
+            if results["connection_success"] > 0:
+                flash(message, 'success')
+            else:
+                flash(message, 'warning')
+                
+        return redirect(url_for('accounts.accounts'))
+    
+    except Exception as e:
+        logger.error(f"Error in connect_all_accounts: {str(e)}")
+        flash(f"خطا در اتصال اکانت‌ها: {str(e)}", 'danger')
+        return redirect(url_for('accounts.accounts'))
 
 @accounts_bp.route('/verify_code', methods=['POST'])
 def verify_code():
@@ -302,6 +339,10 @@ def check_accounts_for_links():
         
         # Get max messages count from settings or use default
         max_messages = 100  # Default, could be from settings
+        
+        # Make sure all accounts are connected before checking
+        logger.critical("[CHECK_ACCOUNTS_DEBUG] Connecting all accounts before checking for links")
+        account_manager.connect_all_accounts()
         
         # Log accounts state before checking
         active_accounts = account_manager.get_active_accounts()
