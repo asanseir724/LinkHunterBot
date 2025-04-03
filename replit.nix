@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.php
     pkgs.firefox
     pkgs.chromium
     pkgs.geckodriver
