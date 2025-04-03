@@ -3,195 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مدیریت حساب‌های کاربری تلگرام</title>
+    <title>مدیریت حساب‌های تلگرام</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        .telegram-color {
-            background-color: #0088cc;
+        :root {
+            --telegram-primary: #0088cc;
+            --telegram-secondary: #6c7883;
+            --dark-bg: #212529;
+            --card-bg: #282e33;
+            --border-color: #343a40;
+        }
+        
+        body {
+            background-color: var(--dark-bg);
+            color: #fff;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        
+        .navbar-brand img {
+            width: 40px;
+            height: 40px;
+            margin-left: 10px;
+        }
+        
+        .navbar-dark {
+            background-color: var(--card-bg);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .card-header {
+            background-color: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .btn-telegram {
+            background-color: var(--telegram-primary);
+            border-color: var(--telegram-primary);
             color: white;
         }
-        .telegram-color:hover {
+        
+        .btn-telegram:hover {
             background-color: #0077b3;
+            border-color: #0077b3;
             color: white;
         }
-        .account-row {
-            transition: all 0.3s ease;
+        
+        .account-card {
+            margin-bottom: 20px;
         }
-        .account-row:hover {
-            background-color: #f8f9fa;
-        }
-        .account-photo {
-            width: 48px;
-            height: 48px;
+        
+        .account-avatar {
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
-            object-fit: cover;
-        }
-        .account-placeholder {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background-color: #e9ecef;
+            background-color: var(--telegram-primary);
+            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
-            color: #6c757d;
+            font-size: 24px;
+            margin-right: 15px;
         }
-        .badge-connected {
+        
+        .account-details {
+            flex-grow: 1;
+        }
+        
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+        
+        .status-badge.connected {
             background-color: #198754;
         }
-        .badge-disconnected {
+        
+        .status-badge.disconnected {
             background-color: #dc3545;
         }
-        .actions .btn {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
+        
+        .alert {
+            border-radius: 10px;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fadeIn {
+            animation: fadeIn 0.5s ease forwards;
+        }
+        
+        .card-hover-effect:hover {
+            border-color: var(--telegram-primary);
+        }
+        
+        .telegram-icon {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
         }
     </style>
 </head>
 <body>
-    <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="mb-0">
-                <i class="bi bi-person-badge me-2"></i>
-                مدیریت حساب‌های کاربری تلگرام
-            </h1>
-            <div>
-                <a href="/telegram-desktop" class="btn btn-outline-primary me-2">
-                    <i class="bi bi-chat-left-text me-1"></i>
-                    رابط پیام‌های خصوصی
-                </a>
-                <a href="/" class="btn btn-outline-secondary">
-                    <i class="bi bi-house me-1"></i>
-                    بازگشت به خانه
-                </a>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <img src="/assets/img/logo.png" alt="لوگو" width="40" height="40" class="d-inline-block align-text-top">
+                <span>لینکدونی تلگرام</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="bi bi-house-door me-1"></i> خانه</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/links"><i class="bi bi-link-45deg me-1"></i> لینک‌ها</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/channels"><i class="bi bi-megaphone me-1"></i> کانال‌ها</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/accounts"><i class="bi bi-person me-1"></i> حساب‌ها</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/telegram-desktop"><i class="bi bi-chat-dots me-1"></i> پیام‌ها</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/settings"><i class="bi bi-gear me-1"></i> تنظیمات</a>
+                    </li>
+                </ul>
             </div>
         </div>
-        
+    </nav>
+    
+    <div class="container fadeIn">
+        <!-- Alerts -->
         <?php if (!empty($_SESSION['success'])): ?>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i>
-            <?php echo $_SESSION['success']; unset($_SESSION['success']); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i> <?php echo $_SESSION['success']; unset($_SESSION['success']); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
         <?php endif; ?>
         
         <?php if (!empty($_SESSION['error'])): ?>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        <?php endif; ?>
-        
-        <?php if (!empty($_SESSION['warning'])): ?>
-        <div class="alert alert-warning alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-circle-fill me-2"></i>
-            <?php echo $_SESSION['warning']; unset($_SESSION['warning']); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
         <?php endif; ?>
         
         <div class="row">
-            <div class="col-lg-8">
+            <div class="col-md-8">
                 <div class="card mb-4">
-                    <div class="card-header telegram-color d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i> حساب‌های کاربری</h5>
-                        <a href="/accounts/check-links" class="btn btn-outline-light btn-sm">
-                            <i class="bi bi-link-45deg me-1"></i>
-                            بررسی لینک‌ها در همه حساب‌ها
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i> حساب‌های تلگرام</h5>
+                        <a href="/accounts/check-links" class="btn btn-sm btn-primary">
+                            <i class="bi bi-search me-1"></i> بررسی لینک‌ها
                         </a>
                     </div>
-                    <div class="card-body p-0">
+                    <div class="card-body">
                         <?php if (empty($accounts)): ?>
-                        <div class="p-4 text-center">
-                            <p class="text-muted mb-0">
-                                <i class="bi bi-info-circle me-1"></i>
-                                هنوز هیچ حساب کاربری اضافه نشده است. لطفاً از فرم سمت راست یک حساب جدید اضافه کنید.
-                            </p>
-                        </div>
+                            <div class="text-center p-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="#6c7883" class="bi bi-person-x" viewBox="0 0 16 16">
+                                  <path d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0M8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4"/>
+                                  <path d="M8.256 14a4.5 4.5 0 0 1-.229-1.004H3c.001-.246.154-.986.832-1.664C4.484 10.68 5.711 10 8 10q.39 0 .74.025c.226-.341.496-.65.804-.918Q8.844 9.002 8 9c-5 0-6 3-6 4s1 1 1 1z"/>
+                                  <path d="M12.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7m-.646-4.854.646.647.646-.647a.5.5 0 0 1 .708.708l-.647.646.647.646a.5.5 0 0 1-.708.708l-.646-.647-.646.647a.5.5 0 0 1-.708-.708l.647-.646-.647-.646a.5.5 0 0 1 .708-.708"/>
+                                </svg>
+                                <h4 class="mt-3 text-muted">هیچ حساب تلگرامی پیدا نشد</h4>
+                                <p class="text-muted">برای استفاده از تمام امکانات، حداقل یک حساب تلگرام اضافه کنید.</p>
+                            </div>
                         <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead>
-                                    <tr>
-                                        <th class="border-0">حساب کاربری</th>
-                                        <th class="border-0">وضعیت</th>
-                                        <th class="border-0">آخرین بررسی</th>
-                                        <th class="border-0">عملیات</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($accounts as $account): ?>
-                                    <tr class="account-row">
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <?php if (!empty($account['photo'])): ?>
-                                                <img src="<?php echo $account['photo']; ?>" alt="عکس پروفایل" class="account-photo me-3">
-                                                <?php else: ?>
-                                                <div class="account-placeholder me-3">
-                                                    <i class="bi bi-person"></i>
-                                                </div>
-                                                <?php endif; ?>
-                                                <div>
-                                                    <h6 class="mb-0">
-                                                        <?php echo !empty($account['first_name']) ? 
-                                                            $account['first_name'] . ' ' . ($account['last_name'] ?? '') : 
-                                                            $account['phone']; ?>
-                                                    </h6>
-                                                    <div class="small text-muted">
-                                                        <?php if (!empty($account['username'])): ?>
-                                                        <span class="me-2">@<?php echo $account['username']; ?></span>
-                                                        <?php endif; ?>
-                                                        <span><?php echo $account['phone']; ?></span>
-                                                    </div>
-                                                </div>
+                            <?php foreach ($accounts as $phone => $account): ?>
+                                <div class="card account-card card-hover-effect mb-3">
+                                    <div class="card-body d-flex align-items-center">
+                                        <div class="account-avatar">
+                                            <?php echo strtoupper(substr(str_replace('+', '', $phone), -2)); ?>
+                                        </div>
+                                        <div class="account-details">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <h5 class="mb-0">
+                                                    <?php echo $account['name'] ?? $phone; ?>
+                                                    <?php if (!empty($account['username'])): ?>
+                                                        <small class="text-muted">@<?php echo $account['username']; ?></small>
+                                                    <?php endif; ?>
+                                                </h5>
+                                                <span class="badge status-badge <?php echo !empty($account['connected']) ? 'connected' : 'disconnected'; ?>">
+                                                    <?php echo !empty($account['connected']) ? 'متصل' : 'قطع اتصال'; ?>
+                                                </span>
                                             </div>
-                                        </td>
-                                        <td>
-                                            <?php if ($account['connected']): ?>
-                                            <span class="badge badge-connected">متصل</span>
-                                            <?php else: ?>
-                                            <span class="badge badge-disconnected">غیرمتصل</span>
+                                            <p class="text-muted mb-0"><?php echo $phone; ?></p>
+                                            <?php if (!empty($account['last_check'])): ?>
+                                                <small class="text-muted">آخرین بررسی: <?php echo date('Y-m-d H:i:s', $account['last_check']); ?></small>
                                             <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php if (!empty($account['last_check_time'])): ?>
-                                            <small><?php echo date('Y/m/d H:i', $account['last_check_time']); ?></small>
+                                        </div>
+                                        <div class="btn-group ms-3">
+                                            <?php if (empty($account['connected'])): ?>
+                                                <a href="/accounts/connect/<?php echo urlencode($phone); ?>" class="btn btn-sm btn-success">
+                                                    <i class="bi bi-box-arrow-in-right"></i> اتصال
+                                                </a>
                                             <?php else: ?>
-                                            <small class="text-muted">بررسی نشده</small>
+                                                <a href="/accounts/disconnect/<?php echo urlencode($phone); ?>" class="btn btn-sm btn-warning">
+                                                    <i class="bi bi-box-arrow-left"></i> قطع
+                                                </a>
                                             <?php endif; ?>
-                                        </td>
-                                        <td class="actions">
-                                            <?php if ($account['connected']): ?>
-                                            <a href="/accounts/disconnect/<?php echo urlencode($account['phone']); ?>" class="btn btn-outline-danger btn-sm" title="قطع اتصال">
-                                                <i class="bi bi-box-arrow-left"></i>
+                                            <a href="/accounts/remove/<?php echo urlencode($phone); ?>" class="btn btn-sm btn-danger" onclick="return confirm('آیا مطمئن هستید؟')">
+                                                <i class="bi bi-trash"></i> حذف
                                             </a>
-                                            <?php else: ?>
-                                            <a href="/accounts/connect/<?php echo urlencode($account['phone']); ?>" class="btn btn-outline-success btn-sm" title="اتصال">
-                                                <i class="bi bi-box-arrow-in-right"></i>
-                                            </a>
-                                            <?php endif; ?>
-                                            
-                                            <a href="/accounts/remove/<?php echo urlencode($account['phone']); ?>" class="btn btn-outline-danger btn-sm" title="حذف" 
-                                               onclick="return confirm('آیا از حذف این حساب کاربری اطمینان دارید؟');">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
                         <?php endif; ?>
                     </div>
                 </div>
             </div>
             
-            <div class="col-lg-4">
-                <div class="card">
-                    <div class="card-header telegram-color">
+            <div class="col-md-4">
+                <div class="card card-hover-effect">
+                    <div class="card-header">
                         <h5 class="mb-0"><i class="bi bi-person-plus-fill me-2"></i> افزودن حساب جدید</h5>
                     </div>
                     <div class="card-body">
@@ -199,65 +249,79 @@
                             <div class="mb-3">
                                 <label for="phone" class="form-label">شماره تلفن</label>
                                 <div class="input-group">
-                                    <span class="input-group-text">+</span>
-                                    <input type="tel" class="form-control" id="phone" name="phone" placeholder="989123456789" required pattern="[0-9]{10,15}">
+                                    <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                                    <input type="text" class="form-control" id="phone" name="phone" placeholder="+989123456789" required>
                                 </div>
-                                <div class="form-text">شماره تلفن را بدون فاصله و با کد کشور وارد کنید. مثال: 989123456789</div>
+                                <div class="form-text text-muted">شماره تلفن را با کد کشور وارد کنید (مثال: ۹۸۹۱۲۳۴۵۶۷۸۹+)</div>
                             </div>
                             
                             <div class="mb-3">
-                                <label for="name" class="form-label">نام (اختیاری)</label>
-                                <input type="text" class="form-control" id="name" name="name" placeholder="اکانت اصلی">
-                                <div class="form-text">نامی برای شناسایی راحت‌تر این اکانت</div>
+                                <label for="name" class="form-label">نام نمایشی (اختیاری)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                    <input type="text" class="form-control" id="name" name="name" placeholder="نام نمایشی">
+                                </div>
                             </div>
                             
-                            <div class="d-grid">
-                                <button type="submit" class="btn telegram-color">
-                                    <i class="bi bi-plus-circle me-1"></i>
-                                    افزودن حساب
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-telegram">
+                                    <i class="bi bi-telegram me-2"></i> افزودن حساب
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
                 
-                <div class="card mt-4">
-                    <div class="card-header bg-info text-white">
+                <div class="card mt-4 card-hover-effect">
+                    <div class="card-header">
                         <h5 class="mb-0"><i class="bi bi-info-circle-fill me-2"></i> راهنما</h5>
                     </div>
                     <div class="card-body">
-                        <h6>نحوه افزودن حساب:</h6>
-                        <ol class="ps-3">
-                            <li>شماره تلفن را در فرم مقابل وارد کنید.</li>
-                            <li>دکمه افزودن حساب را بزنید.</li>
-                            <li>کد تأیید ارسال شده به تلگرام خود را وارد کنید.</li>
-                            <li>اگر حساب شما دارای احراز هویت دو مرحله‌ای است، رمز عبور را نیز وارد کنید.</li>
-                        </ol>
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="feature-icon me-3 text-primary">
+                                <i class="bi bi-shield-lock fs-2"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">امنیت کامل</h6>
+                                <p class="text-muted mb-0 small">اطلاعات حساب‌ها به صورت محلی و امن ذخیره می‌شوند.</p>
+                            </div>
+                        </div>
                         
-                        <h6 class="mt-3">نکات مهم:</h6>
-                        <ul class="ps-3">
-                            <li>برای استفاده از قابلیت بررسی لینک‌ها، باید حساب شما متصل باشد.</li>
-                            <li>پس از اتصال حساب، می‌توانید پیام‌های خصوصی را از طریق دکمه «رابط پیام‌های خصوصی» مشاهده کنید.</li>
-                            <li>می‌توانید از چندین حساب همزمان استفاده کنید تا محدودیت‌های تلگرام را دور بزنید.</li>
-                        </ul>
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="feature-icon me-3 text-primary">
+                                <i class="bi bi-link-45deg fs-2"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">یافتن لینک‌های بیشتر</h6>
+                                <p class="text-muted mb-0 small">با اضافه کردن حساب، لینک‌های گروه‌های خصوصی را نیز دریافت کنید.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex align-items-center">
+                            <div class="feature-icon me-3 text-primary">
+                                <i class="bi bi-robot fs-2"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">پاسخ خودکار</h6>
+                                <p class="text-muted mb-0 small">به پیام‌های خصوصی با استفاده از هوش مصنوعی پاسخ دهید.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
+    <footer class="py-4 mt-5 bg-dark">
+        <div class="container text-center">
+            <p class="mb-0 text-muted">
+                <span>لینکدونی تلگرام</span> &copy; <?php echo date('Y'); ?>
+                <span class="mx-2">|</span>
+                <span>تمامی حقوق محفوظ است</span>
+            </p>
+        </div>
+    </footer>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // پنهان کردن پیام‌های اطلاع‌رسانی بعد از 5 ثانیه
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                const alerts = document.querySelectorAll('.alert');
-                alerts.forEach(alert => {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                });
-            }, 5000);
-        });
-    </script>
 </body>
 </html>
