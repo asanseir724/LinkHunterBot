@@ -197,24 +197,12 @@
                     <div class="card-body">
                         <form action="/accounts/add" method="post">
                             <div class="mb-3">
-                                <label for="phone" class="form-label">شماره تلفن (با فرمت بین‌المللی)</label>
+                                <label for="phone" class="form-label">شماره تلفن</label>
                                 <div class="input-group">
                                     <span class="input-group-text">+</span>
                                     <input type="tel" class="form-control" id="phone" name="phone" placeholder="989123456789" required pattern="[0-9]{10,15}">
                                 </div>
-                                <div class="form-text">شماره تلفن را بدون فاصله و با کد کشور وارد کنید (مثلا: 989123456789)</div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="api_id" class="form-label">API ID</label>
-                                <input type="number" class="form-control" id="api_id" name="api_id" placeholder="2040" required>
-                                <div class="form-text">API ID را از <a href="https://my.telegram.org/apps" target="_blank">my.telegram.org/apps</a> دریافت کنید</div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="api_hash" class="form-label">API Hash</label>
-                                <input type="text" class="form-control" id="api_hash" name="api_hash" placeholder="b13441a1f607e10a989891a5462e627" required>
-                                <div class="form-text">API Hash را از <a href="https://my.telegram.org/apps" target="_blank">my.telegram.org/apps</a> دریافت کنید</div>
+                                <div class="form-text">شماره تلفن را بدون فاصله و با کد کشور وارد کنید. مثال: 989123456789</div>
                             </div>
                             
                             <div class="mb-3">
@@ -226,7 +214,7 @@
                             <div class="d-grid">
                                 <button type="submit" class="btn telegram-color">
                                     <i class="bi bi-plus-circle me-1"></i>
-                                    افزودن اکانت
+                                    افزودن حساب
                                 </button>
                             </div>
                         </form>
