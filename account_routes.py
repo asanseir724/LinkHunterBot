@@ -284,6 +284,27 @@ def private_messages():
     except Exception as e:
         flash(f"خطا در بارگیری پیام‌های خصوصی: {str(e)}", "danger")
         return redirect(url_for('accounts.accounts'))
+        
+@accounts_bp.route('/telegram_desktop')
+def telegram_desktop():
+    """View private messages with a Telegram Desktop style interface"""
+    try:
+        # Get chat history from Avalai client
+        chat_history = avalai_client.get_chat_history(limit=500)
+        
+        # Sort by timestamp in descending order (newest first)
+        chat_history.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        
+        # Get Avalai settings
+        avalai_settings = avalai_client.get_settings()
+        
+        return render_template('private_messages.html',
+                               chat_history=chat_history, 
+                               avalai_settings=avalai_settings,
+                               avalai_enabled=avalai_client.is_enabled())
+    except Exception as e:
+        flash(f"خطا در بارگیری پیام‌های خصوصی: {str(e)}", "danger")
+        return redirect(url_for('index'))
 
 @accounts_bp.route('/clear_chat_history', methods=['POST'])
 def clear_chat_history():

@@ -1,83 +1,137 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<div class="container">
-    <div class="card mt-3 mb-4">
-        <div class="card-header">
-            <h3>پیام‌های خصوصی دریافتی</h3>
-        </div>
-        <div class="card-body">
-            {% if not avalai_enabled %}
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>توجه:</strong> هوش مصنوعی آوالای فعال نیست. برای پاسخگویی خودکار به پیام‌های خصوصی، ابتدا در قسمت تنظیمات آوالای، API Key را وارد کرده و سیستم را فعال کنید.
-                </div>
-            {% endif %}
-            
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
-                تمام پیام‌های خصوصی دریافتی توسط اکانت‌های متصل شده به سیستم در این صفحه نمایش داده می‌شوند. سیستم به طور خودکار با استفاده از هوش مصنوعی آوالای به این پیام‌ها پاسخ می‌دهد.
-            </div>
-            
-            {% if chat_history %}
-                <!-- Chat History Controls -->
-                <div class="mb-4">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fas fa-comments me-2"></i> تاریخچه چت ({{ chat_history|length }} پیام)</h5>
-                        <form action="{{ url_for('accounts.clear_chat_history') }}" method="post" onsubmit="return confirm('آیا از پاک کردن تاریخچه چت اطمینان دارید؟');">
-                            <button type="submit" class="btn btn-sm btn-danger">
-                                <i class="fas fa-trash-alt me-1"></i> پاک کردن تاریخچه
-                            </button>
-                        </form>
+<div class="container-fluid px-0">
+    <div class="telegram-desktop">
+        <!-- رابط کاربری شبیه تلگرام دسکتاپ -->
+        <div class="row g-0">
+            <!-- لیست مخاطبین و گفتگوها -->
+            <div class="col-md-3 chat-contacts">
+                <div class="sidebar-header">
+                    <h5 class="mb-0 p-3">پیام‌های خصوصی دریافتی</h5>
+                    <div class="search-box p-2">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" id="searchContacts" placeholder="جستجو...">
+                        </div>
                     </div>
                 </div>
                 
-                <!-- Messages Container -->
-                <div class="chat-history-container">
-                    {% for chat in chat_history %}
-                        <div class="card mb-3">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>کاربر:</strong> {{ chat.username or 'کاربر ' + chat.user_id }}
-                                    <span class="badge bg-secondary ms-2">{{ chat.user_id }}</span>
-                                </div>
-                                <small class="text-muted">{{ chat.timestamp }}</small>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <h6><i class="fas fa-question-circle text-primary me-2"></i> پیام کاربر:</h6>
-                                    <div class="user-message p-3 border rounded bg-light">
-                                        {{ chat.user_message }}
+                {% if not avalai_enabled %}
+                <div class="alert alert-warning m-2 p-2 small">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    هوش مصنوعی آوالای غیرفعال است.
+                </div>
+                {% endif %}
+                
+                <div class="user-list">
+                    {% if chat_history|groupby('user_id')|list|length > 0 %}
+                        <!-- گروه بندی پیام ها بر اساس کاربر -->
+                        {% set grouped_chats = {} %}
+                        {% for chat in chat_history %}
+                            {% if chat.user_id not in grouped_chats %}
+                                {% set _ = grouped_chats.update({chat.user_id: {'username': chat.username, 'last_message': chat.user_message, 'timestamp': chat.timestamp, 'count': 1}}) %}
+                            {% else %}
+                                {% set _ = grouped_chats[chat.user_id].update({'count': grouped_chats[chat.user_id].count + 1, 'last_message': chat.user_message, 'timestamp': chat.timestamp}) %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% for user_id, info in grouped_chats.items() %}
+                            <div class="user-item p-3" data-user-id="{{ user_id }}" onclick="selectChat('{{ user_id }}')">
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar me-2">
+                                        <i class="fas fa-user-circle fa-2x"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0">{{ info.username or 'کاربر ' + user_id }}</h6>
+                                            <small class="text-muted">{{ info.timestamp|default('', true)|replace(' ', '<br>')|safe }}</small>
+                                        </div>
+                                        <div class="last-message">
+                                            <small class="text-truncate d-block">{{ info.last_message|truncate(50) }}</small>
+                                        </div>
                                     </div>
                                 </div>
+                                <span class="badge bg-primary rounded-pill message-count">{{ info.count }}</span>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-comment-slash fa-3x mb-3 text-muted"></i>
+                            <p class="text-muted">هیچ پیام خصوصی دریافت نشده است</p>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="sidebar-footer p-2">
+                    <form action="{{ url_for('accounts.clear_chat_history') }}" method="post" onsubmit="return confirm('آیا از پاک کردن تمام تاریخچه چت اطمینان دارید؟');">
+                        <button type="submit" class="btn btn-sm btn-danger w-100">
+                            <i class="fas fa-trash-alt me-1"></i> پاک کردن تمام گفتگوها
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- پنل نمایش گفتگو -->
+            <div class="col-md-9 chat-panel">
+                <div id="empty-state" class="text-center py-5 h-100 d-flex flex-column align-items-center justify-content-center">
+                    <i class="fas fa-comment-dots fa-5x mb-3 text-primary"></i>
+                    <h4>به پیام‌های خصوصی خوش آمدید</h4>
+                    <p class="text-muted">یک گفتگو را از لیست انتخاب کنید.</p>
+                </div>
+                
+                {% for user_id, _ in chat_history|groupby('user_id') %}
+                    <div id="chat-{{ user_id }}" class="chat-container p-3 d-none">
+                        <!-- هدر گفتگو -->
+                        <div class="chat-header d-flex justify-content-between align-items-center p-2 bg-dark text-light">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-user-circle fa-2x me-2"></i>
                                 <div>
-                                    <h6><i class="fas fa-robot text-success me-2"></i> پاسخ هوش مصنوعی:</h6>
-                                    <div class="ai-response p-3 border rounded">
-                                        {{ chat.ai_response }}
-                                    </div>
+                                    {% set user_info = chat_history|selectattr('user_id', 'equalto', user_id)|first %}
+                                    <h5 class="mb-0">{{ user_info.username or 'کاربر ' + user_id }}</h5>
+                                    <small class="text-muted">آیدی: {{ user_id }}</small>
                                 </div>
                             </div>
-                            <div class="card-footer d-flex justify-content-end">
-                                <form action="{{ url_for('accounts.clear_chat_history') }}" method="post" onsubmit="return confirm('آیا از حذف این پیام اطمینان دارید؟');">
-                                    <input type="hidden" name="user_id" value="{{ chat.user_id }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        <i class="fas fa-trash-alt me-1"></i> حذف پیام
+                            <div>
+                                <form action="{{ url_for('accounts.clear_chat_history') }}" method="post" 
+                                      onsubmit="return confirm('آیا از حذف تمام پیام‌های این کاربر اطمینان دارید؟');">
+                                    <input type="hidden" name="user_id" value="{{ user_id }}">
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash"></i>
                                     </button>
                                 </form>
                             </div>
                         </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="alert alert-light text-center py-5">
-                    <i class="fas fa-comment-slash fa-3x mb-3 text-muted"></i>
-                    <p class="mb-0">هنوز هیچ پیام خصوصی دریافت نشده است.</p>
-                </div>
-            {% endif %}
+                        
+                        <!-- پیام‌های گفتگو -->
+                        <div class="chat-messages p-3">
+                            {% for chat in chat_history|selectattr('user_id', 'equalto', user_id) %}
+                                <div class="message-group mb-4">
+                                    <div class="message-info d-flex justify-content-between align-items-center mb-2">
+                                        <span class="message-time text-muted">{{ chat.timestamp }}</span>
+                                    </div>
+                                    <div class="message user-message">
+                                        <div class="message-content">
+                                            <div class="message-text">{{ chat.user_message }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="message bot-message">
+                                        <div class="message-content">
+                                            <div class="message-text">{{ chat.ai_response }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
-    
-    <!-- Avalai Settings Card -->
+</div>
+
+<!-- Avalai Settings Card -->
+<div class="container mt-4">
     <div class="card mb-4">
         <div class="card-header">
             <h4>تنظیمات هوش مصنوعی آوالای</h4>
@@ -109,29 +163,219 @@
             </div>
             
             <div class="alert alert-light">
-                <p>برای تغییر تنظیمات هوش مصنوعی آوالای به <a href="{{ url_for('settings') }}">صفحه تنظیمات</a> بروید.</p>
+                <p>برای تغییر تنظیمات هوش مصنوعی آوالای به <a href="{{ url_for('avalai_settings') }}">صفحه تنظیمات آوالای</a> بروید.</p>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
+{% block scripts %}
+<script>
+    // انتخاب چت فعال
+    function selectChat(userId) {
+        // مخفی کردن همه چت‌ها
+        document.querySelectorAll('.chat-container').forEach(container => {
+            container.classList.add('d-none');
+        });
+        
+        // مخفی کردن حالت خالی
+        document.getElementById('empty-state').classList.add('d-none');
+        
+        // نمایش چت انتخاب شده
+        const selectedChat = document.getElementById('chat-' + userId);
+        if (selectedChat) {
+            selectedChat.classList.remove('d-none');
+        }
+        
+        // فعال کردن آیتم کاربر در لیست
+        document.querySelectorAll('.user-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        const selectedUser = document.querySelector(`.user-item[data-user-id="${userId}"]`);
+        if (selectedUser) {
+            selectedUser.classList.add('active');
+        }
+        
+        // اسکرول به آخرین پیام
+        const messagesContainer = selectedChat.querySelector('.chat-messages');
+        if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+    
+    // جستجو در لیست مخاطبین
+    document.getElementById('searchContacts').addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        document.querySelectorAll('.user-item').forEach(item => {
+            const username = item.querySelector('h6').textContent.toLowerCase();
+            const lastMessage = item.querySelector('.last-message').textContent.toLowerCase();
+            
+            if (username.includes(searchTerm) || lastMessage.includes(searchTerm)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+</script>
+{% endblock %}
+
 {% block styles %}
 <style>
-    .chat-history-container {
-        max-height: 800px;
+    /* استایل کلی تلگرام دسکتاپ */
+    .telegram-desktop {
+        height: calc(100vh - 120px);
+        min-height: 600px;
+        background-color: var(--bs-dark);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* پنل مخاطبین */
+    .chat-contacts {
+        background-color: #17212b;
+        height: 100%;
+        border-right: 1px solid #0e1621;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .sidebar-header {
+        background-color: #2b5278;
+        color: white;
+    }
+    
+    .search-box {
+        background-color: #17212b;
+    }
+    
+    .search-box .form-control {
+        background-color: #242f3d;
+        border: none;
+        color: white;
+    }
+    
+    .search-box .input-group-text {
+        background-color: #242f3d;
+        border: none;
+        color: #5d7184;
+    }
+    
+    .user-list {
+        flex: 1;
         overflow-y: auto;
     }
     
-    .user-message {
-        background-color: var(--bs-light);
-        border-radius: 0.25rem;
+    .user-item {
+        border-bottom: 1px solid #0e1621;
+        cursor: pointer;
+        position: relative;
+        padding: 10px;
+        color: #fff;
     }
     
-    .ai-response {
-        background-color: var(--bs-dark);
-        color: var(--bs-light);
-        border-radius: 0.25rem;
+    .user-item:hover {
+        background-color: #202b36;
+    }
+    
+    .user-item.active {
+        background-color: #2b5278;
+    }
+    
+    .user-avatar {
+        color: #5d7184;
+    }
+    
+    .last-message {
+        color: #5d7184;
+        max-width: 150px;
+    }
+    
+    .message-count {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+    
+    .sidebar-footer {
+        background-color: #17212b;
+    }
+    
+    /* پنل چت */
+    .chat-panel {
+        background-color: #17212b;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .chat-header {
+        background-color: #2b5278;
+        color: white;
+        border-bottom: 1px solid #0e1621;
+    }
+    
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        background-color: #0e1621;
+    }
+    
+    .message-group {
+        margin-bottom: 20px;
+        position: relative;
+    }
+    
+    .message {
+        margin-bottom: 5px;
+        display: flex;
+    }
+    
+    .user-message {
+        justify-content: flex-end;
+    }
+    
+    .bot-message {
+        justify-content: flex-start;
+    }
+    
+    .message-content {
+        max-width: 80%;
+        border-radius: 6px;
+        padding: 10px;
+    }
+    
+    .user-message .message-content {
+        background-color: #2b5278;
+        color: white;
+    }
+    
+    .bot-message .message-content {
+        background-color: #242f3d;
+        color: white;
+    }
+    
+    .message-text {
+        word-wrap: break-word;
+    }
+    
+    .message-time {
+        font-size: 0.8rem;
+        color: #5d7184;
+    }
+    
+    #empty-state {
+        background-color: #0e1621;
+        color: white;
     }
 </style>
 {% endblock %}

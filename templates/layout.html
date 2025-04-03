@@ -45,10 +45,22 @@
                             <i class="fas fa-user"></i> Accounts
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/private_messages' %}active{% endif %}" href="{{ url_for('accounts.private_messages') }}">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if request.path == '/private_messages' or request.path == '/telegram_desktop' %}active{% endif %}" href="#" id="messagesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-comments"></i> Private Messages
                         </a>
+                        <ul class="dropdown-menu" aria-labelledby="messagesDropdown">
+                            <li>
+                                <a class="dropdown-item {% if request.path == '/private_messages' %}active{% endif %}" href="{{ url_for('accounts.private_messages') }}">
+                                    <i class="fas fa-list"></i> Standard View
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if request.path == '/telegram_desktop' %}active{% endif %}" href="{{ url_for('accounts.telegram_desktop') }}">
+                                    <i class="fab fa-telegram"></i> Telegram Desktop
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('links') %}active{% endif %}" href="{{ url_for('links') }}">
