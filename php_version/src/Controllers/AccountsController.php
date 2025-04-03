@@ -119,7 +119,8 @@ class AccountsController {
      * @return Response
      */
     public function connectAccount(Request $request, Response $response, $phone) {
-        $result = $this->accountManager->connectAccount($phone);
+        // استفاده از متد startLoginProcess به جای connectAccount
+        $result = $this->accountManager->startLoginProcess($phone);
         
         if ($result['success']) {
             // اتصال موفقیت‌آمیز بوده
@@ -148,7 +149,8 @@ class AccountsController {
      * @return Response
      */
     public function disconnectAccount(Request $request, Response $response, $phone) {
-        $result = $this->accountManager->disconnectAccount($phone);
+        // استفاده از متد logout به جای disconnectAccount
+        $result = $this->accountManager->logout($phone, true);
         
         if ($result['success']) {
             $_SESSION['success'] = $result['message'];
@@ -208,17 +210,21 @@ class AccountsController {
         $params = $request->getParsedBody();
         $phone = $params['phone'] ?? '';
         $code = $params['code'] ?? '';
+        $phoneCodeHash = $_SESSION['phone_code_hash'] ?? '';
         
         if (empty($phone) || empty($code)) {
             $_SESSION['error'] = 'شماره تلفن و کد تأیید الزامی هستند.';
             return $response->withRedirect('/accounts');
         }
         
-        $result = $this->accountManager->verifyCode($phone, $code);
+        // استفاده از متد submitCode به جای verifyCode
+        $result = $this->accountManager->submitCode($phone, $code, $phoneCodeHash);
         
         if ($result['success']) {
             // ورود موفقیت‌آمیز
             $_SESSION['success'] = $result['message'];
+            // پاک کردن هش کد تلفن از سشن
+            unset($_SESSION['phone_code_hash']);
             return $response->withRedirect('/accounts');
         } elseif ($result['status'] === '2fa_needed') {
             // نیاز به رمز عبور دو مرحله‌ای
@@ -246,7 +252,8 @@ class AccountsController {
             return $response->withRedirect('/accounts');
         }
         
-        $result = $this->accountManager->verify2FA($phone, $password);
+        // استفاده از متد submit2FA به جای verify2FA
+        $result = $this->accountManager->submit2FA($phone, $password);
         
         if ($result['success']) {
             // ورود موفقیت‌آمیز
@@ -305,7 +312,8 @@ class AccountsController {
             $selectedAccount = $accounts[$accountPhone];
             
             try {
-                $userAccount = new UserAccount($accountPhone, $selectedAccount);
+                // ایجاد نمونه UserAccount از طریق AccountManager
+                $userAccount = $this->accountManager->createUserAccount($accountPhone);
                 
                 // دریافت لیست چت‌ها
                 $dialogs = $userAccount->getDialogs();
@@ -316,7 +324,8 @@ class AccountsController {
                         'title' => $dialog['title'] ?? $peer,
                         'username' => $dialog['username'] ?? null,
                         'photo' => $dialog['photo'] ?? null,
-                        'last_message' => $dialog['message'] ?? null
+                        'last_message' => $dialog['message'] ?? null,
+                        'type' => $dialog['type'] ?? 'unknown'
                     ];
                 }
                 
@@ -325,7 +334,7 @@ class AccountsController {
                     $selectedChat = $chatId;
                     $messages = $userAccount->getMessages($chatId, 50);
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 $_SESSION['error'] = 'خطا در دریافت اطلاعات چت: ' . $e->getMessage();
             }
         }
@@ -356,24 +365,13 @@ class AccountsController {
             return $response->withRedirect('/telegram-desktop');
         }
         
-        try {
-            $account = $this->accountManager->getAccount($accountPhone);
-            
-            if (!$account || !$account['connected']) {
-                $_SESSION['error'] = 'حساب کاربری متصل نیست.';
-                return $response->withRedirect('/telegram-desktop?account=' . urlencode($accountPhone));
-            }
-            
-            $userAccount = new UserAccount($accountPhone, $account);
-            $result = $userAccount->sendMessage($chatId, $message);
-            
-            if ($result['success']) {
-                $_SESSION['success'] = 'پیام با موفقیت ارسال شد.';
-            } else {
-                $_SESSION['error'] = $result['message'];
-            }
-        } catch (Exception $e) {
-            $_SESSION['error'] = 'خطا در ارسال پیام: ' . $e->getMessage();
+        // استفاده از متد sendMessage کلاس AccountManager به جای ایجاد نمونه مستقیم UserAccount
+        $result = $this->accountManager->sendMessage($accountPhone, $chatId, $message);
+        
+        if ($result['success']) {
+            $_SESSION['success'] = 'پیام با موفقیت ارسال شد.';
+        } else {
+            $_SESSION['error'] = $result['message'];
         }
         
         return $response->withRedirect('/telegram-desktop?account=' . urlencode($accountPhone) . '&chat=' . urlencode($chatId));
