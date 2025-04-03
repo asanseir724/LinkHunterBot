@@ -1,8 +1,8 @@
 # Link Hunter Bot (ربات لینک‌یاب تلگرام)
 
-A comprehensive Telegram bot designed to automatically extract and store links from Telegram channels. The bot monitors specified channels, extracts links from messages, and provides a web interface for managing the collected links.
+A comprehensive Telegram bot designed to automatically extract and store links from Telegram channels, respond to private messages with AI, and provide advanced management features. The system monitors specified channels, extracts links from messages, responds intelligently to user inquiries, and provides a full-featured web interface for managing all aspects of the bot.
 
-ربات قدرتمند تلگرام برای استخراج و ذخیره خودکار لینک‌ها از کانال‌های تلگرام. این ربات کانال‌های مشخص شده را بررسی کرده، لینک‌ها را از پیام‌ها استخراج می‌کند و یک رابط وب برای مدیریت لینک‌های جمع‌آوری شده ارائه می‌دهد.
+ربات قدرتمند تلگرام برای استخراج و ذخیره خودکار لینک‌ها از کانال‌های تلگرام، پاسخگویی به پیام‌های خصوصی با هوش مصنوعی و ارائه ویژگی‌های مدیریتی پیشرفته. این سیستم کانال‌های مشخص شده را بررسی می‌کند، لینک‌ها را از پیام‌ها استخراج می‌کند، به پرسش‌های کاربران به صورت هوشمند پاسخ می‌دهد و یک رابط وب کامل برای مدیریت تمام جنبه‌های ربات ارائه می‌دهد.
 
 ## Features (ویژگی‌ها)
 
@@ -17,6 +17,15 @@ A comprehensive Telegram bot designed to automatically extract and store links f
 - **Auto-discovery**: Automatically finds and adds new link-sharing channels
 - **Keyword Management**: Manage category keywords for automatic link classification
 - **Support for @ format links**: Detects both t.me links and @username format
+- **AI-Powered Responses**: Automatically respond to private messages with AI (Avalai.ir & Perplexity)
+- **Telegram Desktop Interface**: View and manage private messages in a Telegram Desktop-style interface
+- **Dual AI Service Support**: Switch between different AI services (Avalai.ir and Perplexity)
+- **Customizable AI Prompts**: Configure how the AI responds to different types of messages
+- **Message History**: Track and review all private message conversations
+- **Batch Account Management**: Connect all Telegram accounts at once with a single click
+- **Enhanced Error Handling**: Robust error recovery and reconnection capabilities
+- **Web Scraping**: Extract content from websites for AI processing
+- **Multi-language Support**: Full support for Persian and English interfaces
 
 - **استخراج خودکار لینک**: نظارت بر کانال‌های تلگرام و استخراج خودکار لینک‌ها
 - **خزش وب**: استخراج لینک‌های تلگرام از وب‌سایت‌ها با پشتیبانی از فرمت‌های مختلف
@@ -29,6 +38,15 @@ A comprehensive Telegram bot designed to automatically extract and store links f
 - **کشف خودکار**: یافتن و افزودن خودکار کانال‌های اشتراک‌گذاری لینک جدید
 - **مدیریت کلمات کلیدی**: مدیریت کلمات کلیدی دسته‌بندی‌ها برای طبقه‌بندی خودکار لینک‌ها
 - **پشتیبانی از لینک‌های فرمت @**: تشخیص هر دو فرمت لینک t.me و فرمت @username
+- **پاسخ‌های هوشمند با هوش مصنوعی**: پاسخگویی خودکار به پیام‌های خصوصی با هوش مصنوعی (آوالای و پرپلکسیتی)
+- **رابط کاربری شبیه تلگرام دسکتاپ**: مشاهده و مدیریت پیام‌های خصوصی در یک رابط شبیه به تلگرام دسکتاپ
+- **پشتیبانی از دو سرویس هوش مصنوعی**: امکان تغییر بین سرویس‌های مختلف هوش مصنوعی (آوالای و پرپلکسیتی)
+- **پرامپت‌های قابل تنظیم هوش مصنوعی**: تنظیم نحوه پاسخگویی هوش مصنوعی به انواع مختلف پیام‌ها
+- **تاریخچه پیام‌ها**: پیگیری و بررسی تمام مکالمات پیام خصوصی
+- **مدیریت دسته‌ای اکانت‌ها**: اتصال همه اکانت‌های تلگرام با یک کلیک
+- **مدیریت خطای پیشرفته**: قابلیت‌های قوی بازیابی خطا و اتصال مجدد
+- **استخراج محتوا از وب**: استخراج محتوا از وب‌سایت‌ها برای پردازش توسط هوش مصنوعی
+- **پشتیبانی چندزبانه**: پشتیبانی کامل از رابط کاربری فارسی و انگلیسی
 
 ## Requirements (پیش‌نیازها)
 
@@ -37,379 +55,84 @@ A comprehensive Telegram bot designed to automatically extract and store links f
 - Telethon
 - Twilio (optional, for SMS notifications)
 - PostgreSQL (optional, for larger deployments)
+- API Keys for AI services:
+  - Avalai.ir API key (optional, for Avalai AI integration)
+  - Perplexity API key (optional, for Perplexity AI integration)
 
-## Setup Instructions (راهنمای نصب و راه‌اندازی)
+## AI Message Response System (سیستم پاسخگویی هوش مصنوعی)
 
-### 1. Clone the Repository (کلون کردن مخزن)
+The bot can automatically respond to private messages using AI:
+ربات می‌تواند با استفاده از هوش مصنوعی به پیام‌های خصوصی به طور خودکار پاسخ دهد:
 
-```bash
-git clone https://github.com/asanseir724/LinkHunterBot.git
-cd LinkHunterBot
-```
+### AI Service Options (گزینه‌های سرویس هوش مصنوعی)
 
-### 2. Install Dependencies (نصب وابستگی‌ها)
+1. **Avalai.ir**: Persian-focused AI service
+2. **Perplexity**: Advanced AI service with multiple model options
 
-```bash
-pip install -r dependencies.txt
-```
+1. **آوالای**: سرویس هوش مصنوعی با تمرکز بر زبان فارسی
+2. **پرپلکسیتی**: سرویس هوش مصنوعی پیشرفته با گزینه‌های مختلف مدل
 
-### 3. Set Environment Variables (تنظیم متغیرهای محیطی)
+### Configuration (پیکربندی)
 
-Create a `.env` file in the project root with the following variables:
-یک فایل `.env` در پوشه اصلی پروژه با متغیرهای زیر ایجاد کنید:
+1. Add your API keys to the environment variables
+2. Go to the Private Messages page in the web interface
+3. Enable the desired AI service
+4. Configure the default prompt and other settings
+5. The system will automatically respond to incoming messages based on your settings
 
-```
-SESSION_SECRET=your_session_secret
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+1. کلیدهای API خود را به متغیرهای محیطی اضافه کنید
+2. به صفحه پیام‌های خصوصی در رابط وب بروید
+3. سرویس هوش مصنوعی مورد نظر را فعال کنید
+4. پرامپت پیش‌فرض و سایر تنظیمات را پیکربندی کنید
+5. سیستم بر اساس تنظیمات شما به طور خودکار به پیام‌های ورودی پاسخ می‌دهد
 
-# For SMS notifications (optional) - برای اطلاع‌رسانی پیامکی (اختیاری)
-TWILIO_ACCOUNT_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE_NUMBER=your_twilio_phone_number
-```
+### Perplexity API Configuration (پیکربندی API پرپلکسیتی)
 
-### 4. Run the Application (اجرای برنامه)
+The Perplexity integration supports advanced settings:
+یکپارچه‌سازی پرپلکسیتی از تنظیمات پیشرفته پشتیبانی می‌کند:
 
-```bash
-python main.py
-```
+- Model selection (llama-3.1-sonar-small-128k-online recommended)
+- Temperature control
+- Maximum token limit
+- Response filtering options
+- Question detection (option to only respond to questions)
 
-The web interface will be available at `http://localhost:5000`.
-رابط وب در آدرس `http://localhost:5000` در دسترس خواهد بود.
+- انتخاب مدل (llama-3.1-sonar-small-128k-online توصیه می‌شود)
+- کنترل Temperature
+- محدودیت حداکثر توکن
+- گزینه‌های فیلتر پاسخ
+- تشخیص سؤال (گزینه پاسخ فقط به سؤالات)
 
-## One-Step Installation (نصب یک مرحله‌ای)
-
-For quick deployment on a server, you can use our one-step installation script:
-برای استقرار سریع روی سرور، می‌توانید از اسکریپت نصب یک مرحله‌ای ما استفاده کنید:
-
-```bash
-# Download the installation script
-wget https://raw.githubusercontent.com/asanseir724/LinkHunterBot/main/install.sh
-
-# Make it executable
-chmod +x install.sh
-
-# Run with sudo
-sudo ./install.sh
-```
-
-This script will:
-این اسکریپت:
-
-- Update your system and install prerequisites
-- Clone the repository
-- Set up a Python virtual environment
-- Install all required dependencies
-- Configure environment variables
-- Create necessary directories
-- Set up a systemd service for automatic startup
-- Start the application
-
-- سیستم شما را به‌روز کرده و پیش‌نیازها را نصب می‌کند
-- مخزن را کلون می‌کند
-- یک محیط مجازی پایتون راه‌اندازی می‌کند
-- تمام وابستگی‌های مورد نیاز را نصب می‌کند
-- متغیرهای محیطی را پیکربندی می‌کند
-- دایرکتوری‌های لازم را ایجاد می‌کند
-- یک سرویس systemd برای راه‌اندازی خودکار تنظیم می‌کند
-- برنامه را اجرا می‌کند
-
-After installation, the web interface will be accessible at `http://YOUR_SERVER_IP:5000`.
-پس از نصب، رابط وب در آدرس `http://IP_سرور_شما:5000` قابل دسترسی خواهد بود.
-
-## Server Deployment Guide (راهنمای استقرار روی سرور)
-
-### System Requirements (پیش‌نیازهای سیستم)
-
-Recommended server specifications:
-مشخصات پیشنهادی سرور:
-
-- OS: Ubuntu 20.04 or higher (سیستم عامل: اوبونتو ۲۰.۰۴ یا بالاتر)
-- RAM: 2GB minimum, 4GB recommended (حداقل ۲ گیگابایت، ۴ گیگابایت پیشنهاد می‌شود)
-- Disk Space: 10GB minimum (حداقل ۱۰ گیگابایت فضای دیسک)
-- CPU: 1 core minimum, 2 cores recommended (حداقل ۱ هسته، ۲ هسته پیشنهاد می‌شود)
-
-### Full Installation Process (فرآیند کامل نصب)
-
-If you prefer to install manually instead of using the one-step script, follow these steps:
-اگر ترجیح می‌دهید به جای استفاده از اسکریپت یک مرحله‌ای، به صورت دستی نصب کنید، این مراحل را دنبال کنید:
-
-#### 1. Update System and Install Prerequisites (به‌روزرسانی سیستم و نصب پیش‌نیازها)
-
-```bash
-# Update system
-sudo apt update
-sudo apt upgrade -y
-# Install essential prerequisites
-sudo apt install -y python3 python3-pip python3-venv git screen build-essential libssl-dev
-```
-
-#### 2. Install PostgreSQL (Optional) (نصب PostgreSQL - اختیاری)
-
-```bash
-# Install PostgreSQL
-sudo apt install -y postgresql postgresql-contrib
-# Create user and database
-sudo -u postgres psql -c "CREATE USER linkdoni WITH PASSWORD 'your_password';"
-sudo -u postgres psql -c "CREATE DATABASE linkdoni_db OWNER linkdoni;"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE linkdoni_db TO linkdoni;"
-```
-
-#### 3. Download and Prepare Project (دانلود و آماده‌سازی پروژه)
-
-```bash
-# Create directory for project
-mkdir -p /var/www/linkdoni
-cd /var/www/linkdoni
-# Clone repository
-git clone https://github.com/asanseir724/LinkHunterBot.git .
-# Create Python virtual environment
-python3 -m venv venv
-source venv/bin/activate
-# Install required libraries
-pip install -r dependencies.txt
-```
-
-#### 4. Create Required Directories (ایجاد پوشه‌های مورد نیاز)
-
-```bash
-# Create directories for logs and exports
-mkdir -p logs
-mkdir -p static/exports
-mkdir -p sessions
-chmod 777 logs static/exports sessions
-```
-
-#### 5. Configure Environment Variables (تنظیم متغیرهای محیطی)
-
-```bash
-# Create environment file
-cat > .env << EOL
-# Project environment variables
-SESSION_SECRET=a_long_random_string
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-
-# Twilio settings (optional for SMS notifications)
-TWILIO_ACCOUNT_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE_NUMBER=your_twilio_phone_number
-
-# Database settings (if using PostgreSQL)
-DATABASE_URL=postgresql://linkdoni:your_password@localhost/linkdoni_db
-EOL
-
-# Apply environment variables
-set -a
-source .env
-set +a
-```
-
-#### 6. Initial Application Test (تست اولیه برنامه)
-
-```bash
-# Test running the application
-python main.py
-# If successful, stop it with Ctrl+C
-```
-
-#### 7. Set up Gunicorn Service (راه‌اندازی سرویس Gunicorn)
-
-```bash
-# Create Gunicorn service file
-sudo tee /etc/systemd/system/linkdoni.service > /dev/null <<EOL
-[Unit]
-Description=Telegram Link Hunter Bot
-After=network.target
-
-[Service]
-User=www-data
-Group=www-data
-WorkingDirectory=/var/www/linkdoni
-Environment="PATH=/var/www/linkdoni/venv/bin"
-EnvironmentFile=/var/www/linkdoni/.env
-ExecStart=/var/www/linkdoni/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 --access-logfile /var/www/linkdoni/logs/access.log --error-logfile /var/www/linkdoni/logs/error.log main:app
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-EOL
-
-# Change ownership of directory
-sudo chown -R www-data:www-data /var/www/linkdoni
-
-# Enable and start service
-sudo systemctl daemon-reload
-sudo systemctl enable linkdoni
-sudo systemctl start linkdoni
-```
-
-#### 8. Install Nginx (Optional) (نصب Nginx - اختیاری)
-
-```bash
-# Install Nginx
-sudo apt install -y nginx
-
-# Configure Nginx
-sudo tee /etc/nginx/sites-available/linkdoni > /dev/null <<EOL
-server {
-    listen 80;
-    server_name your_server_domain_or_IP;
-    
-    location / {
-        include proxy_params;
-        proxy_pass http://127.0.0.1:5000;
-    }
-}
-EOL
-
-# Enable site
-sudo ln -s /etc/nginx/sites-available/linkdoni /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-
-# Install Let's Encrypt for SSL (optional)
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d your_domain
-```
-
-### Useful Commands (دستورات مفید)
-
-```bash
-# Check service status
-sudo systemctl status linkdoni
-
-# Restart service
-sudo systemctl restart linkdoni
-
-# View system logs
-sudo journalctl -u linkdoni.service -f
-
-# View application logs
-tail -f /var/www/linkdoni/logs/bot.log
-
-# Update application from repository
-cd /var/www/linkdoni
-git pull
-source venv/bin/activate
-pip install -r dependencies.txt
-sudo systemctl restart linkdoni
-
-# Run application in background with Screen (alternative method)
-cd /var/www/linkdoni
-screen -S linkdoni
-source venv/bin/activate
-source .env
-python main.py
-# To detach from screen: Ctrl+A then D
-# To reattach to screen: screen -r linkdoni
-```
-
-### Troubleshooting (عیب‌یابی)
-
-If the application doesn't run:
-اگر برنامه اجرا نمی‌شود:
-
-```bash
-# Check logs for errors
-tail -f /var/www/linkdoni/logs/bot.log
-sudo journalctl -u linkdoni.service -f
-
-# Check permissions
-sudo chown -R www-data:www-data /var/www/linkdoni
-sudo chmod -R 755 /var/www/linkdoni
-sudo chmod -R 777 /var/www/linkdoni/logs /var/www/linkdoni/static/exports /var/www/linkdoni/sessions
-```
-
-If you can't access the website:
-اگر به وب‌سایت دسترسی ندارید:
-
-```bash
-# Check Nginx status
-sudo systemctl status nginx
-
-# Check firewall
-sudo ufw status
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-```
-
-## Configuration (پیکربندی)
-
-1. **Bot Token**: Obtain a bot token from [@BotFather](https://t.me/BotFather) and set it in the `.env` file or through the settings page
-2. **Add Channels**: Add Telegram channels to monitor through the web interface
-3. **Add Websites**: Add websites to crawl for Telegram links through the web interface
-4. **Configure Intervals**: Set how frequently the bot checks for new links
-5. **SMS Notifications**: Optionally configure SMS notifications for when new links are found
-6. **Category Keywords**: Configure keywords for automatic link categorization
-7. **Website Scrolling**: Configure how many times to scroll each website during crawling
-
-1. **توکن ربات**: یک توکن ربات از [@BotFather](https://t.me/BotFather) دریافت کنید و آن را در فایل `.env` یا از طریق صفحه تنظیمات تنظیم کنید
-2. **افزودن کانال‌ها**: کانال‌های تلگرام را برای نظارت از طریق رابط وب اضافه کنید
-3. **افزودن وب‌سایت‌ها**: وب‌سایت‌هایی را برای جمع‌آوری لینک‌های تلگرام از طریق رابط وب اضافه کنید
-4. **پیکربندی فواصل زمانی**: تعیین کنید هر چند وقت یکبار ربات بررسی لینک‌های جدید را انجام دهد
-5. **اطلاع‌رسانی پیامکی**: به صورت اختیاری اطلاع‌رسانی پیامکی را برای زمانی که لینک‌های جدید پیدا می‌شوند، پیکربندی کنید
-6. **کلمات کلیدی دسته‌بندی**: کلمات کلیدی را برای دسته‌بندی خودکار لینک‌ها پیکربندی کنید
-7. **اسکرول وب‌سایت‌ها**: تعیین کنید هر وب‌سایت چند بار اسکرول شود در طول خزش
-
-## User Accounts (Optional) - حساب‌های کاربری (اختیاری)
+## User Accounts for Private Access (حساب‌های کاربری برای دسترسی خصوصی)
 
 To monitor private channels, you can add user accounts:
 برای نظارت بر کانال‌های خصوصی، می‌توانید حساب‌های کاربری اضافه کنید:
 
+### Adding a New Account (افزودن حساب جدید)
+
 1. Go to the Accounts page
-2. Add a new account with phone number, API ID, and API Hash
-3. Complete the authorization process
+2. Click "Add Account"
+3. Enter the phone number with international format
+4. Enter API ID and API Hash from my.telegram.org/apps
+5. Complete the verification process
+6. Add optional nickname for easy identification
 
 1. به صفحه حساب‌ها بروید
-2. یک حساب جدید با شماره تلفن، API ID و API Hash اضافه کنید
-3. فرآیند احراز هویت را تکمیل کنید
+2. روی "افزودن اکانت" کلیک کنید
+3. شماره تلفن را با فرمت بین‌المللی وارد کنید
+4. API ID و API Hash را از my.telegram.org/apps وارد کنید
+5. فرآیند تأیید را تکمیل کنید
+6. نام مستعار اختیاری برای شناسایی آسان اضافه کنید
 
-## Website Crawling for Links (خزش وب‌سایت برای لینک‌ها)
+### Batch Management (مدیریت دسته‌ای)
 
-The bot can extract Telegram links from websites automatically:
-ربات می‌تواند به طور خودکار لینک‌های تلگرام را از وب‌سایت‌ها استخراج کند:
+- Use "Connect All Accounts" button to reconnect all accounts at once
+- This is useful for recovering from connection errors
+- The system automatically manages connection sessions and retries
 
-1. Go to the Websites page in the interface
-2. Add website URLs to monitor (one per line)
-3. Set the scroll count for dynamic websites
-4. Configure check interval to determine how often to crawl websites
-5. Categorize websites for better link organization
-
-1. به صفحه وب‌سایت‌ها در رابط کاربری بروید
-2. آدرس وب‌سایت‌هایی را که می‌خواهید نظارت کنید اضافه کنید (هر خط یک آدرس)
-3. تعداد اسکرول را برای وب‌سایت‌های پویا تنظیم کنید
-4. فاصله زمانی بررسی را تنظیم کنید تا مشخص شود هر چند وقت یکبار وب‌سایت‌ها بررسی شوند
-5. وب‌سایت‌ها را برای سازماندهی بهتر لینک‌ها دسته‌بندی کنید
-
-### Supported Link Formats (فرمت‌های لینک پشتیبانی شده)
-
-The crawler can detect and extract:
-خزنده می‌تواند این موارد را تشخیص داده و استخراج کند:
-
-- Regular t.me links (https://t.me/channel_name)
-- Private group links (https://t.me/joinchat/XXXXX)
-- Plus-format private links (https://t.me/+XXXXX)
-- Username format (@channel_name)
-- Old format links (https://telegram.me/channel_name)
-
-- لینک‌های معمولی t.me (https://t.me/channel_name)
-- لینک‌های گروه خصوصی (https://t.me/joinchat/XXXXX)
-- لینک‌های خصوصی با فرمت جدید (https://t.me/+XXXXX)
-- فرمت نام کاربری (@channel_name)
-- لینک‌های با فرمت قدیمی (https://telegram.me/channel_name)
-
-## SMS Notifications (Optional) - اطلاع‌رسانی پیامکی (اختیاری)
-
-To enable SMS notifications:
-برای فعال کردن اطلاع‌رسانی پیامکی:
-
-1. Create a Twilio account and get credentials
-2. Set environment variables for Twilio
-3. Configure notification settings in the web interface
-
-1. یک حساب Twilio ایجاد کنید و اعتبارنامه‌ها را دریافت کنید
-2. متغیرهای محیطی را برای Twilio تنظیم کنید
-3. تنظیمات اطلاع‌رسانی را در رابط وب پیکربندی کنید
+- از دکمه "اتصال همه اکانت‌ها" برای اتصال مجدد همه اکانت‌ها به یکباره استفاده کنید
+- این برای بازیابی از خطاهای اتصال مفید است
+- سیستم به طور خودکار جلسات اتصال و تلاش‌های مجدد را مدیریت می‌کند
 
 ## Project Structure (ساختار پروژه)
 
@@ -425,6 +148,9 @@ To enable SMS notifications:
 - `async_helper.py`: Centralized event loop management (مدیریت متمرکز حلقه رویداد)
 - `account_routes.py`: Routes for Telegram user account management (مسیرهای مدیریت حساب کاربری تلگرام)
 - `logger.py`: Centralized logging functionality (قابلیت لاگینگ متمرکز)
+- `avalai_api.py`: Integration with Avalai.ir AI service (یکپارچه‌سازی با سرویس هوش مصنوعی آوالای)
+- `perplexity_api.py`: Integration with Perplexity AI service (یکپارچه‌سازی با سرویس هوش مصنوعی پرپلکسیتی)
+- `scheduler.py`: Scheduled task management (مدیریت وظایف زمان‌بندی شده)
 
 ## License (مجوز)
 
