@@ -7,7 +7,7 @@ from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from link_manager import LinkManager
 from datetime import datetime
-from logger import get_logger, get_all_logs, clear_logs
+from logger import get_logger, get_all_logs, clear_logs, get_connection_logs
 from notification_utils import update_sms_settings, get_sms_settings, should_send_notification
 from send_message import send_notification
 from avalai_api import avalai_client
@@ -1027,6 +1027,12 @@ def clear_logs_route():
 def refresh_logs():
     """Refresh logs page"""
     return redirect(url_for('logs'))
+
+@app.route('/connection_logs')
+def connection_logs_route():
+    """View connection-specific logs for debugging connection issues"""
+    conn_logs = get_connection_logs(limit=500)
+    return render_template('connection_logs.html', logs=conn_logs)
 
 @app.route('/api/links', methods=['GET'])
 def api_links():

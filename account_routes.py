@@ -96,25 +96,67 @@ def connect_account():
         if not account:
             return jsonify({"success": False, "message": "اکانت یافت نشد"})
         
+        # Improve logging with consistent logger
+        from logger import logger
+        
+        # Log initial account state
+        logger.critical(f"[CONNECT_ACCOUNT_DEBUG] Starting connection for account {phone}, current state: connected={account.connected}, status={account.status}")
+            
         # اول اتصال قبلی را قطع کنیم تا کاملا مطمئن شویم
-        safe_run_coroutine(account.disconnect(), (False, "خطا در قطع اتصال قبلی"))
+        logger.critical(f"[CONNECT_ACCOUNT_DEBUG] Disconnecting any existing connections for {phone}")
+        disconnect_result, disconnect_message = safe_run_coroutine(account.disconnect(), (False, "خطا در قطع اتصال قبلی"))
+        logger.critical(f"[CONNECT_ACCOUNT_DEBUG] Disconnect result: {disconnect_result}, message: {disconnect_message}")
         
         # Connect the account using the singleton event loop helper
-        import logging
-        logging.critical(f"[CONNECT_ACCOUNT_DEBUG] Trying to connect account {phone}...")
-        success, message = safe_run_coroutine(account.connect(), (False, "خطا در اتصال"))
-        logging.critical(f"[CONNECT_ACCOUNT_DEBUG] Connection result: success={success}, message={message}")
+        logger.critical(f"[CONNECT_ACCOUNT_DEBUG] Trying to connect account {phone}...")
         
-        # Save account manager data
-        account_manager.save_accounts()
-        
-        if success:
-            logging.critical("[CONNECT_ACCOUNT_DEBUG] Successfully connected. Now checking for event handlers...")
-            # Wait a bit for event handlers to register completely
-            import time
-            time.sleep(1)
-        
-        return jsonify({"success": success, "message": message, "status": account.status})
+        try:
+            success, message = safe_run_coroutine(account.connect(), (False, "خطا در اتصال"))
+            logger.critical(f"[CONNECT_ACCOUNT_DEBUG] Connection result: success={success}, message={message}")
+            
+            # Save account manager data
+            logger.critical(f"[CONNECT_ACCOUNT_DEBUG] Saving account manager data after connection attempt")
+            account_manager.save_accounts()
+            
+            if success:
+                logger.critical(f"[CONNECT_ACCOUNT_DEBUG] Successfully connected account {phone}. Now checking for event handlers...")
+                # Wait a bit for event handlers to register completely
+                import time
+                time.sleep(1)
+                
+                # Verify connection with extra check
+                handlers_info = safe_run_coroutine(account.check_handlers(), {"success": False, "handlers": 0, "message": "Failed to check handlers"})
+                logger.critical(f"[CONNECT_ACCOUNT_DEBUG] Handlers check for {phone}: {handlers_info}")
+                
+                # Final state check
+                logger.critical(f"[CONNECT_ACCOUNT_DEBUG] Final state for {phone}: connected={account.connected}, status={account.status}")
+            else:
+                logger.critical(f"[CONNECT_ACCOUNT_DEBUG] Failed to connect account {phone}: {message}")
+                # Additional debug info about the account
+                logger.critical(f"[CONNECT_ACCOUNT_DEBUG] Account details: status={account.status}, error={account.error}")
+            
+            return jsonify({
+                "success": success, 
+                "message": message, 
+                "status": account.status,
+                "phone": phone,
+                "connection_state": "active" if account.connected else "inactive"
+            })
+            
+        except Exception as e:
+            import traceback
+            logger.critical(f"[CONNECT_ACCOUNT_DEBUG] Exception during connection attempt for {phone}: {str(e)}")
+            logger.critical(f"[CONNECT_ACCOUNT_DEBUG] Traceback: {traceback.format_exc()}")
+            
+            # Save account manager data even after error
+            account_manager.save_accounts()
+            
+            return jsonify({
+                "success": False, 
+                "message": f"خطا در اتصال اکانت: {str(e)}",
+                "status": account.status,
+                "error_details": str(e)
+            })
     
     except Exception as e:
         import traceback
@@ -153,37 +195,61 @@ def disconnect_account():
 def verify_code():
     """Verify authentication code for a Telegram user account"""
     try:
+        # Import the logger
+        from logger import logger
+        
         phone = request.form.get('phone')
         code = request.form.get('code')
         password = request.form.get('password')
         
+        logger.critical(f"[VERIFY_CODE_DEBUG] Starting verification for account {phone}: code_length={len(code) if code else 0}, password_provided={bool(password)}")
+        
         if not phone or not code:
+            logger.critical(f"[VERIFY_CODE_DEBUG] Missing required parameters for {phone}: code={bool(code)}")
             flash("لطفا کد تأیید را وارد کنید", "danger")
             return redirect(url_for('accounts.accounts'))
         
         # Get the account
         account = account_manager.get_account(phone)
         if not account:
+            logger.critical(f"[VERIFY_CODE_DEBUG] Account not found: {phone}")
             flash("اکانت یافت نشد", "danger")
             return redirect(url_for('accounts.accounts'))
             
+        # Log current account state
+        logger.critical(f"[VERIFY_CODE_DEBUG] Account state before verification: phone={phone}, status={account.status}, connected={account.connected}")
+        
         # Sign in with the code using the singleton event loop helper
+        logger.critical(f"[VERIFY_CODE_DEBUG] Calling sign_in_with_code for {phone}")
         success, message = safe_run_coroutine(account.sign_in_with_code(code, password), (False, "خطا در تایید کد"))
+        logger.critical(f"[VERIFY_CODE_DEBUG] Verification result for {phone}: success={success}, message={message}")
         
         # Save account manager data
+        logger.critical(f"[VERIFY_CODE_DEBUG] Saving account data after verification for {phone}")
         account_manager.save_accounts()
         
+        # Log final account state
+        logger.critical(f"[VERIFY_CODE_DEBUG] Account state after verification: phone={phone}, status={account.status}, connected={account.connected}")
+        
         if success:
+            logger.critical(f"[VERIFY_CODE_DEBUG] Verification successful for {phone}")
             flash("اکانت با موفقیت تأیید شد", "success")
         else:
             if account.status == "2fa_required":
+                logger.critical(f"[VERIFY_CODE_DEBUG] 2FA required for {phone}")
                 flash("لطفا رمز دو مرحله‌ای را وارد کنید", "warning")
             else:
+                logger.critical(f"[VERIFY_CODE_DEBUG] Verification failed for {phone}: {message}")
                 flash(f"خطا در تأیید اکانت: {message}", "danger")
             
         return redirect(url_for('accounts.accounts'))
     
     except Exception as e:
+        # Import the logger if not already imported
+        from logger import logger
+        import traceback
+        logger.critical(f"[VERIFY_CODE_DEBUG] Exception during verification: {str(e)}")
+        logger.critical(f"[VERIFY_CODE_DEBUG] Traceback: {traceback.format_exc()}")
         flash(f"خطا در تأیید اکانت: {str(e)}", "danger")
         return redirect(url_for('accounts.accounts'))
 
@@ -230,11 +296,20 @@ def check_accounts_for_links():
     """Check all connected accounts for links"""
     try:
         from link_manager import link_manager  # Import here to avoid circular imports
+        from logger import logger
+        
+        logger.critical("[CHECK_ACCOUNTS_DEBUG] Starting manual check for links in all accounts")
         
         # Get max messages count from settings or use default
         max_messages = 100  # Default, could be from settings
         
+        # Log accounts state before checking
+        active_accounts = account_manager.get_active_accounts()
+        all_accounts = account_manager.get_all_accounts()
+        logger.critical(f"[CHECK_ACCOUNTS_DEBUG] Found {len(active_accounts)}/{len(all_accounts)} active accounts before checking")
+        
         # Check all accounts for links using the singleton event loop helper
+        logger.critical("[CHECK_ACCOUNTS_DEBUG] Calling check_all_accounts_for_links")
         results = safe_run_coroutine(
             account_manager.check_all_accounts_for_links(link_manager, max_messages),
             {
@@ -247,9 +322,28 @@ def check_accounts_for_links():
             }
         )
         
+        # Log the results
+        logger.critical(f"[CHECK_ACCOUNTS_DEBUG] Check completed with results: success={results.get('success')}, accounts_checked={results.get('accounts_checked')}, total_new_links={results.get('total_new_links')}")
+        
+        # Check if any reconnection attempts were made
+        if 'reconnection_attempts' in results:
+            logger.critical(f"[CHECK_ACCOUNTS_DEBUG] Reconnection attempts: {results.get('reconnection_attempts')}, success: {results.get('reconnection_success')}")
+        
+        # Log account states after checking
+        active_accounts_after = account_manager.get_active_accounts()
+        logger.critical(f"[CHECK_ACCOUNTS_DEBUG] Active accounts after checking: {len(active_accounts_after)}/{len(all_accounts)}")
+        
+        for phone, account in account_manager.accounts.items():
+            logger.critical(f"[CHECK_ACCOUNTS_DEBUG] Account {phone} state after checking: connected={account.connected}, status={account.status}")
+        
         return jsonify(results)
     
     except Exception as e:
+        from logger import logger
+        import traceback
+        logger.critical(f"[CHECK_ACCOUNTS_DEBUG] Exception during account check: {str(e)}")
+        logger.critical(f"[CHECK_ACCOUNTS_DEBUG] Traceback: {traceback.format_exc()}")
+        
         return jsonify({
             "success": False,
             "error": str(e),

@@ -196,36 +196,37 @@ class UserAccount:
             # Ensure sessions directory exists
             os.makedirs("sessions", exist_ok=True)
             
-            logging.critical(f"[CONNECT_DEEP_DEBUG] Starting connection for account {self.phone}")
+            # Use the module logger instead of logging directly
+            logger.critical(f"[CONNECT_DEEP_DEBUG] Starting connection for account {self.phone}")
             
             # Completely reset any existing client
             if self.client:
-                logging.critical(f"[CONNECT_DEEP_DEBUG] Disconnecting existing client for {self.phone}")
+                logger.critical(f"[CONNECT_DEEP_DEBUG] Disconnecting existing client for {self.phone}")
                 try:
                     await self.client.disconnect()
                     self.client = None
                 except Exception as e:
-                    logging.critical(f"[CONNECT_DEEP_DEBUG] Error disconnecting existing client: {str(e)}")
+                    logger.critical(f"[CONNECT_DEEP_DEBUG] Error disconnecting existing client: {str(e)}")
             
             # Check if session file exists
             session_path = f"{self.session_file}.session"
             if os.path.exists(session_path):
-                logging.critical(f"[CONNECT_DEEP_DEBUG] Session file EXISTS at {session_path}")
+                logger.critical(f"[CONNECT_DEEP_DEBUG] Session file EXISTS at {session_path}")
                 file_size = os.path.getsize(session_path)
-                logging.critical(f"[CONNECT_DEEP_DEBUG] Session file size: {file_size} bytes")
+                logger.critical(f"[CONNECT_DEEP_DEBUG] Session file size: {file_size} bytes")
                 # If file size is too small, it might be corrupted
                 if file_size < 100:
-                    logging.critical(f"[CONNECT_DEEP_DEBUG] Session file seems corrupted (size: {file_size} bytes), deleting")
+                    logger.critical(f"[CONNECT_DEEP_DEBUG] Session file seems corrupted (size: {file_size} bytes), deleting")
                     try:
                         os.remove(session_path)
-                        logging.critical(f"[CONNECT_DEEP_DEBUG] Deleted corrupted session file")
+                        logger.critical(f"[CONNECT_DEEP_DEBUG] Deleted corrupted session file")
                     except Exception as e:
-                        logging.critical(f"[CONNECT_DEEP_DEBUG] Error deleting session file: {str(e)}")
+                        logger.critical(f"[CONNECT_DEEP_DEBUG] Error deleting session file: {str(e)}")
             else:
-                logging.critical(f"[CONNECT_DEEP_DEBUG] Session file DOES NOT EXIST at {session_path}")
+                logger.critical(f"[CONNECT_DEEP_DEBUG] Session file DOES NOT EXIST at {session_path}")
             
             # Create the client with better settings for Replit environment
-            logging.critical(f"[CONNECT_DEEP_DEBUG] Creating TelegramClient with api_id={self.api_id}, session_file={self.session_file}")
+            logger.critical(f"[CONNECT_DEEP_DEBUG] Creating TelegramClient with api_id={self.api_id}, session_file={self.session_file}")
             self.client = TelegramClient(
                 self.session_file,
                 self.api_id,
@@ -239,59 +240,97 @@ class UserAccount:
                 app_version="1.0"
             )
             
-            # تست برای ارتباط بهتر
+            # Better connection settings
             self.client.flood_sleep_threshold = 60
             self.client.request_retries = 10
             
-            # تنظیمات حیاتی برای اتصال در محیط Replit
-            logging.critical(f"[CONNECT_DEEP_DEBUG] Setting proxy=None")
-            self.client.proxy = None  # اطمینان از عدم استفاده از پروکسی
+            # Critical settings for Replit environment 
+            logger.critical(f"[CONNECT_DEEP_DEBUG] Setting proxy=None")
+            self.client.proxy = None  # Ensure no proxy is used
             
             try:
-                # پاک کردن هندلرهای قبلی برای جلوگیری از تکرار
+                # Clear previous handlers to prevent duplication
                 if hasattr(self.client, '_event_builders'):
                     old_handlers_count = len(self.client._event_builders)
                     self.client._event_builders = []
-                    logging.critical(f"[CONNECT_DEEP_DEBUG] Cleared {old_handlers_count} previous handlers")
+                    logger.critical(f"[CONNECT_DEEP_DEBUG] Cleared {old_handlers_count} previous handlers")
             except Exception as e:
-                logging.critical(f"[CONNECT_DEEP_DEBUG] Error clearing handlers: {str(e)}")
+                logger.critical(f"[CONNECT_DEEP_DEBUG] Error clearing handlers: {str(e)}")
             
             # Register message handler for private messages
-            logging.critical(f"[CONNECT_DEEP_DEBUG] Registering event handler for {self.phone}")
+            logger.critical(f"[CONNECT_DEEP_DEBUG] Registering event handler for {self.phone}")
             @self.client.on(events.NewMessage(incoming=True, func=lambda e: e.is_private))
             async def handle_private_message(event):
                 """Handle incoming private messages with AI integration"""
-                logging.critical(f"[PRIVATE_MESSAGE_DEBUG] Received private message for account {self.phone}: {event.text}")
+                logger.critical(f"[PRIVATE_MESSAGE_DEBUG] Received private message for account {self.phone}: {event.text}")
                 await self._handle_private_message(event)
                 
-            logging.critical(f"[CONNECT_DEBUG] Registered event handler for NewMessage events for account {self.phone}")
+            logger.critical(f"[CONNECT_DEBUG] Registered event handler for NewMessage events for account {self.phone}")
             
             # Connect and check if already authorized
-            logging.critical(f"[CONNECT_DEEP_DEBUG] Calling client.connect() for {self.phone}")
-            await self.client.connect()
-            logging.critical(f"[CONNECT_DEEP_DEBUG] client.connect() completed for {self.phone}")
+            try:
+                logger.critical(f"[CONNECT_DEEP_DEBUG] Calling client.connect() for {self.phone}")
+                await self.client.connect()
+                logger.critical(f"[CONNECT_DEEP_DEBUG] client.connect() completed for {self.phone}")
+            except Exception as connect_error:
+                logger.critical(f"[CONNECT_ERROR] Connection error for {self.phone}: {str(connect_error)}")
+                import traceback
+                logger.critical(f"[CONNECT_ERROR] Traceback: {traceback.format_exc()}")
+                self.status = "error"
+                self.error = f"Connection error: {str(connect_error)}"
+                return False, f"Failed to connect: {str(connect_error)}"
             
-            if await self.client.is_user_authorized():
+            # Check if already authorized
+            try:
+                is_authorized = await self.client.is_user_authorized()
+                logger.critical(f"[CONNECT_DEBUG] is_user_authorized() returned {is_authorized} for {self.phone}")
+            except Exception as auth_error:
+                logger.critical(f"[CONNECT_ERROR] Error checking authorization for {self.phone}: {str(auth_error)}")
+                self.status = "error"
+                self.error = f"Authorization check error: {str(auth_error)}"
+                return False, f"Failed to check authorization: {str(auth_error)}"
+            
+            if is_authorized:
                 self.status = "active"
                 self.connected = True
-                logging.critical(f"[CONNECT_DEBUG] Successfully authorized account {self.phone}")
+                logger.critical(f"[CONNECT_SUCCESS] Successfully authorized account {self.phone}")
+                
+                # Extra verification step
+                try:
+                    me = await self.client.get_me()
+                    if me:
+                        logger.critical(f"[CONNECT_SUCCESS] Retrieved user info: ID={me.id}, username={me.username}")
+                    else:
+                        logger.warning(f"[CONNECT_WARNING] get_me() returned None for {self.phone} even though is_authorized=True")
+                except Exception as me_error:
+                    logger.warning(f"[CONNECT_WARNING] Error retrieving user info for {self.phone}: {str(me_error)}")
+                
                 return True, "Already authorized"
             
             # Start the authorization process
             try:
+                logger.critical(f"[CONNECT_AUTH] Sending code request for {self.phone}")
                 await self.client.send_code_request(self.phone)
+                logger.critical(f"[CONNECT_AUTH] Code request sent successfully for {self.phone}")
                 self.status = "code_required"
                 return False, "Authorization code required"
             except FloodWaitError as e:
+                logger.error(f"[CONNECT_AUTH] FloodWaitError for {self.phone}: {str(e)}")
                 self.status = "flood_wait"
                 self.error = f"Too many attempts. Try again in {e.seconds} seconds."
                 return False, self.error
             except Exception as e:
+                logger.error(f"[CONNECT_AUTH] Error sending code for {self.phone}: {str(e)}")
+                import traceback
+                logger.error(f"[CONNECT_AUTH] Traceback: {traceback.format_exc()}")
                 self.status = "error"
                 self.error = str(e)
                 return False, f"Error sending code: {str(e)}"
                 
         except Exception as e:
+            logger.critical(f"[CONNECT_CRITICAL] Unhandled exception connecting {self.phone}: {str(e)}")
+            import traceback
+            logger.critical(f"[CONNECT_CRITICAL] Traceback: {traceback.format_exc()}")
             self.status = "error"
             self.error = str(e)
             return False, f"Connection error: {str(e)}"
@@ -310,7 +349,7 @@ class UserAccount:
                 handlers_count = len(self.client._event_builders)
                 
             # Log event handlers count
-            logging.critical(f"[HANDLERS_DEBUG] Account {self.phone} has {handlers_count} registered event handlers")
+            logger.critical(f"[HANDLERS_DEBUG] Account {self.phone} has {handlers_count} registered event handlers")
                 
             return {
                 "success": True,
@@ -318,70 +357,69 @@ class UserAccount:
                 "message": f"Account has {handlers_count} event handlers registered"
             }
         except Exception as e:
-            logging.critical(f"[HANDLERS_DEBUG] Error checking handlers: {str(e)}")
+            logger.critical(f"[HANDLERS_DEBUG] Error checking handlers: {str(e)}")
             return {"success": False, "handlers": 0, "message": f"Error checking handlers: {str(e)}"}
     
     async def sign_in_with_code(self, code, password=None):
         """Sign in with the received authentication code"""
-        import logging
         try:
             if not self.client:
-                logging.critical(f"[SIGN_IN_DEBUG] Client not initialized for account {self.phone}")
+                logger.critical(f"[SIGN_IN_DEBUG] Client not initialized for account {self.phone}")
                 return False, "Client not initialized"
             
-            logging.critical(f"[SIGN_IN_DEBUG] Signing in with code for {self.phone}, password provided: {bool(password)}")
+            logger.critical(f"[SIGN_IN_DEBUG] Signing in with code for {self.phone}, password provided: {bool(password)}")
             
             try:
                 # If password is provided alongside the code, attempt to use it for 2FA
                 if password:
                     try:
                         # First sign in with the phone code
-                        logging.critical(f"[SIGN_IN_DEBUG] Attempting first-stage sign in with code for {self.phone}")
+                        logger.critical(f"[SIGN_IN_DEBUG] Attempting first-stage sign in with code for {self.phone}")
                         await self.client.sign_in(self.phone, code)
-                        logging.critical(f"[SIGN_IN_DEBUG] First-stage sign in succeeded, but no 2FA was needed for {self.phone}")
+                        logger.critical(f"[SIGN_IN_DEBUG] First-stage sign in succeeded, but no 2FA was needed for {self.phone}")
                     except SessionPasswordNeededError:
                         # Now use the password for two-factor authentication
-                        logging.critical(f"[SIGN_IN_DEBUG] 2FA needed as expected, using password for {self.phone}")
+                        logger.critical(f"[SIGN_IN_DEBUG] 2FA needed as expected, using password for {self.phone}")
                         await self.client.sign_in(password=password)
-                        logging.critical(f"[SIGN_IN_DEBUG] 2FA sign in succeeded for {self.phone}")
+                        logger.critical(f"[SIGN_IN_DEBUG] 2FA sign in succeeded for {self.phone}")
                     
                     self.status = "active"
                     self.connected = True 
                     self.error = None
-                    logging.critical(f"[SIGN_IN_DEBUG] Successfully signed in with 2FA for {self.phone}")
+                    logger.critical(f"[SIGN_IN_DEBUG] Successfully signed in with 2FA for {self.phone}")
                     return True, "Successfully signed in with 2FA"
                 else:
                     # Regular sign in without 2FA
-                    logging.critical(f"[SIGN_IN_DEBUG] Attempting regular sign in without 2FA for {self.phone}")
+                    logger.critical(f"[SIGN_IN_DEBUG] Attempting regular sign in without 2FA for {self.phone}")
                     await self.client.sign_in(self.phone, code)
                     self.status = "active"
                     self.connected = True
                     self.error = None
-                    logging.critical(f"[SIGN_IN_DEBUG] Successfully signed in without 2FA for {self.phone}")
+                    logger.critical(f"[SIGN_IN_DEBUG] Successfully signed in without 2FA for {self.phone}")
                     return True, "Successfully signed in"
                     
             except SessionPasswordNeededError:
                 # Two-factor authentication is enabled but no password was provided
-                logging.critical(f"[SIGN_IN_DEBUG] 2FA required but no password provided for {self.phone}")
+                logger.critical(f"[SIGN_IN_DEBUG] 2FA required but no password provided for {self.phone}")
                 self.status = "2fa_required"
                 return False, "Two-factor authentication required"
             except FloodWaitError as e:
-                logging.critical(f"[SIGN_IN_DEBUG] FloodWaitError for {self.phone}: {e.seconds} seconds")
+                logger.critical(f"[SIGN_IN_DEBUG] FloodWaitError for {self.phone}: {e.seconds} seconds")
                 self.status = "flood_wait"
                 self.error = f"Too many attempts. Try again in {e.seconds} seconds."
                 return False, self.error
             except Exception as e:
-                logging.critical(f"[SIGN_IN_DEBUG] Error signing in for {self.phone}: {str(e)}")
+                logger.critical(f"[SIGN_IN_DEBUG] Error signing in for {self.phone}: {str(e)}")
                 import traceback
-                logging.critical(f"[SIGN_IN_DEBUG] Traceback: {traceback.format_exc()}")
+                logger.critical(f"[SIGN_IN_DEBUG] Traceback: {traceback.format_exc()}")
                 self.status = "error"
                 self.error = str(e)
                 return False, f"Error signing in: {str(e)}"
                 
         except Exception as e:
-            logging.critical(f"[SIGN_IN_DEBUG] Outer exception for {self.phone}: {str(e)}")
+            logger.critical(f"[SIGN_IN_DEBUG] Outer exception for {self.phone}: {str(e)}")
             import traceback
-            logging.critical(f"[SIGN_IN_DEBUG] Traceback: {traceback.format_exc()}")
+            logger.critical(f"[SIGN_IN_DEBUG] Traceback: {traceback.format_exc()}")
             self.status = "error"
             self.error = str(e)
             return False, f"Sign in error: {str(e)}"
@@ -725,9 +763,32 @@ class AccountManager:
     async def connect_all(self):
         """Connect all accounts"""
         results = {}
+        connection_attempts = 0
+        connection_successes = 0
+        
+        logger.critical(f"[CONNECTION_DEBUG] Starting to connect {len(self.accounts)} accounts")
+        
         for phone, account in self.accounts.items():
-            success, message = await account.connect()
-            results[phone] = {"success": success, "message": message}
+            connection_attempts += 1
+            logger.critical(f"[CONNECTION_DEBUG] Attempting to connect account {phone} (attempt {connection_attempts}/{len(self.accounts)})")
+            
+            try:
+                success, message = await account.connect()
+                results[phone] = {"success": success, "message": message}
+                
+                if success:
+                    connection_successes += 1
+                    logger.critical(f"[CONNECTION_DEBUG] Successfully connected account {phone}")
+                else:
+                    logger.critical(f"[CONNECTION_DEBUG] Failed to connect account {phone}: {message}")
+            except Exception as e:
+                logger.critical(f"[CONNECTION_DEBUG] Exception while connecting account {phone}: {str(e)}")
+                import traceback
+                logger.critical(f"[CONNECTION_DEBUG] Traceback: {traceback.format_exc()}")
+                results[phone] = {"success": False, "message": f"Exception: {str(e)}"}
+        
+        # Log a summary of connection attempts
+        logger.critical(f"[CONNECTION_DEBUG] Connection summary: {connection_successes}/{connection_attempts} accounts connected successfully")
         
         # Save accounts after connection attempts
         self.save_accounts()
@@ -749,19 +810,52 @@ class AccountManager:
     
     async def check_all_accounts_for_links(self, link_manager, max_messages=100):
         """Check all connected accounts for new links"""
+        # Log account statuses before getting active accounts
+        logger.critical(f"[CONNECTION_DEBUG] Account statuses before checking links:")
+        for phone, account in self.accounts.items():
+            logger.critical(f"[CONNECTION_DEBUG] Account {phone}: connected={account.connected}, status={account.status}")
+        
+        # Get active accounts
         active_accounts = self.get_active_accounts()
         
-        logger.info(f"Starting scheduled check of user accounts - Found {len(active_accounts)} active accounts")
+        logger.critical(f"[CONNECTION_DEBUG] Starting scheduled check with {len(active_accounts)}/{len(self.accounts)} active accounts")
         
         if not active_accounts:
-            logger.info("No active accounts found for checking groups")
-            return {
-                "success": True,
-                "total_new_links": 0,
-                "accounts_checked": 0,
-                "accounts_with_links": 0,
-                "account_results": {}
-            }
+            logger.critical("[CONNECTION_DEBUG] No active accounts found, trying to reconnect accounts")
+            
+            # Try to reconnect accounts
+            reconnected = 0
+            for phone, account in self.accounts.items():
+                if not account.connected:
+                    logger.critical(f"[CONNECTION_DEBUG] Attempting to reconnect account {phone}")
+                    try:
+                        success, message = await account.connect()
+                        if success:
+                            reconnected += 1
+                            logger.critical(f"[CONNECTION_DEBUG] Successfully reconnected account {phone}")
+                        else:
+                            logger.critical(f"[CONNECTION_DEBUG] Failed to reconnect account {phone}: {message}")
+                    except Exception as e:
+                        logger.critical(f"[CONNECTION_DEBUG] Error reconnecting account {phone}: {str(e)}")
+            
+            # Save accounts after reconnection attempts
+            self.save_accounts()
+            
+            # Get active accounts again after reconnection attempts
+            active_accounts = self.get_active_accounts()
+            logger.critical(f"[CONNECTION_DEBUG] After reconnection attempts: {len(active_accounts)} active accounts")
+            
+            if not active_accounts:
+                logger.critical("[CONNECTION_DEBUG] Still no active accounts after reconnection attempts")
+                return {
+                    "success": True,
+                    "total_new_links": 0,
+                    "accounts_checked": 0,
+                    "accounts_with_links": 0,
+                    "account_results": {},
+                    "reconnection_attempts": len(self.accounts),
+                    "reconnection_success": reconnected
+                }
         
         account_results = {}
         total_new_links = 0
