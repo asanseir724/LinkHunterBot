@@ -457,7 +457,7 @@ class AvalaiAPI:
             ]
             
             import random
-            import datetime
+            from datetime import datetime, timedelta
             
             settings = self.settings.copy()
             if 'chat_history' not in settings:
