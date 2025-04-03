@@ -83,14 +83,14 @@ def setup_bot(link_manager):
         return None
 
 
-def check_channels_for_links(bot, link_manager, max_channels=20):
+def check_channels_for_links(bot, link_manager, max_channels=100):
     """
     Check monitored channels for new links
     
     Args:
         bot: The Telegram bot instance
         link_manager: The LinkManager instance
-        max_channels: Maximum number of channels to check in one run (default: 20)
+        max_channels: Maximum number of channels to check in one run (default: 100)
     
     Returns:
         int: Total number of new links found
@@ -147,6 +147,9 @@ def check_channels_for_links(bot, link_manager, max_channels=20):
                     # For now, we'll try scraping first as it's more reliable
                     found_links = []
                     
+                    # Initialize variable for later use in link processing
+                    all_message_texts = []
+                    
                     # Try to fetch the channel's messages directly from URL (public channel messages)
                     try:
                         import requests
@@ -159,6 +162,9 @@ def check_channels_for_links(bot, link_manager, max_channels=20):
                         if response.status_code == 200:
                             soup = BeautifulSoup(response.text, 'html.parser')
                             message_texts = soup.select('.tgme_widget_message_text')
+                            
+                            # Store message_texts for later use
+                            all_message_texts = message_texts.copy()
                             
                             for message in message_texts[:10]:  # Get the first 10 messages
                                 message_text = message.get_text()
@@ -225,11 +231,12 @@ def check_channels_for_links(bot, link_manager, max_channels=20):
                         
                         # Get the message text containing this link if available
                         link_message_text = None
-                        for message in message_texts[:10] if 'message_texts' in locals() else []:
-                            message_text = message.get_text()
-                            if link in message_text:
-                                link_message_text = message_text
-                                break
+                        if 'all_message_texts' in locals() and all_message_texts:
+                            for message in all_message_texts[:10]:
+                                message_text = message.get_text()
+                                if link in message_text:
+                                    link_message_text = message_text
+                                    break
                         
                         # Use the message text for keyword detection when adding the link
                         if link_manager.add_link(link, channel=channel, message_text=link_message_text):
@@ -246,6 +253,14 @@ def check_channels_for_links(bot, link_manager, max_channels=20):
                 
             except Exception as e:
                 logger.error(f"Error accessing channel {chat_id}: {str(e)}")
+                
+                # Check if this is a "chat not found" error
+                error_str = str(e).lower()
+                if "chat not found" in error_str or "bad request" in error_str or "404" in error_str:
+                    logger.warning(f"Channel {channel} does not exist or bot cannot access it - consider removing it")
+                    # You could add automatic channel removal here if desired
+                    # link_manager.remove_channel(channel)
+                
                 continue  # Skip to next channel on error
             
             logger.info(f"Found {channel_new_links[channel]} new links in {channel}")

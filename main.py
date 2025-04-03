@@ -60,8 +60,8 @@ def periodic_check():
                 total_channels = len(link_manager.get_channels())
                 total_websites = len(link_manager.get_websites())
                 
-                # Use fixed number of channels per batch
-                max_channels = 20
+                # Process all channels without limits
+                max_channels = total_channels  # No channel limit
                 
                 # Run the check for channels
                 logger.info("Scheduler: Starting link check for channels")
