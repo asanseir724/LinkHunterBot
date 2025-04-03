@@ -420,6 +420,31 @@ class AvalaiAPI:
     def clear_chat_history(self, user_id=None):
         """
         Clear chat history, optionally for a specific user
+
+    def add_test_messages(self):
+        """Add some test messages to see how the system works"""
+        test_messages = [
+            {
+                "user_id": "test1",
+                "username": "کاربر تست ۱", 
+                "user_message": "سلام، من یک پیام تستی هستم",
+                "ai_response": "سلام، من هم یک پاسخ تستی هستم",
+                "timestamp": datetime.now().isoformat(),
+                "display_name": "کاربر تست شماره ۱"
+            },
+            {
+                "user_id": "test2",
+                "username": "کاربر تست ۲",
+                "user_message": "آیا سیستم پیام‌رسانی کار می‌کند؟",
+                "ai_response": "بله، سیستم به درستی کار می‌کند",
+                "timestamp": datetime.now().isoformat(),
+                "display_name": "کاربر تست شماره ۲"  
+            }
+        ]
+        
+        self.settings['chat_history'].extend(test_messages)
+        self._save_settings(self.settings)
+        return len(test_messages)
         
         Args:
             user_id (str, optional): Clear history only for this user_id
