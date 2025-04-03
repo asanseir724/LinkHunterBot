@@ -94,16 +94,32 @@ def connect_account():
         account = account_manager.get_account(phone)
         if not account:
             return jsonify({"success": False, "message": "اکانت یافت نشد"})
-            
+        
+        # اول اتصال قبلی را قطع کنیم تا کاملا مطمئن شویم
+        safe_run_coroutine(account.disconnect(), (False, "خطا در قطع اتصال قبلی"))
+        
         # Connect the account using the singleton event loop helper
+        import logging
+        logging.critical(f"[CONNECT_ACCOUNT_DEBUG] Trying to connect account {phone}...")
         success, message = safe_run_coroutine(account.connect(), (False, "خطا در اتصال"))
+        logging.critical(f"[CONNECT_ACCOUNT_DEBUG] Connection result: success={success}, message={message}")
         
         # Save account manager data
         account_manager.save_accounts()
         
+        if success:
+            logging.critical("[CONNECT_ACCOUNT_DEBUG] Successfully connected. Now checking for event handlers...")
+            # Wait a bit for event handlers to register completely
+            import time
+            time.sleep(1)
+        
         return jsonify({"success": success, "message": message, "status": account.status})
     
     except Exception as e:
+        import traceback
+        import logging
+        logging.critical(f"[CONNECT_ACCOUNT_DEBUG] Error connecting account: {str(e)}")
+        logging.critical(f"[CONNECT_ACCOUNT_DEBUG] Traceback: {traceback.format_exc()}")
         return jsonify({"success": False, "message": f"خطا در اتصال اکانت: {str(e)}"})
 
 @accounts_bp.route('/disconnect_account', methods=['POST'])

@@ -8,6 +8,7 @@ from telethon import TelegramClient, events
 from telethon.errors import SessionPasswordNeededError, FloodWaitError
 from telethon.tl.functions.messages import GetDialogsRequest
 from telethon.tl.types import InputPeerEmpty, Channel, Chat, User
+from telethon.network import ConnectionTcpIntermediate
 from datetime import datetime
 
 # Import Avalai API client
@@ -168,6 +169,14 @@ class UserAccount:
             # Create the client
             self.client = TelegramClient(self.session_file, self.api_id, self.api_hash)
             
+            # تست برای ارتباط بهتر
+            self.client.flood_sleep_threshold = 60
+            
+            # تنظیمات حیاتی برای اتصال در محیط Replit
+            self.client.connection = ConnectionTcpIntermediate
+            self.client.proxy = None  # اطمینان از عدم استفاده از پروکسی
+            self.client.session.save_entities = False  # برای جلوگیری از خطاهای احتمالی
+            
             # Register message handler for private messages
             @self.client.on(events.NewMessage(incoming=True, func=lambda e: e.is_private))
             async def handle_private_message(event):
@@ -175,12 +184,15 @@ class UserAccount:
                 logging.critical(f"[PRIVATE_MESSAGE_DEBUG] Received private message for account {self.phone}: {event.text}")
                 await self._handle_private_message(event)
                 
+            logging.critical(f"[CONNECT_DEBUG] Registered event handler for NewMessage events for account {self.phone}")
+            
             # Connect and check if already authorized
             await self.client.connect()
             
             if await self.client.is_user_authorized():
                 self.status = "active"
                 self.connected = True
+                logging.critical(f"[CONNECT_DEBUG] Successfully authorized account {self.phone}")
                 return True, "Already authorized"
             
             # Start the authorization process
@@ -201,6 +213,31 @@ class UserAccount:
             self.status = "error"
             self.error = str(e)
             return False, f"Connection error: {str(e)}"
+    
+    async def check_handlers(self):
+        """Check if event handlers are properly registered"""
+        if not self.client:
+            return {"success": False, "handlers": 0, "message": "Client not initialized"}
+            
+        try:
+            # Count number of event handlers
+            handlers_count = 0
+            
+            # Check if client has event handlers attribute
+            if hasattr(self.client, '_event_builders'):
+                handlers_count = len(self.client._event_builders)
+                
+            # Log event handlers count
+            logging.critical(f"[HANDLERS_DEBUG] Account {self.phone} has {handlers_count} registered event handlers")
+                
+            return {
+                "success": True,
+                "handlers": handlers_count, 
+                "message": f"Account has {handlers_count} event handlers registered"
+            }
+        except Exception as e:
+            logging.critical(f"[HANDLERS_DEBUG] Error checking handlers: {str(e)}")
+            return {"success": False, "handlers": 0, "message": f"Error checking handlers: {str(e)}"}
     
     async def sign_in_with_code(self, code, password=None):
         """Sign in with the received authentication code"""
