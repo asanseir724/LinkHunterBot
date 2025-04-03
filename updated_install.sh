@@ -150,6 +150,36 @@ set -a
 source .env
 set +a
 
+# بررسی نصب بودن PHP
+echo -e "${YELLOW}بررسی نصب PHP برای پشتیبانی از MadelineProto...${NC}"
+if ! command -v php &> /dev/null; then
+  echo -e "${CYAN}PHP یافت نشد. در حال نصب PHP 8.2 و افزونه‌های مورد نیاز...${NC}"
+  apt install -y software-properties-common
+  add-apt-repository -y ppa:ondrej/php
+  apt update
+  apt install -y php8.2 php8.2-cli php8.2-common php8.2-curl php8.2-gd php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip php8.2-bcmath
+else
+  PHP_VERSION=$(php -v | head -n 1 | cut -d " " -f 2 | cut -d "." -f 1,2)
+  echo -e "${GREEN}PHP ${PHP_VERSION} یافت شد.${NC}"
+  if (( $(echo "$PHP_VERSION < 8.0" | bc -l) )); then
+    echo -e "${YELLOW}نسخه PHP کمتر از 8.0 است. توصیه می‌شود PHP 8.2 را نصب کنید.${NC}"
+    read -p "آیا می‌خواهید PHP 8.2 را نصب کنید؟ (y/n): " INSTALL_PHP82
+    if [[ "$INSTALL_PHP82" == "y" || "$INSTALL_PHP82" == "Y" ]]; then
+      apt install -y software-properties-common
+      add-apt-repository -y ppa:ondrej/php
+      apt update
+      apt install -y php8.2 php8.2-cli php8.2-common php8.2-curl php8.2-gd php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip php8.2-bcmath
+    fi
+  fi
+fi
+
+# نصب Composer برای MadelineProto
+if [ ! -f "composer.phar" ]; then
+  echo -e "${CYAN}نصب Composer برای پشتیبانی از MadelineProto...${NC}"
+  curl -sS https://getcomposer.org/installer | php
+  php composer.phar install
+fi
+
 # نصب و راه‌اندازی Gunicorn به عنوان سرویس
 echo -e "${BLUE}[8/8]${NC} ${GREEN}نصب و راه‌اندازی سرویس...${NC}"
 
@@ -190,10 +220,26 @@ echo -e "${YELLOW}سیستم لینک‌یاب تلگرام اکنون در حا
 echo -e "${YELLOW}برای دسترسی به رابط وب به آدرس زیر مراجعه کنید:${NC}"
 echo -e "${GREEN}http://$(hostname -I | awk '{print $1}'):5000${NC}"
 echo ""
+echo -e "${YELLOW}ویژگی‌های فعال شده در این نصب:${NC}"
+echo -e "${GREEN}✓ استخراج خودکار لینک از کانال‌های تلگرام${NC}"
+echo -e "${GREEN}✓ جمع‌آوری لینک‌ها از وب‌سایت‌ها${NC}"
+echo -e "${GREEN}✓ مدیریت حساب‌های کاربری تلگرام${NC}"
+echo -e "${GREEN}✓ پشتیبانی از ارسال پیامک با Twilio${NC}"
+echo -e "${GREEN}✓ پاسخگویی هوشمند با Avalai.ir و Perplexity${NC}"
+echo -e "${GREEN}✓ رابط کاربری شبیه تلگرام دسکتاپ${NC}"
+echo -e "${GREEN}✓ اتصال دسته‌ای همه اکانت‌ها${NC}"
+echo -e "${GREEN}✓ پشتیبانی از دو زبان فارسی و انگلیسی${NC}"
+echo ""
 echo -e "${YELLOW}برای مشاهده وضعیت سرویس:${NC}"
 echo -e "${GREEN}sudo systemctl status linkdoni${NC}"
 echo ""
 echo -e "${YELLOW}برای مشاهده لاگ‌های سیستم:${NC}"
 echo -e "${GREEN}sudo journalctl -u linkdoni.service -f${NC}"
 echo -e "${GREEN}tail -f /var/www/linkdoni/logs/bot.log${NC}"
+echo ""
+echo -e "${YELLOW}برای اطلاعات و راهنمای بیشتر به README.md مراجعه کنید${NC}"
+echo -e "${GREEN}https://github.com/asanseir724/LinkHunterBot#readme${NC}"
+echo ""
+echo -e "${PURPLE}با تشکر از انتخاب سیستم لینک‌یاب تلگرام${NC}"
+echo -e "${PURPLE}Thank you for choosing Telegram Link Hunter Bot${NC}"
 echo ""
