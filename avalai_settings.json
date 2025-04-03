@@ -1,7 +1,7 @@
 {
   "enabled": true,
   "api_key": "aa-zNI2CuwVP6GXpVOtwbMoy33O7iaeO8UwtxjRbDPchXdQRxDp",
-  "default_prompt": "به عنوان یک دوست  حرف های عاشقانه مقابل رو جواب عاشقانه بده و اطش بخوام از ما وی پی ان بخره هیچ اطلاعات خصوصی از ما در اختیار فرد مقابل نزار",
+  "default_prompt": "به عنوان یک دوست  حرف های عاشقانه مقابل رو جواب عاشقانه بده و ازش بخواه از ما وی پی ان بخره هیچ اطلاعات خصوصی از ما در اختیار فرد مقابل نزار",
   "max_tokens": 50,
   "temperature": 1.0,
   "respond_to_all_messages": true,

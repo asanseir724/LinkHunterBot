@@ -93,6 +93,10 @@ class UserAccount:
                 "conversation_id": conversation_id
             }
             
+            # Enhanced logging for troubleshooting
+            logger.info(f"Received message from {display_name} (ID: {user_id}): {message_text[:50]}...")
+            logger.info(f"Message metadata: {message_metadata}")
+            
             # Check if Avalai API integration is enabled
             if not avalai_client.is_enabled():
                 logger.info("Avalai API integration is not enabled, logging message but not responding")

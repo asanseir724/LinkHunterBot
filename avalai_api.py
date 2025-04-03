@@ -302,6 +302,9 @@ class AvalaiAPI:
             "ai_response": ai_response
         }
         
+        logger.info(f"Logging chat from user {user_id} (username: {username})")
+        logger.info(f"Chat entry: User message: {user_message[:50]}..., AI response: {ai_response[:50]}...")
+        
         # Add metadata if provided
         if metadata and isinstance(metadata, dict):
             # Add selected metadata fields that might be useful for displaying
@@ -309,22 +312,32 @@ class AvalaiAPI:
                         "chat_id", "chat_title", "conversation_id", "received_at"]:
                 if key in metadata:
                     chat_entry[key] = metadata[key]
+            logger.info(f"Chat metadata: {metadata}")
         
         # Add to chat history
         settings = self.settings.copy()
         if 'chat_history' not in settings:
             settings['chat_history'] = []
+            logger.info("Creating new chat_history in settings")
         
         # Add the new entry
         settings['chat_history'].append(chat_entry)
+        logger.info(f"Added new chat entry. Chat history now has {len(settings['chat_history'])} entries")
         
         # Limit history to most recent 500 entries to prevent file size bloat
         if len(settings['chat_history']) > 500:
             settings['chat_history'] = settings['chat_history'][-500:]
+            logger.info(f"Trimmed chat history to last 500 entries")
         
         # Save the updated settings
-        self._save_settings(settings)
-        self.settings = settings
+        try:
+            self._save_settings(settings)
+            self.settings = settings
+            logger.info("Successfully saved updated chat history to settings file")
+        except Exception as e:
+            logger.error(f"Error saving chat history: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def get_chat_history(self, limit=100, user_id=None):
         """
