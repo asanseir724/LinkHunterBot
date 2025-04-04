@@ -26,13 +26,55 @@ class TelegramBot:
         max_retries = 3
         retry_delay = 1  # seconds
         
+        # Clean and validate parameters
+        if params is None:
+            params = {}
+            
+        # Handle special case for chat_id parameter
+        if 'chat_id' in params and isinstance(params['chat_id'], str):
+            # Clean chat_id by removing non-ASCII characters and extra whitespace
+            chat_id = params['chat_id']
+            if chat_id.startswith('@'):
+                # For usernames, remove any special characters
+                import re
+                clean_username = re.sub(r'[^\w@]', '', chat_id)
+                # Convert to lowercase
+                clean_username = clean_username.lower()
+                params['chat_id'] = clean_username
+                
+                # Log the change if it happened
+                if clean_username != chat_id:
+                    logger.warning(f"Cleaned chat_id from '{chat_id}' to '{clean_username}'")
+        
         for attempt in range(max_retries):
             try:
                 response = requests.post(url, data=params or {}, timeout=30)  # Add timeout
-                response.raise_for_status()  # Raise exception for HTTP errors
+                
+                # Check for Bad Request errors (400)
+                if response.status_code == 400:
+                    error_data = response.json()
+                    error_description = error_data.get('description', 'Unknown error')
+                    
+                    if 'chat not found' in error_description.lower():
+                        # This is a fatal error - the channel doesn't exist
+                        logger.error(f"Channel not found error for {params.get('chat_id')}: {error_description}")
+                        return {"ok": False, "description": f"Channel not found: {params.get('chat_id')}", "error_code": 400}
+                    
+                response.raise_for_status()  # Raise exception for other HTTP errors
                 return response.json()
             except requests.exceptions.RequestException as e:
                 logger.warning(f"Request failed (attempt {attempt+1}/{max_retries}): {e}")
+                
+                # For 400 errors, don't retry if the channel doesn't exist
+                if hasattr(e, 'response') and e.response.status_code == 400:
+                    try:
+                        error_data = e.response.json()
+                        if 'chat not found' in error_data.get('description', '').lower():
+                            logger.error(f"Channel not found, not retrying: {params.get('chat_id')}")
+                            return {"ok": False, "description": f"Channel not found: {params.get('chat_id')}", "error_code": 400}
+                    except:
+                        pass
+                
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Exponential backoff
@@ -327,7 +369,7 @@ def setup_bot(link_manager):
         return None
 
 
-def check_channels_for_links(bot, link_manager, max_channels=100):
+def check_channels_for_links(bot, link_manager, max_channels=100, remove_invalid=True):
     """
     Check monitored channels for new links
     
@@ -335,6 +377,7 @@ def check_channels_for_links(bot, link_manager, max_channels=100):
         bot: The Telegram bot instance
         link_manager: The LinkManager instance
         max_channels: Maximum number of channels to check in one run (default: 100)
+        remove_invalid: If True, automatically remove channels that return "chat not found" errors
     
     Returns:
         int: Total number of new links found
@@ -501,9 +544,12 @@ def check_channels_for_links(bot, link_manager, max_channels=100):
                 # Check if this is a "chat not found" error
                 error_str = str(e).lower()
                 if "chat not found" in error_str or "bad request" in error_str or "404" in error_str:
-                    logger.warning(f"Channel {channel} does not exist or bot cannot access it - consider removing it")
-                    # You could add automatic channel removal here if desired
-                    # link_manager.remove_channel(channel)
+                    logger.warning(f"Channel {channel} does not exist or bot cannot access it")
+                    
+                    # Automatically remove invalid channels if enabled
+                    if remove_invalid:
+                        logger.info(f"Removing invalid channel: {channel}")
+                        link_manager.remove_channel(channel)
                 
                 continue  # Skip to next channel on error
             

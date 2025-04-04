@@ -118,7 +118,8 @@ def setup_scheduler(bot, link_manager):
                     max_channels = 20
                     logger.info(f"Large number of channels ({total_channels}), using batch size of {max_channels}")
                 
-                result = check_channels_for_links(bot, link_manager, max_channels)
+                # Enable automatic removal of invalid channels in scheduled checks
+                result = check_channels_for_links(bot, link_manager, max_channels, remove_invalid=True)
                 logger.info(f"Found {result} new links in scheduled check")
                 
             except ImportError as e:

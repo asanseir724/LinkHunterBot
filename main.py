@@ -879,8 +879,9 @@ def check_now():
                     logger.info(f"Processing all {total_channels} channels and {total_websites} websites in manual check")
                     
                     # Run the check for channels in the background thread
-                    logger.info("Starting background link check for channels")
-                    channel_result = check_channels_for_links(bot, link_manager, max_channels)
+                    # For manual checks, enable automatic removal of invalid channels as well
+                    logger.info("Starting background link check for channels with automatic removal of invalid channels")
+                    channel_result = check_channels_for_links(bot, link_manager, max_channels, remove_invalid=True)
                     
                     # Run the check for websites
                     logger.info("Starting background link check for websites")
