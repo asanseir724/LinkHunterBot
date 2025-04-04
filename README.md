@@ -1,196 +1,251 @@
-# Link Hunter Bot (ربات لینک‌یاب تلگرام)
+# سیستم جمع‌آوری لینک‌های تلگرام (Link Hunter Bot)
 
-A comprehensive Telegram bot designed to automatically extract and store links from Telegram channels, respond to private messages with AI, and provide advanced management features. The system monitors specified channels, extracts links from messages, responds intelligently to user inquiries, and provides a full-featured web interface for managing all aspects of the bot.
+سیستم هوشمند استخراج و ذخیره‌سازی لینک‌های کانال‌ها و گروه‌های تلگرام با قابلیت مدیریت حساب‌های کاربری، استخراج لینک از وب‌سایت‌ها و پاسخگویی هوشمند به پیام‌های خصوصی.
 
-ربات قدرتمند تلگرام برای استخراج و ذخیره خودکار لینک‌ها از کانال‌های تلگرام، پاسخگویی به پیام‌های خصوصی با هوش مصنوعی و ارائه ویژگی‌های مدیریتی پیشرفته. این سیستم کانال‌های مشخص شده را بررسی می‌کند، لینک‌ها را از پیام‌ها استخراج می‌کند، به پرسش‌های کاربران به صورت هوشمند پاسخ می‌دهد و یک رابط وب کامل برای مدیریت تمام جنبه‌های ربات ارائه می‌دهد.
+## ویژگی‌ها
 
-## Features (ویژگی‌ها)
+✅ **جمع‌آوری خودکار لینک‌ها**: استخراج اتوماتیک لینک از کانال‌ها و گروه‌های تلگرام
 
-- **Automated Link Extraction**: Monitors Telegram channels and extracts links automatically
-- **Web Crawling**: Extracts Telegram links from websites with support for multiple formats
-- **Category-based Link Organization**: Classifies links into categories based on channel or content
-- **Web Dashboard**: Full-featured web interface for managing channels, websites, links, and settings
-- **Excel Export**: Export links to Excel format with timestamps
-- **Token Rotation**: Support for multiple Telegram Bot tokens to avoid rate limits
-- **User Account Integration**: Support for adding Telegram user accounts to access private channels
-- **SMS Notifications**: Optional SMS notifications via Twilio when new links are found
-- **Auto-discovery**: Automatically finds and adds new link-sharing channels
-- **Keyword Management**: Manage category keywords for automatic link classification
-- **Support for @ format links**: Detects both t.me links and @username format
-- **AI-Powered Responses**: Automatically respond to private messages with AI (Avalai.ir & Perplexity)
-- **Telegram Desktop Interface**: View and manage private messages in a Telegram Desktop-style interface
-- **Dual AI Service Support**: Switch between different AI services (Avalai.ir and Perplexity)
-- **Customizable AI Prompts**: Configure how the AI responds to different types of messages
-- **Message History**: Track and review all private message conversations
-- **Batch Account Management**: Connect all Telegram accounts at once with a single click
-- **Enhanced Error Handling**: Robust error recovery and reconnection capabilities
-- **Web Scraping**: Extract content from websites for AI processing
-- **Multi-language Support**: Full support for Persian and English interfaces
+✅ **مدیریت حساب‌های کاربری تلگرام**: پشتیبانی از چندین حساب کاربری با احراز هویت دو مرحله‌ای
 
-- **استخراج خودکار لینک**: نظارت بر کانال‌های تلگرام و استخراج خودکار لینک‌ها
-- **خزش وب**: استخراج لینک‌های تلگرام از وب‌سایت‌ها با پشتیبانی از فرمت‌های مختلف
-- **دسته‌بندی لینک‌ها**: طبقه‌بندی لینک‌ها در دسته‌های مختلف بر اساس کانال یا محتوا
-- **داشبورد وب**: رابط کاربری وب کامل برای مدیریت کانال‌ها، وب‌سایت‌ها، لینک‌ها و تنظیمات
-- **صدور اکسل**: صدور لینک‌ها به فرمت اکسل همراه با برچسب زمانی
-- **چرخش توکن**: پشتیبانی از چندین توکن ربات تلگرام برای جلوگیری از محدودیت‌های نرخ
-- **یکپارچه‌سازی حساب کاربری**: پشتیبانی از افزودن حساب‌های کاربری تلگرام برای دسترسی به کانال‌های خصوصی
-- **اطلاع‌رسانی پیامکی**: اطلاع‌رسانی پیامکی اختیاری از طریق Twilio هنگام یافتن لینک‌های جدید
-- **کشف خودکار**: یافتن و افزودن خودکار کانال‌های اشتراک‌گذاری لینک جدید
-- **مدیریت کلمات کلیدی**: مدیریت کلمات کلیدی دسته‌بندی‌ها برای طبقه‌بندی خودکار لینک‌ها
-- **پشتیبانی از لینک‌های فرمت @**: تشخیص هر دو فرمت لینک t.me و فرمت @username
-- **پاسخ‌های هوشمند با هوش مصنوعی**: پاسخگویی خودکار به پیام‌های خصوصی با هوش مصنوعی (آوالای و پرپلکسیتی)
-- **رابط کاربری شبیه تلگرام دسکتاپ**: مشاهده و مدیریت پیام‌های خصوصی در یک رابط شبیه به تلگرام دسکتاپ
-- **پشتیبانی از دو سرویس هوش مصنوعی**: امکان تغییر بین سرویس‌های مختلف هوش مصنوعی (آوالای و پرپلکسیتی)
-- **پرامپت‌های قابل تنظیم هوش مصنوعی**: تنظیم نحوه پاسخگویی هوش مصنوعی به انواع مختلف پیام‌ها
-- **تاریخچه پیام‌ها**: پیگیری و بررسی تمام مکالمات پیام خصوصی
-- **مدیریت دسته‌ای اکانت‌ها**: اتصال همه اکانت‌های تلگرام با یک کلیک
-- **مدیریت خطای پیشرفته**: قابلیت‌های قوی بازیابی خطا و اتصال مجدد
-- **استخراج محتوا از وب**: استخراج محتوا از وب‌سایت‌ها برای پردازش توسط هوش مصنوعی
-- **پشتیبانی چندزبانه**: پشتیبانی کامل از رابط کاربری فارسی و انگلیسی
+✅ **اتصال دسته‌ای حساب‌ها**: قابلیت اتصال همزمان همه حساب‌های کاربری با یک کلیک
 
-## Requirements (پیش‌نیازها)
+✅ **استخراج لینک از وب‌سایت‌ها**: جمع‌آوری لینک‌های تلگرام از وب‌سایت‌های مختلف
 
+✅ **پاسخگویی هوشمند**: پاسخ خودکار به پیام‌های خصوصی با استفاده از هوش مصنوعی Avalai.ir و Perplexity
+
+✅ **ارسال نوتیفیکیشن SMS**: اطلاع‌رسانی لینک‌های جدید از طریق پیامک با سرویس Twilio
+
+✅ **رابط کاربری شبیه تلگرام دسکتاپ**: مشاهده و مدیریت پیام‌های خصوصی با رابط کاربری مشابه تلگرام
+
+✅ **صادرات اطلاعات**: خروجی Excel از لینک‌های جمع‌آوری شده و آمار
+
+✅ **پشتیبانی از GitLab و GitHub**: امکان کلون کردن کد از هر دو مخزن
+
+✅ **پشتیبانی از دو زبان**: رابط کاربری به دو زبان فارسی و انگلیسی
+
+## نیازمندی‌ها
+
+- سیستم عامل: Linux (Ubuntu/Debian)
 - Python 3.8+
-- Flask
-- Telethon
-- Twilio (optional, for SMS notifications)
-- PostgreSQL (optional, for larger deployments)
-- API Keys for AI services:
-  - Avalai.ir API key (optional, for Avalai AI integration)
-  - Perplexity API key (optional, for Perplexity AI integration)
+- PHP 8.0+ (برای MadelineProto و بخش PHP)
+- دسترسی ادمین (root) برای نصب سرویس
+- توکن ربات تلگرام
 
-## AI Message Response System (سیستم پاسخگویی هوش مصنوعی)
+## نصب سریع
 
-The bot can automatically respond to private messages using AI:
-ربات می‌تواند با استفاده از هوش مصنوعی به پیام‌های خصوصی به طور خودکار پاسخ دهد:
+### روش 1: نصب با اسکریپت یک مرحله‌ای
 
-### AI Service Options (گزینه‌های سرویس هوش مصنوعی)
+برای نصب سریع سیستم، دستور زیر را اجرا کنید:
 
-1. **Avalai.ir**: Persian-focused AI service
-2. **Perplexity**: Advanced AI service with multiple model options
+```bash
+wget -O install.sh https://raw.githubusercontent.com/asanseir724/LinkHunterBot/main/install.sh && chmod +x install.sh && sudo ./install.sh
+```
 
-1. **آوالای**: سرویس هوش مصنوعی با تمرکز بر زبان فارسی
-2. **پرپلکسیتی**: سرویس هوش مصنوعی پیشرفته با گزینه‌های مختلف مدل
+### روش 2: نصب دستی
 
-### Configuration (پیکربندی)
+1. ابتدا مخزن را کلون کنید:
 
-1. Add your API keys to the environment variables
-2. Go to the Private Messages page in the web interface
-3. Enable the desired AI service
-4. Configure the default prompt and other settings
-5. The system will automatically respond to incoming messages based on your settings
+```bash
+# از GitHub
+git clone https://github.com/asanseir724/LinkHunterBot.git
 
-1. کلیدهای API خود را به متغیرهای محیطی اضافه کنید
-2. به صفحه پیام‌های خصوصی در رابط وب بروید
-3. سرویس هوش مصنوعی مورد نظر را فعال کنید
-4. پرامپت پیش‌فرض و سایر تنظیمات را پیکربندی کنید
-5. سیستم بر اساس تنظیمات شما به طور خودکار به پیام‌های ورودی پاسخ می‌دهد
+# یا از GitLab
+git clone https://gitlab.com/your-username/LinkHunterBot.git
+```
 
-### Perplexity API Configuration (پیکربندی API پرپلکسیتی)
+2. وارد پوشه پروژه شوید:
 
-The Perplexity integration supports advanced settings:
-یکپارچه‌سازی پرپلکسیتی از تنظیمات پیشرفته پشتیبانی می‌کند:
+```bash
+cd LinkHunterBot
+```
 
-- Model selection (llama-3.1-sonar-small-128k-online recommended)
-- Temperature control
-- Maximum token limit
-- Response filtering options
-- Question detection (option to only respond to questions)
+3. محیط مجازی پایتون را ایجاد کنید:
 
-- انتخاب مدل (llama-3.1-sonar-small-128k-online توصیه می‌شود)
-- کنترل Temperature
-- محدودیت حداکثر توکن
-- گزینه‌های فیلتر پاسخ
-- تشخیص سؤال (گزینه پاسخ فقط به سؤالات)
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
 
-## User Accounts for Private Access (حساب‌های کاربری برای دسترسی خصوصی)
+4. وابستگی‌ها را نصب کنید:
 
-To monitor private channels, you can add user accounts:
-برای نظارت بر کانال‌های خصوصی، می‌توانید حساب‌های کاربری اضافه کنید:
+```bash
+pip install --upgrade pip
+pip install -r dependencies.txt
+```
 
-### Adding a New Account (افزودن حساب جدید)
+5. پوشه‌های مورد نیاز را ایجاد کنید:
 
-1. Go to the Accounts page
-2. Click "Add Account"
-3. Enter the phone number with international format
-4. Enter API ID and API Hash from my.telegram.org/apps
-5. Complete the verification process
-6. Add optional nickname for easy identification
+```bash
+mkdir -p logs
+mkdir -p static/exports
+mkdir -p sessions
+mkdir -p php_version/sessions
+chmod 777 logs static/exports sessions php_version/sessions
+```
 
-1. به صفحه حساب‌ها بروید
-2. روی "افزودن اکانت" کلیک کنید
+6. برای پشتیبانی از MadelineProto، PHP 8.2 و Composer را نصب کنید:
+
+```bash
+# نصب PHP 8.2
+apt install -y software-properties-common
+add-apt-repository -y ppa:ondrej/php
+apt update
+apt install -y php8.2 php8.2-cli php8.2-common php8.2-curl php8.2-gd php8.2-mbstring php8.2-mysql php8.2-xml php8.2-zip php8.2-bcmath
+
+# نصب Composer
+curl -sS https://getcomposer.org/installer | php
+php composer.phar install
+```
+
+7. فایل متغیرهای محیطی را ایجاد کنید:
+
+```bash
+cat > .env << EOL
+# متغیرهای محیطی پروژه
+SESSION_SECRET=$(openssl rand -hex 32)
+TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN
+DATABASE_URL=sqlite:///links.db
+
+# تنظیمات Twilio (برای ارسال نوتیفیکیشن SMS)
+TWILIO_ACCOUNT_SID=YOUR_TWILIO_SID
+TWILIO_AUTH_TOKEN=YOUR_TWILIO_TOKEN
+TWILIO_PHONE_NUMBER=YOUR_TWILIO_PHONE
+
+# تنظیمات هوش مصنوعی (برای پاسخگویی خودکار به پیام‌های خصوصی)
+AVALAI_API_KEY=YOUR_AVALAI_API_KEY
+PERPLEXITY_API_KEY=YOUR_PERPLEXITY_API_KEY
+EOL
+```
+
+8. برنامه را اجرا کنید:
+
+```bash
+gunicorn --bind 0.0.0.0:5000 --workers 3 main:app
+```
+
+## راه‌اندازی به عنوان سرویس
+
+برای اجرای برنامه به صورت سرویس در پس‌زمینه، فایل سرویس زیر را ایجاد کنید:
+
+```bash
+cat > /etc/systemd/system/linkdoni.service << EOL
+[Unit]
+Description=Telegram Link Hunter Bot
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/linkdoni
+Environment="PATH=/var/www/linkdoni/venv/bin"
+EnvironmentFile=/var/www/linkdoni/.env
+ExecStart=/var/www/linkdoni/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 --access-logfile /var/www/linkdoni/logs/access.log --error-logfile /var/www/linkdoni/logs/error.log main:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+# راه‌اندازی سرویس
+systemctl daemon-reload
+systemctl enable linkdoni
+systemctl start linkdoni
+```
+
+## راهنمای استفاده
+
+### تنظیم کانال‌های منبع
+
+1. به صفحه "منابع" (Sources) بروید
+2. نام کانال یا گروه مورد نظر را در فرمت `@channel_username` وارد کنید
+3. روی دکمه "افزودن" کلیک کنید
+
+### مدیریت حساب‌های کاربری تلگرام
+
+1. به صفحه "حساب‌های کاربری" (Accounts) بروید
+2. روی دکمه "افزودن حساب" کلیک کنید
 3. شماره تلفن را با فرمت بین‌المللی وارد کنید
-4. API ID و API Hash را از my.telegram.org/apps وارد کنید
-5. فرآیند تأیید را تکمیل کنید
-6. نام مستعار اختیاری برای شناسایی آسان اضافه کنید
+4. کد تایید را که به تلفن ارسال می‌شود وارد کنید
+5. در صورت نیاز، رمز عبور دو مرحله‌ای را وارد کنید
 
-### Batch Management (مدیریت دسته‌ای)
+### اتصال دسته‌ای حساب‌ها
 
-- Use "Connect All Accounts" button to reconnect all accounts at once
-- This is useful for recovering from connection errors
-- The system automatically manages connection sessions and retries
+1. به صفحه "حساب‌های کاربری" (Accounts) بروید
+2. روی دکمه "اتصال همه حساب‌ها" کلیک کنید
+3. سیستم به صورت خودکار تمام حساب‌های در وضعیت غیرمتصل را متصل می‌کند
 
-- از دکمه "اتصال همه اکانت‌ها" برای اتصال مجدد همه اکانت‌ها به یکباره استفاده کنید
-- این برای بازیابی از خطاهای اتصال مفید است
-- سیستم به طور خودکار جلسات اتصال و تلاش‌های مجدد را مدیریت می‌کند
+### تنظیم پاسخگویی هوشمند
 
-## Project Structure (ساختار پروژه)
+1. به صفحه "پیام‌های خصوصی" (Private Messages) بروید
+2. در بخش تنظیمات AI، منبع هوش مصنوعی را انتخاب کنید (Avalai.ir یا Perplexity)
+3. پرامپت مورد نظر برای پاسخگویی را تنظیم کنید
+4. عملکرد آن را با بخش پیش‌نمایش بررسی کنید
 
-- `main.py`: Main application entry point (نقطه ورود اصلی برنامه)
-- `bot.py`: Telegram bot functionality (عملکرد ربات تلگرام)
-- `link_manager.py`: Link extraction and management (استخراج و مدیریت لینک)
-- `user_accounts.py`: User account integration (یکپارچه‌سازی حساب کاربری)
-- `notification_utils.py`: Notification system (سیستم اطلاع‌رسانی)
-- `templates/`: Web interface templates (قالب‌های رابط وب)
-- `send_message.py`: SMS notification functionality (قابلیت اطلاع‌رسانی پیامکی)
-- `web_crawler.py`: Web crawling for Telegram links with auto-scrolling (خزش وب برای لینک‌های تلگرام با اسکرول خودکار)
-- `web_scraper.py`: Static web page scraping for links (استخراج لینک از صفحات وب ثابت)
-- `async_helper.py`: Centralized event loop management (مدیریت متمرکز حلقه رویداد)
-- `account_routes.py`: Routes for Telegram user account management (مسیرهای مدیریت حساب کاربری تلگرام)
-- `logger.py`: Centralized logging functionality (قابلیت لاگینگ متمرکز)
-- `avalai_api.py`: Integration with Avalai.ir AI service (یکپارچه‌سازی با سرویس هوش مصنوعی آوالای)
-- `perplexity_api.py`: Integration with Perplexity AI service (یکپارچه‌سازی با سرویس هوش مصنوعی پرپلکسیتی)
-- `scheduler.py`: Scheduled task management (مدیریت وظایف زمان‌بندی شده)
+### مشاهده پیام‌های خصوصی
 
-## License (مجوز)
+1. به صفحه "پیام‌های خصوصی" (Private Messages) بروید
+2. برای مشاهده همه پیام‌ها، به صورت پیش‌فرض پیام‌های همه حساب‌ها نمایش داده می‌شود
+3. برای مشاهده رابط کاربری شبیه تلگرام دسکتاپ، روی دکمه "Telegram Desktop Style" کلیک کنید
 
-This project is open source software licensed under the MIT license.
-این پروژه نرم‌افزار متن‌باز تحت مجوز MIT است.
+### استخراج لینک از وب‌سایت‌ها
 
-## Repository Mirroring (همگام‌سازی مخزن)
+1. به صفحه "وب‌سایت‌ها" (Websites) بروید
+2. آدرس وب‌سایت مورد نظر را وارد کنید
+3. فاصله زمانی بررسی را تنظیم کنید
+4. روی دکمه "افزودن" کلیک کنید
 
-This project supports mirroring between GitHub and GitLab repositories:
+## میزبانی در GitLab
 
-- GitHub: Main repository for public access and contributions
-- GitLab: Alternative mirror for additional backup and CI/CD options
+برای استفاده از GitLab به عنوان مخزن، مراحل زیر را دنبال کنید:
 
-See the `gitlab_setup.md` file for detailed instructions on setting up GitLab mirroring.
+1. یک پروژه جدید در GitLab ایجاد کنید
+2. مخزن GitHub را به GitLab متصل کنید:
 
-این پروژه از همگام‌سازی بین مخازن GitHub و GitLab پشتیبانی می‌کند:
+```bash
+# افزودن remote برای GitLab
+git remote add gitlab https://gitlab.com/your-username/LinkHunterBot.git
 
-- GitHub: مخزن اصلی برای دسترسی عمومی و مشارکت‌ها
-- GitLab: آینه جایگزین برای پشتیبان‌گیری اضافی و گزینه‌های CI/CD
+# ارسال کد به GitLab
+git push -u gitlab main
+```
 
-برای دستورالعمل‌های دقیق در مورد راه‌اندازی آینه GitLab، فایل `gitlab_setup.md` را ببینید.
+3. برای اطلاعات بیشتر به فایل `gitlab_setup.md` مراجعه کنید
 
-## Repository Mirroring (همگام‌سازی مخزن)
+## عیب‌یابی رایج
 
-This project supports mirroring between GitHub and GitLab repositories:
+### خطای دسترسی به پوشه‌ها
 
-- GitHub: Main repository for public access and contributions
-- GitLab: Alternative mirror for additional backup and CI/CD options
+اگر با خطای دسترسی به پوشه‌های `logs`، `sessions` یا `static/exports` مواجه شدید:
 
-See the `gitlab_setup.md` file for detailed instructions on setting up GitLab mirroring.
+```bash
+chmod -R 777 logs sessions static/exports php_version/sessions
+```
 
-این پروژه از همگام‌سازی بین مخازن GitHub و GitLab پشتیبانی می‌کند:
+### مشکل اتصال به API تلگرام
 
-- GitHub: مخزن اصلی برای دسترسی عمومی و مشارکت‌ها
-- GitLab: آینه جایگزین برای پشتیبان‌گیری اضافی و گزینه‌های CI/CD
+اگر با خطای ارتباط با API تلگرام مواجه شدید، مطمئن شوید:
 
-برای دستورالعمل‌های دقیق در مورد راه‌اندازی آینه GitLab، فایل `gitlab_setup.md` را ببینید.
+1. توکن ربات معتبر است
+2. دسترسی به سرورهای تلگرام وجود دارد
+3. تنظیمات پراکسی در صورت نیاز انجام شده است
 
+### مشکل اتصال حساب‌های کاربری
 
-## Support (پشتیبانی)
+اگر در اتصال حساب‌ها مشکل دارید:
 
-For questions, issues, or contributions, please open an issue on GitHub or contact the repository owner.
-برای سوالات، مشکلات یا مشارکت‌ها، لطفا یک issue در گیت‌هاب باز کنید یا با مالک مخزن تماس بگیرید.
+1. از صحت شماره وارد شده اطمینان حاصل کنید
+2. محدودیت‌های IP را بررسی کنید (ممکن است نیاز به استفاده از پراکسی باشد)
+3. کد تایید و رمز دو مرحله‌ای را با دقت وارد کنید
+
+## توسعه و مشارکت
+
+برای مشارکت در توسعه پروژه:
+
+1. یک نسخه از مخزن را fork کنید
+2. تغییرات خود را اعمال کنید
+3. یک Pull Request ایجاد کنید
+
+## مجوز
+
+این پروژه تحت مجوز MIT منتشر شده است.
