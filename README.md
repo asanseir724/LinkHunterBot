@@ -251,6 +251,55 @@ chmod -R 777 logs sessions static/exports php_version/sessions
 2. محدودیت‌های IP را بررسی کنید (ممکن است نیاز به استفاده از پراکسی باشد)
 3. کد تایید و رمز دو مرحله‌ای را با دقت وارد کنید
 
+### خطای سرویس linkdoni
+
+اگر سرویس linkdoni با خطای `failed (Result: exit-code)` مواجه شد:
+
+1. بررسی لاگ‌های خطا:
+   ```bash
+   sudo journalctl -u linkdoni.service -n 50
+   ```
+
+2. بررسی و بهبود تنظیمات سرویس:
+   ```bash
+   sudo nano /etc/systemd/system/linkdoni.service
+   ```
+   
+   تغییرات پیشنهادی برای فایل سرویس:
+   ```
+   [Unit]
+   Description=Telegram Link Hunter Bot
+   After=network.target
+
+   [Service]
+   User=www-data
+   Group=www-data
+   WorkingDirectory=/var/www/linkdoni
+   Environment="PATH=/var/www/linkdoni/venv/bin"
+   EnvironmentFile=/var/www/linkdoni/.env
+   ExecStart=/var/www/linkdoni/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 --access-logfile /var/www/linkdoni/logs/access.log --error-logfile /var/www/linkdoni/logs/error.log main:app
+   Restart=on-failure
+   RestartSec=10
+   StartLimitInterval=60
+   StartLimitBurst=3
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+3. بررسی دسترسی‌های فایل‌ها:
+   ```bash
+   sudo chown -R www-data:www-data /var/www/linkdoni
+   sudo chmod -R 755 /var/www/linkdoni
+   sudo chmod -R 777 /var/www/linkdoni/logs /var/www/linkdoni/sessions /var/www/linkdoni/static/exports /var/www/linkdoni/php_version/sessions
+   ```
+
+4. راه‌اندازی مجدد سرویس:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl restart linkdoni.service
+   ```
+
 ## توسعه و مشارکت
 
 برای مشارکت در توسعه پروژه:

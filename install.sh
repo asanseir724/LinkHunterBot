@@ -195,7 +195,10 @@ WorkingDirectory=/var/www/linkdoni
 Environment="PATH=/var/www/linkdoni/venv/bin"
 EnvironmentFile=/var/www/linkdoni/.env
 ExecStart=/var/www/linkdoni/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 --access-logfile /var/www/linkdoni/logs/access.log --error-logfile /var/www/linkdoni/logs/error.log main:app
-Restart=always
+Restart=on-failure
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
 
 [Install]
 WantedBy=multi-user.target
