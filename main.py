@@ -10,6 +10,7 @@ from datetime import datetime
 from logger import get_logger, get_all_logs, clear_logs, get_connection_logs
 from notification_utils import update_sms_settings, get_sms_settings, should_send_notification
 from send_message import send_notification
+from bulk_sms import BulkSMSSender, get_bulk_sms_sender
 from avalai_api import avalai_client
 from perplexity_api import perplexity_client
 from web_crawler import extract_links_from_websites
@@ -650,6 +651,120 @@ def settings():
                           min_links_for_notification=sms_settings['min_links'],
                           twilio_configured=sms_settings['twilio_configured'])
 
+@app.route('/bulk_sms', methods=['GET', 'POST'])
+def bulk_sms():
+    """Send bulk SMS messages to multiple recipients"""
+    # Check if Twilio is configured
+    twilio_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+    twilio_token = os.environ.get("TWILIO_AUTH_TOKEN")
+    twilio_phone = os.environ.get("TWILIO_PHONE_NUMBER")
+    twilio_configured = all([twilio_sid, twilio_token, twilio_phone])
+    
+    # Initialize logs variable
+    logs = []
+    success_message = None
+    error_message = None
+    
+    # Get SMS sender instance
+    sms_sender = get_bulk_sms_sender()
+    
+    # Handle form submission
+    if request.method == 'POST':
+        if not twilio_configured:
+            flash("سرویس Twilio پیکربندی نشده است. لطفاً متغیرهای محیطی TWILIO_ACCOUNT_SID، TWILIO_AUTH_TOKEN و TWILIO_PHONE_NUMBER را تنظیم کنید.", "danger")
+            return redirect(url_for('bulk_sms'))
+        
+        action = request.form.get('action')
+        use_delay = request.form.get('use_delay') is not None
+        
+        if action == 'send_bulk':
+            # Process sending the same message to multiple recipients
+            recipients_text = request.form.get('recipients', '')
+            message = request.form.get('message', '')
+            
+            if not recipients_text or not message:
+                flash("لطفاً شماره‌های تلفن و متن پیام را وارد کنید.", "warning")
+                return redirect(url_for('bulk_sms'))
+            
+            # Split phone numbers by newline
+            recipients = [p.strip() for p in recipients_text.splitlines() if p.strip()]
+            
+            if len(recipients) > 100:
+                flash("Too many recipients. Please limit to 100 recipients at a time.", "warning")
+                return redirect(url_for('bulk_sms'))
+            
+            # Send messages
+            try:
+                results = sms_sender.send_bulk_messages(recipients, message, use_delay)
+                
+                success_message = f"{results['successful']} پیام با موفقیت ارسال شد. {results['failed']} پیام ناموفق بود."
+                if results['successful'] > 0:
+                    flash(success_message, "success")
+                if results['failed'] > 0:
+                    flash(f"{results['failed']} پیام ارسال نشد. برای جزئیات بیشتر، گزارش‌ها را بررسی کنید.", "warning")
+                
+            except Exception as e:
+                logger.error(f"Error sending bulk messages: {str(e)}")
+                error_message = f"خطایی رخ داد: {str(e)}"
+                flash(error_message, "danger")
+                
+        elif action == 'send_personalized':
+            # Process sending personalized messages to recipients
+            personalized_data = request.form.get('personalized_data', '')
+            
+            if not personalized_data:
+                flash("لطفاً داده‌های پیام شخصی‌سازی شده را وارد کنید.", "warning")
+                return redirect(url_for('bulk_sms'))
+            
+            # Parse lines in format: "phone_number, message"
+            message_data = []
+            for line in personalized_data.splitlines():
+                if not line.strip():
+                    continue
+                
+                parts = line.split(',', 1)
+                if len(parts) == 2:
+                    message_data.append({
+                        'phone': parts[0].strip(),
+                        'message': parts[1].strip()
+                    })
+            
+            if not message_data:
+                flash("هیچ داده معتبری یافت نشد. لطفاً از فرمت: شماره_تلفن، پیام استفاده کنید", "warning")
+                return redirect(url_for('bulk_sms'))
+                
+            if len(message_data) > 100:
+                flash("تعداد گیرندگان بیش از حد مجاز است. لطفاً به حداکثر 100 گیرنده در هر بار محدود کنید.", "warning")
+                return redirect(url_for('bulk_sms'))
+            
+            # Send personalized messages
+            try:
+                results = sms_sender.send_personalized_messages(message_data, use_delay)
+                
+                success_message = f"{results['successful']} پیام شخصی‌سازی شده با موفقیت ارسال شد. {results['failed']} پیام ناموفق بود."
+                if results['successful'] > 0:
+                    flash(success_message, "success")
+                if results['failed'] > 0:
+                    flash(f"{results['failed']} پیام ارسال نشد. برای جزئیات بیشتر، گزارش‌ها را بررسی کنید.", "warning")
+                
+            except Exception as e:
+                logger.error(f"Error sending personalized messages: {str(e)}")
+                error_message = f"خطایی رخ داد: {str(e)}"
+                flash(error_message, "danger")
+    
+    # Get SMS logs for the Logs tab
+    if sms_sender:
+        logs = sms_sender.get_logs(limit=50)
+        # Sort logs by timestamp in descending order if available
+        if logs and 'timestamp' in logs[0]:
+            logs = sorted(logs, key=lambda x: x.get('timestamp', ''), reverse=True)
+    
+    return render_template('bulk_sms.html',
+                          logs=logs,
+                          twilio_configured=twilio_configured,
+                          success_message=success_message,
+                          error_message=error_message)
+
 @app.route('/category_keywords', methods=['GET'])
 def category_keywords():
     """View category keywords"""
@@ -842,7 +957,7 @@ def check_now():
         
         if bot_status != "Running":
             logger.warning("Bot is not running, cannot perform check")
-            flash("Bot is not running. Please set up the token first.", "warning")
+            flash("ربات فعال نیست. لطفا ابتدا توکن را تنظیم کنید.", "warning")
             return redirect(url_for('settings'))
         
         # Create a background task by running the check operation immediately
@@ -952,14 +1067,14 @@ def api_check_status():
 def clear_links():
     """Clear all stored links"""
     link_manager.clear_links()
-    flash("All links cleared", "success")
+    flash("تمام لینک‌ها حذف شدند", "success")
     return redirect(url_for('links'))
 
 @app.route('/clear_new_links', methods=['POST'])
 def clear_new_links():
     """Clear only the new links list"""
     link_manager.clear_new_links()
-    flash("New links cleared", "success")
+    flash("لینک‌های جدید حذف شدند", "success")
     return redirect(url_for('links'))
 
 @app.route('/export_all_links', methods=['GET'])
@@ -983,11 +1098,11 @@ def export_all_links():
             flash(f'تمام لینک ها{category_display} با موفقیت به اکسل صادر شدند. <a href="{download_url}" class="alert-link">برای دانلود کلیک کنید</a>', "success")
             return redirect(url_for('links'))
         else:
-            flash("Failed to export links", "danger")
+            flash("خطا در صادر کردن لینک‌ها", "danger")
             return redirect(url_for('links'))
     except Exception as e:
         logger.error(f"Error exporting all links: {str(e)}")
-        flash(f"Error exporting links: {str(e)}", "danger")
+        flash(f"خطا در صادر کردن لینک‌ها: {str(e)}", "danger")
         return redirect(url_for('links'))
 
 @app.route('/export_new_links', methods=['GET'])
@@ -999,14 +1114,14 @@ def export_new_links():
             # Return a direct download link
             full_path = os.path.join('static/exports', filename)
             download_url = url_for('static', filename=f'exports/{filename}')
-            flash(f'New links exported to Excel successfully. <a href="{download_url}" class="alert-link">Click here to download</a>', "success")
+            flash(f'لینک‌های جدید با موفقیت به اکسل صادر شدند. <a href="{download_url}" class="alert-link">برای دانلود کلیک کنید</a>', "success")
             return redirect(url_for('links'))
         else:
-            flash("Failed to export links", "danger")
+            flash("خطا در صادر کردن لینک‌ها", "danger")
             return redirect(url_for('links'))
     except Exception as e:
         logger.error(f"Error exporting new links: {str(e)}")
-        flash(f"Error exporting links: {str(e)}", "danger")
+        flash(f"خطا در صادر کردن لینک‌ها: {str(e)}", "danger")
         return redirect(url_for('links'))
 
 @app.route('/logs')
@@ -1019,9 +1134,9 @@ def logs():
 def clear_logs_route():
     """Clear all logs"""
     if clear_logs():
-        flash("All logs cleared successfully", "success")
+        flash("تمام گزارش‌ها با موفقیت پاک شدند", "success")
     else:
-        flash("Failed to clear logs", "danger")
+        flash("خطا در پاک کردن گزارش‌ها", "danger")
     return redirect(url_for('logs'))
 
 @app.route('/refresh_logs', methods=['POST'])

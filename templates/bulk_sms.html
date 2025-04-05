@@ -1,0 +1,194 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>ارسال پیامک دسته‌ای</h3>
+    </div>
+    <div class="card-body">
+        <p class="mb-4">
+            از این صفحه برای ارسال پیامک به چندین شماره همزمان استفاده کنید.
+        </p>
+
+        {% if not twilio_configured %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            سرویس پیامک پیکربندی نشده است. برای استفاده از این قابلیت، کلیدهای دسترسی Twilio را در صفحه تنظیمات وارد کنید.
+        </div>
+        {% else %}
+        
+        <div class="row">
+            <div class="col-md-6">
+                <!-- Simple Bulk SMS Form (Same Message to Multiple Recipients) -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4>ارسال پیام یکسان به چندین شماره</h4>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ url_for('bulk_sms') }}" method="post">
+                            <input type="hidden" name="action" value="send_bulk">
+                            
+                            <div class="mb-3">
+                                <label for="recipients" class="form-label">شماره‌های تلفن دریافت‌کنندگان</label>
+                                <textarea class="form-control" id="recipients" name="recipients" rows="4" 
+                                          placeholder="+989123456789&#10;+989123456788&#10;+989123456787" required></textarea>
+                                <div class="form-text">
+                                    هر شماره را در یک خط جداگانه وارد کنید. فرمت: +989123456789
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="message" class="form-label">متن پیام</label>
+                                <textarea class="form-control" id="message" name="message" rows="5" 
+                                          placeholder="متن پیام خود را اینجا وارد کنید..." required></textarea>
+                                <div class="form-text">
+                                    <span id="char_count">0</span> کاراکتر از 160 کاراکتر استاندارد
+                                </div>
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                <input type="checkbox" class="form-check-input" id="use_delay" name="use_delay" checked>
+                                <label class="form-check-label" for="use_delay">
+                                    استفاده از تأخیر بین ارسال پیام‌ها
+                                </label>
+                                <div class="form-text">
+                                    برای جلوگیری از محدودیت نرخ ارسال، توصیه می‌شود این گزینه فعال باشد.
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> ارسال پیام‌ها
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <!-- Personalized Bulk SMS Form (Different Message to Each Recipient) -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h4>ارسال پیام شخصی‌سازی شده</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>برای ارسال پیام‌های متفاوت به هر شماره، از فرمت CSV استفاده کنید:</p>
+                        
+                        <form action="{{ url_for('bulk_sms') }}" method="post">
+                            <input type="hidden" name="action" value="send_personalized">
+                            
+                            <div class="mb-3">
+                                <label for="personalized_data" class="form-label">داده‌های شخصی‌سازی شده</label>
+                                <textarea class="form-control" id="personalized_data" name="personalized_data" rows="10" 
+                                          placeholder="+989123456789,سلام آقای احمدی، اطلاعات جدید آماده است.&#10;+989123456788,سلام خانم محمدی، اطلاعات جدید آماده است." required></textarea>
+                                <div class="form-text">
+                                    در هر خط، شماره تلفن و متن پیام را با کاما (,) جدا کنید.
+                                </div>
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                <input type="checkbox" class="form-check-input" id="use_delay_personalized" name="use_delay" checked>
+                                <label class="form-check-label" for="use_delay_personalized">
+                                    استفاده از تأخیر بین ارسال پیام‌ها
+                                </label>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> ارسال پیام‌های شخصی‌سازی شده
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SMS Logs -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4>تاریخچه ارسال پیامک‌ها</h4>
+                <div>
+                    <select id="log_filter" class="form-select form-select-sm" style="width: auto;">
+                        <option value="all">همه پیام‌ها</option>
+                        <option value="success">پیام‌های موفق</option>
+                        <option value="failed">پیام‌های ناموفق</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if logs %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>تاریخ و زمان</th>
+                                <th>شماره گیرنده</th>
+                                <th>پیام</th>
+                                <th>وضعیت</th>
+                                <th>شناسه پیام</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr class="log-entry {{ log.status }}">
+                                <td>{{ log.timestamp }}</td>
+                                <td>{{ log.to }}</td>
+                                <td>{{ log.message|truncate(30) }}</td>
+                                <td>
+                                    {% if log.status == 'success' %}
+                                    <span class="badge bg-success">موفق</span>
+                                    {% elif log.status == 'failed' %}
+                                    <span class="badge bg-danger">ناموفق</span>
+                                    <div class="small text-danger">{{ log.error }}</div>
+                                    {% else %}
+                                    <span class="badge bg-warning">نامشخص</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if log.message_sid %}
+                                    <small class="text-muted">{{ log.message_sid }}</small>
+                                    {% else %}
+                                    <small class="text-muted">-</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    هنوز هیچ پیامکی ارسال نشده است.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="mt-4">
+            <a href="{{ url_for('settings') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> بازگشت به تنظیمات
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Character counter
+    document.getElementById('message').addEventListener('input', function() {
+        document.getElementById('char_count').textContent = this.value.length;
+    });
+    
+    // Log filter
+    document.getElementById('log_filter').addEventListener('change', function() {
+        const filter = this.value;
+        const rows = document.querySelectorAll('.log-entry');
+        
+        rows.forEach(row => {
+            if (filter === 'all' || row.classList.contains(filter)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+</script>
+{% endblock %}
