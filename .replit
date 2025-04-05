@@ -4,8 +4,9 @@ modules = ["python-3.11"]
 channel = "stable-24_05"
 
 [deployment]
-deploymentTarget = "static"
-publicDir = "static"
+deploymentTarget = "cloudrun"
+build = ["sh", "-c", "skyro"]
+run = ["sh", "-c", "skyro"]
 
 [workflows]
 runButton = "Project"

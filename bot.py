@@ -66,12 +66,13 @@ class TelegramBot:
                 logger.warning(f"Request failed (attempt {attempt+1}/{max_retries}): {e}")
                 
                 # For 400 errors, don't retry if the channel doesn't exist
-                if hasattr(e, 'response') and e.response.status_code == 400:
+                if hasattr(e, 'response') and hasattr(e.response, 'status_code') and e.response.status_code == 400:
                     try:
-                        error_data = e.response.json()
-                        if 'chat not found' in error_data.get('description', '').lower():
-                            logger.error(f"Channel not found, not retrying: {params.get('chat_id')}")
-                            return {"ok": False, "description": f"Channel not found: {params.get('chat_id')}", "error_code": 400}
+                        if hasattr(e.response, 'json'):
+                            error_data = e.response.json()
+                            if 'chat not found' in error_data.get('description', '').lower():
+                                logger.error(f"Channel not found, not retrying: {params.get('chat_id')}")
+                                return {"ok": False, "description": f"Channel not found: {params.get('chat_id')}", "error_code": 400}
                     except:
                         pass
                 
@@ -455,9 +456,11 @@ def check_channels_for_links(bot, link_manager, max_channels=100, remove_invalid
                             
                             for message in message_texts[:10]:  # Get the first 10 messages
                                 message_text = message.get_text()
-                                t_me_links = re.findall(r'https?://t\.me/[^\s]+', message_text)
-                                if t_me_links:
-                                    found_links.extend(t_me_links)
+                                # استخراج فقط بخش اصلی لینک‌های تلگرام با استفاده از الگوی بهبود یافته
+                                # الگوی جدید تا جایی که ممکن است دقیق لینک‌ها را استخراج می‌کند و کاراکترهای اضافی را حذف می‌کند
+                                raw_links = re.findall(r'(https?://t\.me/(?:joinchat/|\+)?[a-zA-Z0-9_\-/]+)', message_text)
+                                if raw_links:
+                                    found_links.extend(raw_links)
                             
                             logger.info(f"Found {len(found_links)} links by scraping channel webpage")
                         else:
@@ -485,10 +488,10 @@ def check_channels_for_links(bot, link_manager, max_channels=100, remove_invalid
                                 for message in messages:
                                     if 'text' in message:
                                         text = message['text']
-                                        # Extract t.me links
-                                        t_me_links = re.findall(r'https?://t\.me/[^\s]+', text)
-                                        if t_me_links:
-                                            found_links.extend(t_me_links)
+                                        # استخراج فقط بخش اصلی لینک‌های تلگرام با استفاده از الگوی بهبود یافته
+                                        raw_links = re.findall(r'(https?://t\.me/(?:joinchat/|\+)?[a-zA-Z0-9_\-/]+)', text)
+                                        if raw_links:
+                                            found_links.extend(raw_links)
                             else:
                                 logger.debug("getHistory not supported or not authorized")
                                 
@@ -506,9 +509,10 @@ def check_channels_for_links(bot, link_manager, max_channels=100, remove_invalid
                                     for update in updates:
                                         if 'message' in update and 'text' in update['message']:
                                             text = update['message']['text']
-                                            t_me_links = re.findall(r'https?://t\.me/[^\s]+', text)
-                                            if t_me_links:
-                                                found_links.extend(t_me_links)
+                                            # استخراج فقط بخش اصلی لینک‌های تلگرام با استفاده از الگوی بهبود یافته
+                                            raw_links = re.findall(r'(https?://t\.me/(?:joinchat/|\+)?[a-zA-Z0-9_\-/]+)', text)
+                                            if raw_links:
+                                                found_links.extend(raw_links)
                         except Exception as e:
                             logger.warning(f"Error using Telegram API: {str(e)}")
                     

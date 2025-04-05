@@ -539,6 +539,45 @@ class LinkManager:
             
         return is_new
     
+    def _clean_telegram_link(self, link):
+        """
+        پاکسازی لینک‌های تلگرام و حذف کاراکترهای اضافی
+        همچنین برای لینک‌های چندگانه که در یک رشته ترکیب شده‌اند، لینک اول را استخراج می‌کند
+        
+        Args:
+            link (str): لینک تلگرام برای پاکسازی
+            
+        Returns:
+            str: لینک پاکسازی شده
+        """
+        if not link:
+            return link
+            
+        link = link.strip()
+        
+        # اگر 'https://t.me' دوبار در لینک وجود داشته باشد، آن را تقسیم می‌کنیم
+        if link.count('https://t.me') > 1 or link.count('http://t.me') > 1:
+            # پیدا کردن نقطه شروع دومین لینک
+            second_link_start = link.find('https://t.me', 1)
+            if second_link_start == -1:
+                second_link_start = link.find('http://t.me', 1)
+                
+            if second_link_start > 0:
+                # جدا کردن لینک اول
+                first_link = link[:second_link_start]
+                # پاکسازی لینک اول با استفاده از regex
+                first_link_clean = re.match(r'(https?://t\.me/(?:joinchat/|\+)?[a-zA-Z0-9_\-]+)', first_link)
+                if first_link_clean:
+                    return first_link_clean.group(1)
+        
+        # استخراج فقط بخش معتبر لینک با استفاده از الگوی regex
+        # این الگو فقط کاراکترهای معتبر URL تلگرام را استخراج می‌کند
+        match = re.match(r'(https?://t\.me/(?:joinchat/|\+)?[a-zA-Z0-9_\-/]+)', link)
+        if match:
+            return match.group(1)
+            
+        return link
+        
     def add_link(self, link, channel=None, message_text=None):
         """
         Add a unique link to storage
@@ -551,6 +590,9 @@ class LinkManager:
         Returns:
             bool: True if the link was new, False if it already existed
         """
+        # پاکسازی لینک و حذف کاراکترهای اضافی
+        link = self._clean_telegram_link(link)
+        
         # Normalize link (remove trailing slashes, etc.)
         link = link.strip()
         
